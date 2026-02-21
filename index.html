@@ -121,18 +121,34 @@
     font-size: 1.2rem;
   }
 
-  #error-state p { font-size: 0.7rem; color: var(--muted); max-width: 400px; line-height: 1.8; }
+  #error-state p { font-size: 0.7rem; color: var(--muted); max-width: 440px; line-height: 1.8; }
 
   #error-state .err-box {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 16px 24px;
-    font-size: 0.65rem;
-    color: var(--red);
+    font-size: 0.62rem;
+    color: #aaaacc;
     max-width: 500px;
     text-align: left;
-    word-break: break-all;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.8;
+  }
+
+  #error-state .retry-btn {
+    background: var(--green);
+    color: #050510;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-top: 8px;
   }
 
   /* MAIN CONTENT */
@@ -434,14 +450,15 @@
 <!-- ERROR STATE -->
 <div id="error-state">
   <h2>⚠ Connection Failed</h2>
-  <p>Could not fetch data from Notion. This usually happens because the browser blocks direct API calls (CORS policy). See the fix below.</p>
+  <p>Could not connect to Notion. Please check the steps below and try again.</p>
   <div class="err-box" id="error-msg"></div>
-  <p style="margin-top:8px;">
-    <strong style="color:#ccccee">Fix:</strong> Open this file using a local server.<br>
-    In your terminal: <code style="color:var(--green)">cd</code> to the folder, then run:<br>
-    <code style="color:var(--green)">npx serve .</code> or <code style="color:var(--green)">python3 -m http.server 8080</code><br>
-    Then open <code style="color:var(--green)">http://localhost:8080/trade_dashboard_live.html</code>
+  <p style="margin-top:12px;text-align:left;max-width:440px">
+    <strong style="color:#ccccee">Checklist:</strong><br>
+    1. Go to <strong style="color:var(--green)">notion.so/my-integrations</strong> → regenerate your token<br>
+    2. Open your Trade Journal in Notion → <strong style="color:var(--green)">··· → Connections → Connect your integration</strong><br>
+    3. Click Retry below and paste your new token
   </p>
+  <button class="retry-btn" onclick="localStorage.removeItem('notion_token');location.reload()">↻ Retry with New Token</button>
 </div>
 
 <!-- TOKEN SCREEN -->
@@ -628,22 +645,65 @@ async function fetchNotionDB(cursor = null) {
   if (cursor) body.start_cursor = cursor;
 
   const notionUrl = `https://api.notion.com/v1/databases/${DATABASE_ID}/query`;
-  const encoded = encodeURIComponent(notionUrl);
 
-  // Try allorigins proxy
-  const res = await fetch(`${PROXY}${encoded}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-      'Notion-Version': '2022-06-28',
-      'Authorization': `Bearer ${NOTION_TOKEN}`
+  // Try multiple proxies in order
+  const proxies = [
+    async () => {
+      // Proxy 1: corsproxy.io
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(notionUrl)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28',
+          'Authorization': `Bearer ${NOTION_TOKEN}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`corsproxy.io: ${res.status}`);
+      return res.json();
     },
-    body: JSON.stringify(body)
-  });
+    async () => {
+      // Proxy 2: allorigins
+      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(notionUrl)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28',
+          'Authorization': `Bearer ${NOTION_TOKEN}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`allorigins: ${res.status}`);
+      return res.json();
+    },
+    async () => {
+      // Proxy 3: cors-anywhere via thingproxy
+      const res = await fetch(`https://thingproxy.freeboard.io/fetch/${notionUrl}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28',
+          'Authorization': `Bearer ${NOTION_TOKEN}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`thingproxy: ${res.status}`);
+      return res.json();
+    }
+  ];
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-  return await res.json();
+  let lastError;
+  for (const tryProxy of proxies) {
+    try {
+      const data = await tryProxy();
+      if (data && (data.results !== undefined || data.object)) return data;
+      throw new Error('Invalid response format');
+    } catch (e) {
+      lastError = e;
+      console.warn('Proxy failed, trying next...', e.message);
+    }
+  }
+  throw new Error(`All proxies failed. Last error: ${lastError?.message}. \n\nPlease make sure:\n1. Your Notion token is correct (regenerate at notion.so/my-integrations)\n2. Your database is connected to the integration (··· → Connections in Notion)`);
 }
 
 async function fetchAllTrades() {
@@ -1248,7 +1308,14 @@ async function loadData() {
 
   } catch(err) {
     console.error(err);
-    showError(`${err.message}\n\nThis is likely a CORS issue. The Notion API blocks direct browser requests. See the fix instructions below.`);
+    // If token might be wrong, show token screen again
+    if (err.message.includes('401') || err.message.includes('unauthorized')) {
+      localStorage.removeItem('notion_token');
+      NOTION_TOKEN = '';
+      showError('Invalid token. Please regenerate your token at notion.so/my-integrations and try again.\n\n' + err.message);
+    } else {
+      showError(err.message);
+    }
   }
 }
 
