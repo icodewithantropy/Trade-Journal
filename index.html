@@ -642,7 +642,9 @@ function showApp() {
 // ============================================================
 async function fetchNotionDB(cursor = null) {
   const WORKER_URL = 'https://notion-proxy.churan756.workers.dev/';
-  const body = { token: NOTION_TOKEN, databaseId: DATABASE_ID };
+  const currentToken = localStorage.getItem("notion_token") || NOTION_TOKEN;
+  if (!currentToken) throw new Error("No token found. Please enter your Notion token.");
+  const body = { token: currentToken, databaseId: DATABASE_ID };
   if (cursor) body.cursor = cursor;
 
   const res = await fetch(WORKER_URL, {
