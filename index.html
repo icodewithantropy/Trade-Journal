@@ -644,11 +644,11 @@ async function fetchNotionDB(cursor = null) {
   const currentToken = localStorage.getItem('notion_token') || NOTION_TOKEN;
   if (!currentToken) throw new Error('No token found. Please enter your Notion token.');
 
-  // Send token as URL param — simplest method, never stripped by browser
+  // Use GET with URL params — guaranteed to work
   let url = `https://notion-proxy.churan756.workers.dev/?token=${encodeURIComponent(currentToken)}`;
   if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
 
-  const res = await fetch(url, { method: 'POST' });
+  const res = await fetch(url, { method: 'GET' });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
