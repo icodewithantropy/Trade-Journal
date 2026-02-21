@@ -641,17 +641,14 @@ function showApp() {
 // FETCH FROM NOTION (via CORS proxy)
 // ============================================================
 async function fetchNotionDB(cursor = null) {
-  const WORKER_URL = 'https://notion-proxy.churan756.workers.dev/';
-  const currentToken = localStorage.getItem("notion_token") || NOTION_TOKEN;
-  if (!currentToken) throw new Error("No token found. Please enter your Notion token.");
-  const body = { token: currentToken, databaseId: DATABASE_ID };
-  if (cursor) body.cursor = cursor;
+  const currentToken = localStorage.getItem('notion_token') || NOTION_TOKEN;
+  if (!currentToken) throw new Error('No token found. Please enter your Notion token.');
 
-  const res = await fetch(WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  // Send token as URL param — simplest method, never stripped by browser
+  let url = `https://notion-proxy.churan756.workers.dev/?token=${encodeURIComponent(currentToken)}`;
+  if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
+
+  const res = await fetch(url, { method: 'POST' });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -660,11 +657,11 @@ async function fetchNotionDB(cursor = null) {
       NOTION_TOKEN = '';
       throw new Error('Invalid Notion token. Please regenerate it at notion.so/my-integrations and reconnect.');
     }
-    throw new Error(`Worker error ${res.status}: ${err.error || res.statusText}`);
+    throw new Error(`Worker error ${res.status}: ${JSON.stringify(err)}`);
   }
 
   const data = await res.json();
-  if (data.error) throw new Error(`Notion error: ${data.error}`);
+  if (data.error) throw new Error(`Notion API error: ${data.error} — Make sure your integration is connected to the database in Notion (··· → Connections)`);
   return data;
 }
 
