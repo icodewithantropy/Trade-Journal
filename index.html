@@ -468,8 +468,12 @@ function showError(msg) {
   document.getElementById('err-msg').textContent = msg;
 }
 function showApp() {
-  document.getElementById('loader').classList.add('out');
-  document.getElementById('app').classList.add('on');
+  const loader = document.getElementById('loader');
+  loader.classList.add('out');
+  loader.style.display = 'none';
+  const app = document.getElementById('app');
+  app.classList.add('on');
+  app.style.display = 'block';
 }
 function showTokenScreen() {
   document.getElementById('loader').classList.add('out');
@@ -1416,7 +1420,7 @@ async function loadData() {
 
     document.getElementById('hdr-sub').textContent = `Intelligence Platform · ${stats.valid.length} trades · ${stats.valid.filter(t=>t.grade==='A+').length} A+ setups`;
     document.getElementById('updated-time').textContent = 'Updated: ' + new Date().toLocaleTimeString();
-    document.getElementById('footer-count').textContent = `${stats.valid.length} trades · ${stats.wins.length}W ${stats.losses.length}L`;
+    document.getElementById('footer-count').textContent = `${stats.valid.length} trades · ${stats.wins.length}W ${stats.losses.length}L · ${stats.valid.filter(t=>t.grade==='A+').length} A+`;
 
     window._allTrades = stats.valid;
 
@@ -1432,8 +1436,9 @@ async function loadData() {
     showApp();
 
   } catch(err) {
-    console.error(err);
-    showError(err.message);
+    console.error('Dashboard error:', err);
+    console.error('Stack:', err.stack);
+    showError(err.message + '\n\nCheck browser console (F12) for details.');
   }
 }
 
