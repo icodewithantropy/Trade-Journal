@@ -1361,7 +1361,7 @@ function renderRecent(valid, allTrades) {
     return `<tr onclick="openTradeModal(window._allTrades.find(x=>x.id==='${t.id}'),window._allTrades)" style="cursor:pointer">
       <td style="color:var(--muted2)">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
       <td style="font-weight:600;color:var(--text)">${t.pair||'—'}</td>
-      <td style="color:${t.direction==='BUY'?'var(--green)':'var(--red)';font-weight:600}">${t.direction||'—'}</td>
+      <td style="color:${t.direction==='BUY'?'var(--green)':'var(--red)'};font-weight:600}">${t.direction||'—'}</td>
       <td style="font-size:.56rem;color:var(--muted2)">${(t.session||'—').replace(' KZ','')}</td>
       <td style="font-size:.56rem;color:var(--muted2)">${t.htfContext||'—'}</td>
       <td style="font-size:.52rem;color:var(--muted)">${(t.confluences||[]).slice(0,3).join(', ')}${(t.confluences||[]).length>3?'...':''}</td>
