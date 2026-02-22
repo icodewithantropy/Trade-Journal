@@ -3,34 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trade Journal</title>
+    <title>Trade Journal Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Trade Journal</h1>
+
+    <header>
+        <h1>Trade Journal Dashboard</h1>
+    </header>
+
+    <main>
+        <div id="error-message"></div>
+        <section id="trade-list">
+            <!-- Trade List will be rendered here -->
+        </section>
+        <section id="trade-form">
+            <h2>Add Trade</h2>
+            <form id="trade-input">
+                <input type="text" id="trade-name" placeholder="Trade Name" required>
+                <input type="number" id="trade-amount" placeholder="Trade Amount" required>
+                <button type="submit">Add Trade</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Trade Journal</p>
+    </footer>
+
+    <script src="script.js"></script>
     <script>
-        // Example of error handling in render functions
-        function renderJournalEntry(entry) {
+        document.getElementById('trade-input').addEventListener('submit', function(event) {
+            event.preventDefault();
             try {
-                if (!entry) throw new Error('Entry not found');
-                const journalEntryHTML = `<div>${entry.title}</div>`;
-                document.body.innerHTML += journalEntryHTML;
+                const tradeName = document.getElementById('trade-name').value;
+                const tradeAmount = parseFloat(document.getElementById('trade-amount').value);
+                if (!tradeName || isNaN(tradeAmount)) throw new Error('Invalid trade data');
+                // Assuming addTrade is a function that adds a trade and renders the updated trade list.
+                addTrade(tradeName, tradeAmount);
+                document.getElementById('trade-input').reset();
             } catch (error) {
-                console.error('Error rendering journal entry:', error);
+                document.getElementById('error-message').innerText = error.message;
+            }
+        });
+
+        function renderTrades(trades) {
+            try {
+                const tradeList = document.getElementById('trade-list');
+                tradeList.innerHTML = '';
+                trades.forEach(trade => {
+                    const tradeElement = document.createElement('div');
+                    tradeElement.innerText = `Name: ${trade.name}, Amount: ${trade.amount}`;
+                    tradeList.appendChild(tradeElement);
+                });
+            } catch (error) {
+                document.getElementById('error-message').innerText = 'Failed to render trades: ' + error.message;
             }
         }
-
-        function renderAllEntries(entries) {
-            try {
-                if (!Array.isArray(entries)) throw new Error('Entries should be an array');
-                entries.forEach(renderJournalEntry);
-            } catch (error) {
-                console.error('Error rendering all entries:', error);
-            }
-        }
-
-        // Sample data
-        const sampleEntries = [{title: 'First Trade'}, {title: 'Second Trade'}];
-        renderAllEntries(sampleEntries);
     </script>
 </body>
 </html>
