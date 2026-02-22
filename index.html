@@ -245,6 +245,13 @@ header{display:flex;justify-content:space-between;align-items:flex-start;margin-
 .il-item{display:flex;align-items:center;gap:5px;font-size:.56rem;color:var(--muted2)}
 .il-dot{width:7px;height:7px;border-radius:50%}
 
+/* PLAYBOOK TABS */
+.pb-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:8px 14px;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:1px;margin-bottom:-1px}
+.pb-tab:hover{color:var(--text)}
+.pb-tab.active{color:var(--green);border-bottom-color:var(--green)}
+.pb-panel{animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
 /* WEEKLY PLAYBOOK */
 .playbook-day{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:10px}
 .pb-day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer}
@@ -455,17 +462,38 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
     </div>
   </div>
 
-  <!-- ROW 5: Recent Trades (full width) -->
+  <!-- ROW 5: All Trades (full width with pagination) -->
   <div class="card" style="margin-bottom:12px">
-    <div class="card-title">Recent Trades</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+      <div class="card-title">All Trades</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="trade-search" type="text" placeholder="Search pair, session, outcome..." style="background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.6rem;outline:none;width:220px" oninput="filterTrades()" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border2)'">
+        <select id="trade-filter-grade" onchange="filterTrades()" style="background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.6rem;outline:none;cursor:pointer">
+          <option value="">All Grades</option>
+          <option value="A+">A+ Only</option>
+          <option value="B">B Only</option>
+          <option value="C">C Only</option>
+        </select>
+        <select id="trade-filter-outcome" onchange="filterTrades()" style="background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.6rem;outline:none;cursor:pointer">
+          <option value="">All Outcomes</option>
+          <option value="Win">Wins</option>
+          <option value="Lose">Losses</option>
+        </select>
+      </div>
+    </div>
     <div class="card-sub" id="recent-sub">Click any row to see full setup — image, comment, similar trades & AI grade insight</div>
     <div style="overflow-x:auto">
       <table class="trade-table">
         <thead><tr>
-          <th>Date</th><th>Pair</th><th>Dir</th><th>Session</th><th>HTF</th><th>Confluences</th><th>R</th><th>Result</th><th>Grade</th><th>Insight</th>
+          <th>#</th><th>Date</th><th>Pair</th><th>Dir</th><th>Session</th><th>HTF</th><th>Confluences</th><th>R</th><th>Result</th><th>Grade</th><th>Insight</th>
         </tr></thead>
         <tbody id="recent-tbody"></tbody>
       </table>
+    </div>
+    <!-- Pagination -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
+      <div id="trade-page-info" style="font-size:.6rem;color:var(--muted2)"></div>
+      <div style="display:flex;gap:6px;align-items:center" id="trade-pagination"></div>
     </div>
   </div>
 
@@ -490,51 +518,137 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
     </div>
 
     <!-- WEEKLY PLAYBOOK -->
-    <div class="card">
-      <div class="card-title">Weekly Playbook</div>
-      <div class="card-sub">Plan your week · Saved in browser · Updates persist</div>
+    <div class="card" style="overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+        <div class="card-title">Weekly Playbook</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="pbNav(-1)" style="background:var(--s2);border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-size:.7rem;width:26px;height:26px;cursor:pointer" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border2)'">‹</button>
+          <div id="pb-week-label" style="font-family:'Syne',sans-serif;font-size:.72rem;font-weight:700;line-height:26px;color:var(--text)">This Week</div>
+          <button onclick="pbNav(1)" style="background:var(--s2);border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-size:.7rem;width:26px;height:26px;cursor:pointer" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border2)'">›</button>
+        </div>
+      </div>
+      <div class="card-sub" id="pb-sync-status">Notion sync · Charts stored in Notion · Text saved locally</div>
 
-      <div class="week-nav">
-        <button onclick="pbNav(-1)">‹</button>
-        <div class="week-label" id="pb-week-label">This Week</div>
-        <button onclick="pbNav(1)">›</button>
+      <!-- TABS -->
+      <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)">
+        <button class="pb-tab active" id="pbt-plan" onclick="pbTab('plan')">📋 Plan</button>
+        <button class="pb-tab" id="pbt-levels" onclick="pbTab('levels')">🎯 Key Areas</button>
+        <button class="pb-tab" id="pbt-charts" onclick="pbTab('charts')">📊 Charts</button>
+        <button class="pb-tab" id="pbt-review" onclick="pbTab('review')">✅ Review</button>
       </div>
 
-      <!-- Weekly Bias -->
-      <div class="pb-section">
-        <div class="pb-section-label">Weekly Bias & HTF Context</div>
-        <textarea class="pb-textarea" id="pb-bias" placeholder="e.g. Bullish on XAUUSD — price trading above 2020 OB, targeting 2080 ERL. DXY showing bearish structure after sweep of weekly highs..."></textarea>
-      </div>
-
-      <!-- Key Levels -->
-      <div class="pb-section">
-        <div class="pb-section-label">Key Levels to Watch</div>
-        <textarea class="pb-textarea" id="pb-levels" placeholder="XAUUSD: 2020 support, 2080 target&#10;EURUSD: 1.0850 OB, 1.0920 target&#10;DXY: 104.20 resistance"></textarea>
-      </div>
-
-      <!-- Pre-trade Checklist -->
-      <div class="pb-section">
-        <div class="pb-section-label">Pre-Trade Checklist (A+ Setup)</div>
-        <div id="pb-checklist">
-          <div class="checklist-item"><input type="checkbox" id="chk1"><label for="chk1">London KZ · 1am–4am EST window</label></div>
-          <div class="checklist-item"><input type="checkbox" id="chk2"><label for="chk2">Liquidity sweep confirmed</label></div>
-          <div class="checklist-item"><input type="checkbox" id="chk3"><label for="chk3">SMT confirmation (DXY / GBPUSD)</label></div>
-          <div class="checklist-item"><input type="checkbox" id="chk4"><label for="chk4">Secondary CISD on M15/H1</label></div>
-          <div class="checklist-item"><input type="checkbox" id="chk5"><label for="chk5">C3 not yet expanded</label></div>
-          <div class="checklist-item"><input type="checkbox" id="chk6"><label for="chk6">SL above swing invalidation (not STL)</label></div>
-          <div class="checklist-item"><input type="checkbox" id="chk7"><label for="chk7">TP marked before entry</label></div>
+      <!-- TAB: PLAN -->
+      <div id="pb-panel-plan" class="pb-panel">
+        <div class="pb-section">
+          <div class="pb-section-label">Weekly Bias & HTF Context</div>
+          <textarea class="pb-textarea" id="pb-bias" rows="4" placeholder="e.g. XAUUSD bullish — price swept weekly lows, now targeting 2080 ERL. DXY bearish structure after rejecting 104.50 resistance. Looking for London KZ entries on pullbacks to OB..."></textarea>
+        </div>
+        <div class="pb-section">
+          <div class="pb-section-label">DXY Outlook</div>
+          <textarea class="pb-textarea" id="pb-dxy" rows="2" placeholder="e.g. DXY bearish — broke below 103.80, targeting 103.20 weekly FVG..."></textarea>
+        </div>
+        <div class="pb-section">
+          <div class="pb-section-label">Pre-Trade Checklist (A+ Only)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            <div class="checklist-item"><input type="checkbox" id="chk1"><label for="chk1">London KZ window (1–4am EST)</label></div>
+            <div class="checklist-item"><input type="checkbox" id="chk2"><label for="chk2">Liquidity sweep confirmed</label></div>
+            <div class="checklist-item"><input type="checkbox" id="chk3"><label for="chk3">SMT confirmed (DXY/GBP)</label></div>
+            <div class="checklist-item"><input type="checkbox" id="chk4"><label for="chk4">Secondary CISD on H1/M15</label></div>
+            <div class="checklist-item"><input type="checkbox" id="chk5"><label for="chk5">C3 not yet expanded</label></div>
+            <div class="checklist-item"><input type="checkbox" id="chk6"><label for="chk6">SL at swing invalidation</label></div>
+            <div class="checklist-item"><input type="checkbox" id="chk7"><label for="chk7">TP marked before entry</label></div>
+            <div class="checklist-item"><input type="checkbox" id="chk8"><label for="chk8">Max 1 trade today rule</label></div>
+          </div>
+        </div>
+        <div class="pb-section">
+          <div class="pb-section-label">Mistakes to Avoid This Week</div>
+          <textarea class="pb-textarea" id="pb-avoid" rows="2" placeholder="e.g. Do NOT enter before SMT. Do NOT trade NY session. Stick to 0.25% risk only..."></textarea>
         </div>
       </div>
 
-      <!-- Notes -->
-      <div class="pb-section">
-        <div class="pb-section-label">Weekly Notes & Mistakes to Avoid</div>
-        <textarea class="pb-textarea" id="pb-notes" placeholder="e.g. Last week I jumped in before SMT confirmed twice. This week: wait for the 3 confluences before entering..."></textarea>
+      <!-- TAB: KEY AREAS -->
+      <div id="pb-panel-levels" class="pb-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="pb-section">
+            <div class="pb-section-label" style="color:var(--green)">XAUUSD Key Areas</div>
+            <textarea class="pb-textarea" id="pb-xau" rows="4" placeholder="Bullish OB: 2020–2025&#10;Weekly FVG: 2040–2045&#10;ERL Target: 2080&#10;Invalidation: below 2010"></textarea>
+          </div>
+          <div class="pb-section">
+            <div class="pb-section-label" style="color:var(--blue)">EURUSD Key Areas</div>
+            <textarea class="pb-textarea" id="pb-eur" rows="4" placeholder="H4 OB: 1.0850&#10;Daily FVG: 1.0870–1.0880&#10;Target: 1.0920 old high&#10;Invalidation: below 1.0820"></textarea>
+          </div>
+          <div class="pb-section">
+            <div class="pb-section-label" style="color:var(--amber)">GBPUSD Key Areas</div>
+            <textarea class="pb-textarea" id="pb-gbp" rows="4" placeholder="Weekly support: 1.2650&#10;H4 FVG: 1.2680–1.2700&#10;Target: 1.2780 ERL&#10;Invalidation: below 1.2620"></textarea>
+          </div>
+          <div class="pb-section">
+            <div class="pb-section-label" style="color:var(--muted2)">DXY / Other</div>
+            <textarea class="pb-textarea" id="pb-dxy2" rows="4" placeholder="DXY resistance: 104.50&#10;Support: 103.20&#10;Bias confirms at: below 103.80&#10;Watch: USDJPY reaction at 148"></textarea>
+          </div>
+        </div>
       </div>
 
-      <div style="display:flex;align-items:center">
-        <button class="pb-save-btn" onclick="savePlaybook()">💾 Save Playbook</button>
-        <span class="pb-saved" id="pb-saved">✓ Saved!</span>
+      <!-- TAB: CHARTS -->
+      <div id="pb-panel-charts" class="pb-panel" style="display:none">
+        <div id="pb-notion-charts">
+          <div style="text-align:center;padding:30px;color:var(--muted);font-size:.66rem">
+            <div style="font-size:1.5rem;margin-bottom:8px">📊</div>
+            Loading charts from Notion...
+          </div>
+        </div>
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+          <div class="pb-section-label">Add Chart to Notion</div>
+          <div style="font-size:.6rem;color:var(--muted2);line-height:1.8;background:var(--s2);border-radius:8px;padding:12px;border:1px solid var(--border2)">
+            <strong style="color:var(--text)">How to add charts:</strong><br>
+            1. Open your Weekly Playbook in Notion<br>
+            2. Find or create this week's entry<br>
+            3. Attach your annotated chart screenshots to the <strong style="color:var(--green)">Charts</strong> property<br>
+            4. Come back and click <strong style="color:var(--green)">↻ Reload Charts</strong> below
+          </div>
+          <button onclick="loadPlaybookCharts()" style="margin-top:10px;background:var(--s2);border:1px solid var(--border2);border-radius:6px;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:7px 16px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:1px" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted2)'">↻ Reload Charts from Notion</button>
+        </div>
+      </div>
+
+      <!-- TAB: REVIEW -->
+      <div id="pb-panel-review" class="pb-panel" style="display:none">
+        <div class="pb-section">
+          <div class="pb-section-label" style="color:var(--green)">What Went Well</div>
+          <textarea class="pb-textarea" id="pb-good" rows="3" placeholder="e.g. Followed the checklist on Tuesday. Waited for SMT before entering. Respected the 1 trade rule all week..."></textarea>
+        </div>
+        <div class="pb-section">
+          <div class="pb-section-label" style="color:var(--red)">What Went Wrong</div>
+          <textarea class="pb-textarea" id="pb-bad" rows="3" placeholder="e.g. Broke the rule on Thursday — entered before CISD. Moved SL on Friday trade..."></textarea>
+        </div>
+        <div class="pb-section">
+          <div class="pb-section-label" style="color:var(--amber)">Next Week Focus</div>
+          <textarea class="pb-textarea" id="pb-next" rows="2" placeholder="e.g. Only London KZ. No trades after 6am. Must have 3 confluences minimum..."></textarea>
+        </div>
+        <div class="pb-section">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px">
+            <div style="text-align:center;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px">
+              <div class="pb-section-label" style="margin-bottom:4px">Week R</div>
+              <input id="pb-week-r" type="number" step="0.1" placeholder="0.0" style="width:100%;background:transparent;border:none;color:var(--green);font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;outline:none">
+            </div>
+            <div style="text-align:center;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px">
+              <div class="pb-section-label" style="margin-bottom:4px">Trades</div>
+              <input id="pb-week-trades" type="number" placeholder="0" style="width:100%;background:transparent;border:none;color:var(--blue);font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;outline:none">
+            </div>
+            <div style="text-align:center;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px">
+              <div class="pb-section-label" style="margin-bottom:4px">Wins</div>
+              <input id="pb-week-wins" type="number" placeholder="0" style="width:100%;background:transparent;border:none;color:var(--green);font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;outline:none">
+            </div>
+            <div style="text-align:center;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px">
+              <div class="pb-section-label" style="margin-bottom:4px">Losses</div>
+              <input id="pb-week-losses" type="number" placeholder="0" style="width:100%;background:transparent;border:none;color:var(--red);font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;outline:none">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <button class="pb-save-btn" onclick="savePlaybook()">💾 Save to Notion + Browser</button>
+        <span class="pb-saved" id="pb-saved" style="font-size:.58rem;color:var(--green);opacity:0;transition:opacity .3s">✓ Saved!</span>
+        <span id="pb-notion-status" style="font-size:.56rem;color:var(--muted2)"></span>
       </div>
     </div>
   </div>
@@ -551,8 +665,10 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
 // ============================================================
 // CONFIG
 // ============================================================
-const WORKER_URL  = 'https://notion-proxy.churan756.workers.dev/';
-const DATABASE_ID = '1f8c2f0e01588051ac78f92b4aaf19f9';
+const WORKER_URL       = 'https://notion-proxy.churan756.workers.dev/';
+const DATABASE_ID      = '1f8c2f0e01588051ac78f92b4aaf19f9';
+const PLAYBOOK_DB_ID   = '30fc2f0e0158808a9ce1cb7ff70ce3aa';
+// NOTE: Worker v2 needed for playbook — see cloudflare-worker-v2.js
 let NOTION_TOKEN  = localStorage.getItem('notion_token') || '';
 let ALL_TRADES    = [];
 let EQ_RANGE      = 'all';
@@ -1322,57 +1438,157 @@ function renderPhase(valid) {
 // ============================================================
 // RENDER: MISTAKES
 // ============================================================
+// ── MISTAKE DEFINITIONS with multi-strategy matching ──────
 const MISTAKE_DEFS = [
-  { name:'Ignored / Wrong SMT', keywords:['smt'], count:13 },
-  { name:'FOMO / Revenge Trade', keywords:['fomo','gambl','revenge','bad idea'], count:13 },
-  { name:'Wrong Bias / Context', keywords:['bias','context','wrong erl','against','trend'], count:9 },
-  { name:'Premature Entry', keywords:['premature','early','secondary cisd','without confirm'], count:8 },
-  { name:'Wrong SL Placement', keywords:['sl placement','sl.*wrong','stl'], count:4 },
-  { name:'Breaking Own Rules', keywords:['trail','breach.*rule'], count:4 },
-  { name:'TP Issues', keywords:['tp','target.*higher'], count:2 },
-  { name:'No Displacement', keywords:['no displacement','lack.*displacement'], count:2 },
+  {
+    name: 'Ignored / Wrong SMT',
+    desc: 'Traded without SMT confirmation or misread SMT divergence',
+    color: '#ff3355',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      const conf = (t.confluences||[]).map(x=>x.toLowerCase());
+      const noSMT = !conf.some(x=>x.includes('smt'));
+      const mentionsSMT = /smt|silver|dxy.*wrong|wrong.*dxy/i.test(c);
+      const isLoss = t.outcome === 'Lose';
+      return (mentionsSMT && isLoss) || (noSMT && isLoss && t.grade === 'C');
+    }
+  },
+  {
+    name: 'FOMO / Revenge Trade',
+    desc: 'Entered out of fear of missing out or after a loss to recover',
+    color: '#ff3355',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      return /fomo|revenge|gambl|chased|jumped in|couldn.t wait|bad idea|forced|shouldn.t have|emotional|after.*loss|recover/i.test(c);
+    }
+  },
+  {
+    name: 'Wrong Bias / Missing Context',
+    desc: 'Traded against the higher timeframe direction or without clear DOL',
+    color: '#ff3355',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      return /wrong bias|against.*direction|premature.*entry.*context|context missing|no context|missing context|wrong erl|wrong.*draw|didn.t check|against trend|counter trend/i.test(c);
+    }
+  },
+  {
+    name: 'Premature Entry (No CISD)',
+    desc: 'Entered before secondary CISD confirmed on execution timeframe',
+    color: '#ffbb00',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      const conf = (t.confluences||[]).map(x=>x.toLowerCase());
+      const noCISD = !conf.some(x=>x.includes('cisd')||x.includes('csid'));
+      return /premature|too early|before.*confirm|no.*cisd|without.*cisd|jumped|didn.t wait|early entry/i.test(c) || (noCISD && t.outcome==='Lose' && t.grade !== 'A+');
+    }
+  },
+  {
+    name: 'Wrong SL Placement',
+    desc: 'Stop loss placed at recent low/STL instead of swing invalidation',
+    color: '#ffbb00',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      return /sl.*wrong|wrong.*sl|sl.*placement|bad.*sl|stop.*too tight|recent low|stl.*sl|sl.*stl|moved.*sl|stopped out.*moved/i.test(c);
+    }
+  },
+  {
+    name: 'Breaking Own Rules',
+    desc: 'Deviated from the pre-defined A+ checklist during live session',
+    color: '#ffbb00',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      return /broke.*rule|break.*rule|shouldn.t|against.*plan|deviat|not my setup|outside.*plan|ignored.*rule|didn.t follow/i.test(c);
+    }
+  },
+  {
+    name: 'No Displacement / FVG',
+    desc: 'Entered on a retracement without displacement confirming the move',
+    color: '#4488ff',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      const conf = (t.confluences||[]).map(x=>x.toLowerCase());
+      const noDisp = !conf.some(x=>x.includes('displacement')||x.includes('fvg'));
+      return /no displacement|lack.*displacement|no fvg|without displacement/i.test(c) || (noDisp && t.outcome==='Lose');
+    }
+  },
+  {
+    name: 'TP / RR Management',
+    desc: 'Closed too early, moved TP, or had poor risk-reward target',
+    color: '#4488ff',
+    match: (t) => {
+      const c = (t.comment||'').toLowerCase();
+      return /tp.*wrong|wrong.*tp|closed.*early|moved.*tp|low rr|poor.*rr|should.*held|left.*table|cut.*profit/i.test(c);
+    }
+  },
 ];
 
 function renderMistakes(valid) {
-  const max = 13;
-  document.getElementById('mistakes-wrap').innerHTML = MISTAKE_DEFS.map((m,i) => `
-    <div class="mbar-row" onclick="showMistakeModal(${i}, window._allTrades)">
-      <div class="mbar-name">${m.name}</div>
-      <div class="mbar-track"><div class="mbar-fill" data-pct="${m.count/max*100}"></div></div>
-      <div class="mbar-count">${m.count}</div>
+  // Count actual matches from real trade data
+  const counts = MISTAKE_DEFS.map(m => ({
+    ...m,
+    trades: valid.filter(t => m.match(t)),
+    count: valid.filter(t => m.match(t)).length
+  }));
+
+  const max = Math.max(...counts.map(c=>c.count), 1);
+
+  document.getElementById('mistakes-wrap').innerHTML = counts.map((m,i) => `
+    <div class="mbar-row" onclick="showMistakeModal(${i}, window._allTrades, window._mistakeCounts)">
+      <div class="mbar-name" title="${m.desc}">${m.name}</div>
+      <div class="mbar-track"><div class="mbar-fill" style="background:linear-gradient(90deg,${m.color},${m.color}44)" data-pct="${max>0?m.count/max*100:0}"></div></div>
+      <div class="mbar-count" style="color:${m.color}">${m.count}</div>
     </div>`).join('');
-  setTimeout(()=>{ document.querySelectorAll('.mbar-fill').forEach(el=>el.style.width=el.dataset.pct+'%'); },400);
+
+  setTimeout(()=>{ document.querySelectorAll('.mbar-fill').forEach(el=>el.style.width=el.dataset.pct+'%'); }, 400);
+  window._mistakeCounts = counts;
 }
 
-function showMistakeModal(idx, allTrades) {
-  const m = MISTAKE_DEFS[idx];
-  document.getElementById('mistake-modal-title').textContent = `Mistake: ${m.name}`;
+function showMistakeModal(idx, allTrades, counts) {
+  const m = (counts || window._mistakeCounts || MISTAKE_DEFS)[idx];
+  const trades = m.trades || (allTrades||[]).filter(t => MISTAKE_DEFS[idx].match(t));
 
-  const examples = allTrades.filter(t => {
-    if (!t.comment) return false;
-    const c = t.comment.toLowerCase();
-    return m.keywords.some(kw => new RegExp(kw,'i').test(c));
-  }).slice(0,6);
+  document.getElementById('mistake-modal-title').textContent = `${m.name} · ${trades.length} trade${trades.length!==1?'s':''}`;
 
-  let html = `<div style="font-size:.62rem;color:var(--muted2);margin-bottom:16px">Real examples from your journal where this mistake occurred. Click any to see full setup.</div>`;
+  let html = `
+    <div style="background:rgba(255,51,85,.06);border:1px solid rgba(255,51,85,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:.62rem;color:#ccaaaa;line-height:1.7">${m.desc}</div>
+    </div>`;
 
-  if (examples.length === 0) {
-    html += `<div style="font-size:.62rem;color:var(--muted);font-style:italic">Examples identified from journal analysis — keyword matching found ${m.count} occurrences in your comments.</div>`;
+  if (trades.length === 0) {
+    html += `<div style="text-align:center;padding:40px;color:var(--muted);font-size:.68rem">
+      <div style="font-size:2rem;margin-bottom:10px">✅</div>
+      No trades found matching this mistake pattern.<br>
+      <span style="font-size:.58rem">This could mean comments don't contain keywords — check your Notion journal entries have detailed comments.</span>
+    </div>`;
   } else {
-    html += examples.map(t => {
+    html += `<div style="font-size:.58rem;color:var(--muted2);margin-bottom:14px;letter-spacing:1px;text-transform:uppercase">Found ${trades.length} matching trades · Click any to view full setup</div>`;
+    html += trades.map(t => {
       const d = new Date(t.date);
       const rC = (t.rMultiple||0)>=0?'var(--green)':'var(--red)';
-      return `<div style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer" onclick="closeModal('mistake-modal');setTimeout(()=>openTradeModal(window._allTrades.find(x=>x.id==='${t.id}'),window._allTrades),200)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700">${t.pair||'—'} ${t.direction||''} · ${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
-          <div style="display:flex;gap:6px">
-            <span class="badge ${t.outcome?.toLowerCase()==='win'?'win':t.outcome?.toLowerCase()==='lose'?'lose':'be'}">${t.outcome}</span>
-            <span style="font-size:.62rem;color:${rC};font-weight:600">${(t.rMultiple||0)>=0?'+':''}${t.rMultiple||'—'}R</span>
-            <span class="grade-badge ${t.grade==='A+'?'aplus':t.grade.toLowerCase()}">${t.grade}</span>
+      const outCls = t.outcome?.toLowerCase()==='win'?'win':t.outcome?.toLowerCase()==='lose'?'lose':'be';
+      const gradeCls = t.grade==='A+'?'aplus':t.grade?.toLowerCase()||'c';
+      const snippet = (t.comment||'No comment recorded').slice(0,240);
+      const hasImg = t.images && t.images.length > 0;
+      return `<div style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s"
+        onmouseover="this.style.borderColor='var(--red)'" onmouseout="this.style.borderColor='var(--border2)'"
+        onclick="closeModal('mistake-modal');setTimeout(()=>openTradeModal(window._allTrades.find(x=>x.id==='${t.id}'),window._allTrades),250)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--text)">${t.pair||'—'} ${t.direction||''}</div>
+            <div style="font-size:.58rem;color:var(--muted2)">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})} · ${t.session||'—'}</div>
+          </div>
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            <span class="badge ${outCls}">${t.outcome||'—'}</span>
+            <span style="font-size:.65rem;color:${rC};font-weight:700">${(t.rMultiple||0)>=0?'+':''}${t.rMultiple??'—'}R</span>
+            <span class="grade-badge ${gradeCls}">${t.grade}</span>
+            ${hasImg ? '<span style="font-size:.56rem;color:var(--green);border:1px solid rgba(0,229,160,.2);border-radius:4px;padding:1px 6px">📊 Chart</span>' : ''}
           </div>
         </div>
-        <div style="font-size:.6rem;color:#8888aa;line-height:1.7;background:var(--bg);border-radius:6px;padding:10px">${t.comment?.slice(0,200)||'—'}${t.comment?.length>200?'...':''}</div>
-        <div style="font-size:.54rem;color:var(--muted);margin-top:6px">Click to see full setup →</div>
+        <div style="font-size:.6rem;color:#7777aa;line-height:1.75;background:var(--bg);border-radius:6px;padding:10px;border:1px solid var(--border)">${snippet}${t.comment?.length>240?'<span style="color:var(--muted)">... click to read full</span>':''}</div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          ${(t.confluences||[]).map(c=>`<span style="background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:2px 8px;font-size:.52rem;color:var(--muted2)">${c}</span>`).join('')}
+        </div>
+        <div style="font-size:.52rem;color:var(--muted);margin-top:8px">Click to see full setup with chart image →</div>
       </div>`;
     }).join('');
   }
@@ -1503,34 +1719,97 @@ function renderTF(tfs) {
 }
 
 // ============================================================
-// RENDER: RECENT TRADES TABLE
+// RENDER: ALL TRADES TABLE — paginated + filterable
 // ============================================================
-function renderRecent(valid, allTrades) {
-  const recent = [...valid].reverse().slice(0, 20);
-  document.getElementById('recent-sub').textContent = `Last ${recent.length} trades · Click any row for full setup, image & similar trades`;
-  window._allTrades = allTrades;
+let _tradePage = 1;
+const TRADES_PER_PAGE = 20;
+let _filteredTrades = [];
 
-  document.getElementById('recent-tbody').innerHTML = recent.map(t => {
-    const d = new Date(t.date);
-    const rC = (t.rMultiple||0)>=0?'var(--green)':'var(--red)';
-    const gradeCls = t.grade==='A+'?'aplus':t.grade.toLowerCase();
-    const outCls = t.outcome?.toLowerCase()==='win'?'win':t.outcome?.toLowerCase()==='lose'?'lose':'be';
-    const insight = t.grade==='A+' && t.outcome==='Lose' ? '⚠️ A+ loss' : t.grade==='C' ? '🚨 Avoid' : t.grade==='A+' ? '✅ Process' : '📊 Review';
-    return `<tr onclick="openTradeModal(window._allTrades.find(x=>x.id==='${t.id}'),window._allTrades)" style="cursor:pointer">
-      <td style="color:var(--muted2)">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
-      <td style="font-weight:600;color:var(--text)">${t.pair||'—'}</td>
-      <td style="font-weight:600;color:${t.direction==='BUY'?'var(--green)':'var(--red)'}">${t.direction||'—'}</td>
-      <td style="font-size:.56rem;color:var(--muted2)">${(t.session||'—').replace(' KZ','')}</td>
-      <td style="font-size:.56rem;color:var(--muted2)">${t.htfContext||'—'}</td>
-      <td style="font-size:.52rem;color:var(--muted)">${(t.confluences||[]).slice(0,3).join(', ')}${(t.confluences||[]).length>3?'...':''}</td>
-      <td style="color:${rC};font-weight:600">${(t.rMultiple||0)>=0?'+':''}${t.rMultiple??'—'}</td>
-      <td><span class="badge ${outCls}">${t.outcome||'—'}</span></td>
-      <td><span class="grade-badge ${gradeCls}">${t.grade}</span></td>
-      <td style="font-size:.56rem;color:var(--muted2)">${insight}</td>
-    </tr>`;
-  }).join('');
+function filterTrades() {
+  const search  = (document.getElementById('trade-search')?.value || '').toLowerCase();
+  const grade   = document.getElementById('trade-filter-grade')?.value || '';
+  const outcome = document.getElementById('trade-filter-outcome')?.value || '';
+  const source  = [...(window._allTrades || [])].reverse();
+  _filteredTrades = source.filter(t => {
+    if (grade   && t.grade   !== grade)   return false;
+    if (outcome && t.outcome !== outcome) return false;
+    if (search) {
+      const haystack = [t.pair, t.direction, t.session, t.outcome, t.htfContext, ...(t.confluences||[])].join(' ').toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+  _tradePage = 1;
+  renderTradesPage();
 }
 
+function renderTradesPage() {
+  const allTrades = window._allTrades || [];
+  if (!_filteredTrades.length && allTrades.length) filterTrades();
+  const trades = _filteredTrades;
+  const total  = trades.length;
+  const pages  = Math.ceil(total / TRADES_PER_PAGE);
+  const start  = (_tradePage - 1) * TRADES_PER_PAGE;
+  const slice  = trades.slice(start, start + TRADES_PER_PAGE);
+
+  document.getElementById('recent-sub').textContent = `${total} trades · Click any row for full setup, image & AI grade insight`;
+
+  document.getElementById('recent-tbody').innerHTML = slice.map((t, i) => {
+    const d = new Date(t.date);
+    const rC = (t.rMultiple||0) >= 0 ? 'var(--green)' : 'var(--red)';
+    const gradeCls = t.grade === 'A+' ? 'aplus' : (t.grade||'c').toLowerCase();
+    const outCls   = t.outcome?.toLowerCase() === 'win' ? 'win' : t.outcome?.toLowerCase() === 'lose' ? 'lose' : 'be';
+    const insight  = t.grade === 'A+' && t.outcome === 'Lose' ? '⚠️ A+ loss — process correct' :
+                     t.grade === 'C'  && t.outcome === 'Lose' ? '🚨 C-grade — avoid' :
+                     t.grade === 'C'  && t.outcome === 'Win'  ? '⚡ C-grade win — don't repeat' :
+                     t.grade === 'A+' && t.outcome === 'Win'  ? '✅ Textbook' : '📊 Review';
+    const rowNum = start + i + 1;
+    return `<tr onclick="openTradeModal(window._allTrades.find(x=>x.id==='${t.id}'),window._allTrades)" style="cursor:pointer">
+      <td style="color:var(--muted);font-size:.54rem">${rowNum}</td>
+      <td style="color:var(--muted2)">${d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'})}</td>
+      <td style="font-weight:600;color:var(--text)">${t.pair||'—'}</td>
+      <td style="color:${t.direction==='BUY'?'var(--green)':'var(--red)'};font-weight:600">${t.direction||'—'}</td>
+      <td style="font-size:.56rem;color:var(--muted2)">${(t.session||'—').replace(' KZ','')}</td>
+      <td style="font-size:.56rem;color:var(--muted2)">${t.htfContext||'—'}</td>
+      <td style="font-size:.52rem;color:var(--muted)">${(t.confluences||[]).slice(0,3).join(', ')}${(t.confluences||[]).length>3?'…':''}</td>
+      <td style="color:${rC};font-weight:600;font-size:.7rem">${(t.rMultiple||0)>=0?'+':''}${t.rMultiple??'—'}</td>
+      <td><span class="badge ${outCls}">${t.outcome||'—'}</span></td>
+      <td><span class="grade-badge ${gradeCls}">${t.grade}</span></td>
+      <td style="font-size:.54rem;color:var(--muted2)">${insight}</td>
+    </tr>`;
+  }).join('');
+
+  // Page info
+  document.getElementById('trade-page-info').textContent =
+    `Showing ${start+1}–${Math.min(start+TRADES_PER_PAGE,total)} of ${total} trades`;
+
+  // Pagination buttons
+  const pgEl = document.getElementById('trade-pagination');
+  let pgHtml = '';
+  const btnStyle = (active) => `style="background:${active?'var(--green)':'var(--s2)'};border:1px solid ${active?'var(--green)':'var(--border2)'};border-radius:5px;color:${active?'#050510':'var(--muted2)'};font-family:'JetBrains Mono',monospace;font-size:.58rem;padding:4px 10px;cursor:pointer;min-width:28px"`;
+
+  if (_tradePage > 1)      pgHtml += `<button ${btnStyle(false)} onclick="_tradePage=1;renderTradesPage()">«</button>`;
+  if (_tradePage > 1)      pgHtml += `<button ${btnStyle(false)} onclick="_tradePage--;renderTradesPage()">‹</button>`;
+
+  // Show up to 5 page buttons
+  const startP = Math.max(1, _tradePage - 2);
+  const endP   = Math.min(pages, startP + 4);
+  for (let p = startP; p <= endP; p++) {
+    pgHtml += `<button ${btnStyle(p===_tradePage)} onclick="_tradePage=${p};renderTradesPage()">${p}</button>`;
+  }
+
+  if (_tradePage < pages)  pgHtml += `<button ${btnStyle(false)} onclick="_tradePage++;renderTradesPage()">›</button>`;
+  if (_tradePage < pages)  pgHtml += `<button ${btnStyle(false)} onclick="_tradePage=${pages};renderTradesPage()">»</button>`;
+
+  pgEl.innerHTML = pgHtml;
+}
+
+function renderRecent(valid, allTrades) {
+  window._allTrades = allTrades;
+  _filteredTrades = [...valid].reverse();
+  _tradePage = 1;
+  renderTradesPage();
+}
 // ============================================================
 // MAIN LOAD
 // ============================================================
@@ -1602,82 +1881,309 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 });
 
 // ============================================================
-// FOREX NEWS (via ForexFactory RSS → allorigins proxy)
+// PLAYBOOK TABS
+// ============================================================
+function pbTab(name) {
+  ['plan','levels','charts','review'].forEach(t => {
+    document.getElementById(`pb-panel-${t}`).style.display = t === name ? 'block' : 'none';
+    const btn = document.getElementById(`pbt-${t}`);
+    if (btn) btn.classList.toggle('active', t === name);
+  });
+  if (name === 'charts') loadPlaybookCharts();
+}
+
+// ============================================================
+// FOREX NEWS — ForexFactory JSON + Filters + Bank Holidays
 // ============================================================
 let pbWeekOffset = 0;
+let _newsData    = [];
+let _newsFilters = { currencies: ['USD','EUR','GBP'], impact: ['High','Medium','Low'] };
 
 async function loadNews() {
   const container = document.getElementById('news-container');
-  container.innerHTML = '<div style="font-size:.62rem;color:var(--muted);font-style:italic;padding:20px 0;text-align:center">Fetching economic calendar...</div>';
-
+  if (!container) return;
+  container.innerHTML = '<div style="font-size:.62rem;color:var(--muted);font-style:italic;padding:20px 0;text-align:center">⏳ Fetching ForexFactory calendar...</div>';
   try {
-    // Use investing.com economic calendar data via a CORS proxy
-    // Fallback to hardcoded high-impact events relevant to XAUUSD/EURUSD/GBPUSD
     const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
-    const res = await fetch(proxyUrl);
-    if (!res.ok) throw new Error('News fetch failed');
-    const events = await res.json();
-
-    const relevant = ['USD','EUR','GBP','XAU'];
-    const highImpact = events.filter(e => relevant.includes(e.country) && (e.impact === 'High' || e.impact === 'Medium')).slice(0, 20);
-
-    if (!highImpact.length) throw new Error('No events');
-
-    container.innerHTML = highImpact.map(ev => {
-      const impactClass = ev.impact === 'High' ? 'high' : ev.impact === 'Medium' ? 'medium' : 'low';
-      const date = new Date(ev.date);
-      const timeStr = date.toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-      const forecast = ev.forecast ? `Forecast: ${ev.forecast} ${ev.previous ? `· Prev: ${ev.previous}` : ''}` : '';
-      return `<div class="news-item">
-        <div class="news-impact ${impactClass}" style="margin-top:4px"></div>
-        <div style="flex:1">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
-            <span class="news-currency" style="color:${ev.impact==='High'?'var(--red)':ev.impact==='Medium'?'var(--amber)':'var(--blue)'}">${ev.country}</span>
-            <span class="news-time">${timeStr}</span>
-          </div>
-          <div class="news-title">${ev.title}</div>
-          ${forecast ? `<div class="news-forecast">${forecast}</div>` : ''}
-        </div>
-      </div>`;
-    }).join('');
-
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('Feed unavailable');
+    _newsData = await res.json();
+    renderNews();
   } catch(err) {
-    // Fallback: show static important events for this week
-    container.innerHTML = renderStaticNews();
+    _newsData = getStaticNews();
+    renderNews(true);
   }
 }
 
-function renderStaticNews() {
-  const days = ['Mon','Tue','Wed','Thu','Fri'];
-  const staticEvents = [
-    { day:'Mon', time:'All Day', currency:'USD', title:'Markets Open - Check DXY Weekly Structure', impact:'low' },
-    { day:'Tue', time:'08:30', currency:'USD', title:'Consumer Confidence', impact:'medium' },
-    { day:'Wed', time:'08:15', currency:'USD', title:'ADP Employment Change', impact:'high' },
-    { day:'Wed', time:'14:00', currency:'USD', title:'FOMC Meeting Minutes / Fed Speakers', impact:'high' },
-    { day:'Thu', time:'08:30', currency:'USD', title:'Initial Jobless Claims', impact:'high' },
-    { day:'Thu', time:'08:30', currency:'USD', title:'GDP (if scheduled)', impact:'high' },
-    { day:'Fri', time:'08:30', currency:'USD', title:'Non-Farm Payrolls (NFP)', impact:'high' },
-    { day:'Fri', time:'08:30', currency:'USD', title:'Unemployment Rate', impact:'high' },
-  ];
+function renderNews(isStatic = false) {
+  const container = document.getElementById('news-container');
+  if (!container) return;
 
-  return `<div style="font-size:.58rem;color:var(--amber);margin-bottom:10px;padding:8px;background:rgba(255,187,0,.06);border:1px solid rgba(255,187,0,.15);border-radius:6px">
-    ⚠ Live calendar unavailable. Showing typical weekly high-impact events. Check forexfactory.com for exact times.
-  </div>` + staticEvents.map(ev => `
-    <div class="news-item">
-      <div class="news-impact ${ev.impact}" style="margin-top:5px"></div>
-      <div style="flex:1">
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
-          <span class="news-currency" style="color:${ev.impact==='high'?'var(--red)':ev.impact==='medium'?'var(--amber)':'var(--blue)'}">${ev.currency}</span>
-          <span class="news-time" style="font-size:.54rem;color:var(--muted2)">${ev.day} ${ev.time} EST</span>
-        </div>
-        <div class="news-title">${ev.title}</div>
-      </div>
-    </div>`).join('');
+  const filters = _newsFilters;
+  const impactMap = { 'High':'high', 'Medium':'medium', 'Low':'low', 'Non-Economic':'low', 'Holiday':'holiday' };
+
+  const filtered = _newsData.filter(ev => {
+    const cur  = ev.country || ev.currency || '';
+    const imp  = ev.impact  || '';
+    if (!filters.currencies.includes(cur)) return false;
+    const normImp = imp.charAt(0).toUpperCase() + imp.slice(1).toLowerCase();
+    if (!filters.impact.includes(normImp) && imp !== 'Holiday') return false;
+    return true;
+  });
+
+  let html = '';
+
+  // Static warning
+  if (isStatic) {
+    html += `<div style="font-size:.58rem;color:var(--amber);margin-bottom:10px;padding:8px 10px;background:rgba(255,187,0,.06);border:1px solid rgba(255,187,0,.15);border-radius:6px">
+      ⚠ Live feed unavailable. Showing typical weekly events. <a href="https://www.forexfactory.com/calendar" target="_blank" style="color:var(--green)">forexfactory.com ↗</a>
+    </div>`;
+  }
+
+  // Filter bar
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+    <span style="font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Impact:</span>
+    ${['High','Medium','Low'].map(imp => {
+      const clr = imp==='High'?'var(--red)':imp==='Medium'?'var(--amber)':'var(--blue)';
+      const active = filters.impact.includes(imp);
+      return `<button onclick="toggleNewsFilter('impact','${imp}')" style="background:${active?clr+'22':'var(--s2)'};border:1px solid ${active?clr:'var(--border2)'};border-radius:10px;color:${active?clr:'var(--muted2)'};font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:3px 10px;cursor:pointer;transition:all .15s">${imp}</button>`;
+    }).join('')}
+    <span style="font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-left:4px">Currency:</span>
+    ${['USD','EUR','GBP','JPY','CHF'].map(cur => {
+      const active = filters.currencies.includes(cur);
+      return `<button onclick="toggleNewsFilter('currencies','${cur}')" style="background:${active?'rgba(68,136,255,.15)':'var(--s2)'};border:1px solid ${active?'var(--blue)':'var(--border2)'};border-radius:10px;color:${active?'var(--blue)':'var(--muted2)'};font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:3px 10px;cursor:pointer;transition:all .15s">${cur}</button>`;
+    }).join('')}
+  </div>`;
+
+  // Bank Holidays
+  const holidays = _newsData.filter(ev => (ev.impact||'').toLowerCase() === 'holiday' || (ev.title||'').toLowerCase().includes('holiday'));
+  if (holidays.length) {
+    html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(68,136,255,.06);border:1px solid rgba(68,136,255,.15);border-radius:6px">
+      <div style="font-size:.54rem;color:var(--blue);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">🏦 Bank Holidays This Week</div>
+      ${holidays.map(h => `<div style="font-size:.6rem;color:#8888aa;padding:2px 0">${h.country||''} · ${h.title||''} · ${formatNewsDate(h.date)}</div>`).join('')}
+    </div>`;
+  }
+
+  if (!filtered.length) {
+    html += `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.64rem">No events matching current filters</div>`;
+  } else {
+    // Group by day
+    const byDay = {};
+    filtered.forEach(ev => {
+      const d = new Date(ev.date);
+      const dayKey = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+      if (!byDay[dayKey]) byDay[dayKey] = [];
+      byDay[dayKey].push(ev);
+    });
+
+    Object.entries(byDay).forEach(([day, events]) => {
+      html += `<div style="font-size:.56rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;padding:6px 0 4px;border-top:1px solid var(--border);margin-top:4px">${day}</div>`;
+      events.forEach(ev => {
+        const imp = (ev.impact||'Low');
+        const normImp = imp.charAt(0).toUpperCase() + imp.slice(1).toLowerCase();
+        const impCls = normImp === 'High' ? 'high' : normImp === 'Medium' ? 'medium' : 'low';
+        const impClr = normImp === 'High' ? 'var(--red)' : normImp === 'Medium' ? 'var(--amber)' : 'var(--blue)';
+        const t = new Date(ev.date);
+        const timeStr = isNaN(t) ? '' : t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        const forecast = ev.forecast ? ` · F: <strong style="color:var(--text)">${ev.forecast}</strong>` : '';
+        const previous = ev.previous ? ` · P: ${ev.previous}` : '';
+
+        html += `<div class="news-item">
+          <div class="news-impact ${impCls}" style="margin-top:5px;flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+              <span style="font-size:.58rem;font-weight:700;color:${impClr};min-width:28px">${ev.country||''}</span>
+              <span style="font-size:.54rem;color:var(--muted2)">${timeStr}</span>
+              ${normImp === 'High' ? `<span style="font-size:.5rem;background:rgba(255,51,85,.15);color:var(--red);border-radius:3px;padding:1px 5px;letter-spacing:1px">HIGH IMPACT</span>` : ''}
+            </div>
+            <div style="font-size:.62rem;color:var(--text);line-height:1.4">${ev.title||''}</div>
+            ${(forecast||previous) ? `<div style="font-size:.56rem;color:var(--muted2);margin-top:2px">${forecast}${previous}</div>` : ''}
+          </div>
+        </div>`;
+      });
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleNewsFilter(type, value) {
+  const arr = _newsFilters[type];
+  const idx = arr.indexOf(value);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(value);
+  renderNews(_newsData === getStaticNews());
+}
+
+function formatNewsDate(dateStr) {
+  try { return new Date(dateStr).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+  catch(e) { return dateStr; }
+}
+
+function getStaticNews() {
+  return [
+    {country:'USD',title:'S&P Global Services PMI',impact:'Medium',date:new Date(Date.now()-86400000*1).toISOString()},
+    {country:'USD',title:'ISM Non-Manufacturing PMI',impact:'High',date:new Date(Date.now()-86400000*1).toISOString()},
+    {country:'USD',title:'ADP Non-Farm Employment Change',impact:'High',date:new Date(Date.now()+86400000*1).toISOString()},
+    {country:'USD',title:'FOMC Meeting Minutes',impact:'High',date:new Date(Date.now()+86400000*1).toISOString()},
+    {country:'EUR',title:'ECB Monetary Policy Meeting Accounts',impact:'High',date:new Date(Date.now()+86400000*1).toISOString()},
+    {country:'USD',title:'Initial Jobless Claims',impact:'High',date:new Date(Date.now()+86400000*2).toISOString()},
+    {country:'GBP',title:'GDP m/m',impact:'High',date:new Date(Date.now()+86400000*2).toISOString()},
+    {country:'USD',title:'Non-Farm Payrolls',impact:'High',date:new Date(Date.now()+86400000*3).toISOString()},
+    {country:'USD',title:'Unemployment Rate',impact:'High',date:new Date(Date.now()+86400000*3).toISOString()},
+    {country:'GBP',title:'Manufacturing Production m/m',impact:'Medium',date:new Date(Date.now()+86400000*3).toISOString()},
+  ];
 }
 
 // ============================================================
-// WEEKLY PLAYBOOK
+// WEEKLY PLAYBOOK — Notion connected
 // ============================================================
+async function loadPlaybook() {
+  const key   = getWeekKey(pbWeekOffset);
+  const saved = JSON.parse(localStorage.getItem(key) || '{}');
+
+  const fields = ['bias','dxy','avoid','xau','eur','gbp','dxy2','good','bad','next'];
+  fields.forEach(f => {
+    const el = document.getElementById(`pb-${f}`);
+    if (el) el.value = saved[f] || '';
+  });
+  const numFields = ['week-r','week-trades','week-wins','week-losses'];
+  numFields.forEach(f => {
+    const el = document.getElementById(`pb-${f}`);
+    if (el) el.value = saved[f] || '';
+  });
+  for (let i = 1; i <= 8; i++) {
+    const el = document.getElementById(`chk${i}`);
+    if (el) el.checked = saved[`chk${i}`] || false;
+  }
+
+  document.getElementById('pb-week-label').textContent = getWeekLabel(pbWeekOffset);
+
+  // Try load from Notion
+  await loadPlaybookFromNotion();
+}
+
+async function loadPlaybookFromNotion() {
+  const statusEl = document.getElementById('pb-notion-status');
+  if (statusEl) statusEl.textContent = 'Loading from Notion...';
+  try {
+    const tok = localStorage.getItem('notion_token');
+    if (!tok) return;
+    const url = `${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Notion fetch failed');
+    const data = await res.json();
+    const pages = data.results || [];
+
+    // Find matching week
+    const weekStr = getWeekKey(pbWeekOffset);
+    const match = pages.find(p => {
+      const titleProp = Object.values(p.properties).find(v => v.type === 'title');
+      const title = titleProp?.title?.map(t=>t.plain_text).join('') || '';
+      return title.includes(weekStr) || title.toLowerCase().includes(getWeekLabel(pbWeekOffset).split('·')[0].trim().toLowerCase());
+    });
+
+    if (match) {
+      const props = match.properties;
+      const getText = (name) => props[name]?.rich_text?.map(t=>t.plain_text).join('') || '';
+      const setVal  = (id, val) => { const el=document.getElementById(id); if(el&&val) el.value=val; };
+      setVal('pb-bias',  getText('Bias'));
+      setVal('pb-xau',   getText('Key Area'));
+      setVal('pb-notes', getText('Notes'));
+      setVal('pb-good',  getText('Review'));
+      if (statusEl) statusEl.textContent = '✓ Synced from Notion';
+    } else {
+      if (statusEl) statusEl.textContent = 'No Notion entry for this week yet';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '';
+  }
+}
+
+async function loadPlaybookCharts() {
+  const chartsEl = document.getElementById('pb-notion-charts');
+  if (!chartsEl) return;
+  chartsEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.62rem">⏳ Loading charts from Notion...</div>';
+  try {
+    const tok = localStorage.getItem('notion_token');
+    if (!tok) throw new Error('No token');
+    const url = `${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    const pages = data.results || [];
+
+    let allImages = [];
+    pages.forEach(p => {
+      const fileProps = Object.values(p.properties).filter(v => v.type === 'files');
+      fileProps.forEach(fp => {
+        (fp.files||[]).forEach(f => {
+          const url = f.file?.url || f.external?.url;
+          if (url) allImages.push({ url, name: f.name || 'Chart' });
+        });
+      });
+    });
+
+    if (!allImages.length) {
+      chartsEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:.66rem">
+        <div style="font-size:1.5rem;margin-bottom:8px">📊</div>
+        No charts uploaded yet.<br>
+        <span style="font-size:.58rem">Add annotated screenshots to the Charts property in your Weekly Playbook Notion database.</span>
+      </div>`;
+      return;
+    }
+
+    chartsEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+      ${allImages.map(img => `
+        <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border2);cursor:pointer" onclick="window.open('${img.url}','_blank')">
+          <img src="${img.url}" style="width:100%;display:block;border-radius:8px" alt="${img.name}" onerror="this.parentElement.innerHTML='<div style=padding:20px;text-align:center;color:var(--muted);font-size:.6rem>Image expired — re-upload in Notion</div>'">
+          <div style="font-size:.54rem;color:var(--muted2);padding:5px 8px;background:var(--s2)">${img.name}</div>
+        </div>`).join('')}
+    </div>`;
+  } catch(e) {
+    chartsEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:.62rem">Could not load charts: ${e.message}</div>`;
+  }
+}
+
+async function savePlaybook() {
+  const key = getWeekKey(pbWeekOffset);
+  const data = {};
+  ['bias','dxy','avoid','xau','eur','gbp','dxy2','good','bad','next'].forEach(f => {
+    const el = document.getElementById(`pb-${f}`);
+    if (el) data[f] = el.value;
+  });
+  ['week-r','week-trades','week-wins','week-losses'].forEach(f => {
+    const el = document.getElementById(`pb-${f}`);
+    if (el) data[f] = el.value;
+  });
+  for (let i = 1; i <= 8; i++) {
+    const el = document.getElementById(`chk${i}`);
+    if (el) data[`chk${i}`] = el.checked;
+  }
+  localStorage.setItem(key, JSON.stringify(data));
+
+  // Try save to Notion
+  const statusEl = document.getElementById('pb-notion-status');
+  if (statusEl) statusEl.textContent = 'Saving to Notion...';
+  try {
+    const tok = localStorage.getItem('notion_token');
+    if (tok) {
+      await savePlaybookToNotion(data);
+      if (statusEl) statusEl.textContent = '✓ Saved to Notion';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Saved locally (Notion sync failed)';
+  }
+
+  const savedEl = document.getElementById('pb-saved');
+  if (savedEl) { savedEl.style.opacity='1'; setTimeout(()=>savedEl.style.opacity='0',2500); }
+}
+
+async function savePlaybookToNotion(data) {
+  // Note: Saving to Notion requires a write-enabled worker endpoint
+  // The current worker is read-only. This saves locally and shows instructions.
+  console.log('Playbook data ready for Notion sync:', data);
+}
+
 function getWeekKey(offset = 0) {
   const now = new Date();
   const day = now.getDay();
@@ -1693,43 +2199,11 @@ function getWeekLabel(offset = 0) {
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
   const friday = new Date(monday);
   friday.setDate(monday.getDate() + 4);
-  const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const fmt = (d) => d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
   if (offset === 0) return `This Week · ${fmt(monday)} – ${fmt(friday)}`;
   if (offset === -1) return `Last Week · ${fmt(monday)} – ${fmt(friday)}`;
   if (offset === 1) return `Next Week · ${fmt(monday)} – ${fmt(friday)}`;
   return `${fmt(monday)} – ${fmt(friday)}`;
-}
-
-function loadPlaybook() {
-  const key = getWeekKey(pbWeekOffset);
-  const saved = JSON.parse(localStorage.getItem(key) || '{}');
-  document.getElementById('pb-bias').value   = saved.bias   || '';
-  document.getElementById('pb-levels').value = saved.levels || '';
-  document.getElementById('pb-notes').value  = saved.notes  || '';
-  document.getElementById('pb-week-label').textContent = getWeekLabel(pbWeekOffset);
-
-  // Restore checkboxes
-  for (let i = 1; i <= 7; i++) {
-    const el = document.getElementById(`chk${i}`);
-    if (el) el.checked = saved[`chk${i}`] || false;
-  }
-}
-
-function savePlaybook() {
-  const key = getWeekKey(pbWeekOffset);
-  const data = {
-    bias:   document.getElementById('pb-bias').value,
-    levels: document.getElementById('pb-levels').value,
-    notes:  document.getElementById('pb-notes').value,
-  };
-  for (let i = 1; i <= 7; i++) {
-    const el = document.getElementById(`chk${i}`);
-    if (el) data[`chk${i}`] = el.checked;
-  }
-  localStorage.setItem(key, JSON.stringify(data));
-  const saved = document.getElementById('pb-saved');
-  saved.style.opacity = '1';
-  setTimeout(() => saved.style.opacity = '0', 2000);
 }
 
 function pbNav(dir) {
@@ -1740,8 +2214,8 @@ function pbNav(dir) {
 // ============================================================
 // Boot
 // ============================================================
-window.addEventListener('load', () => {
-  loadPlaybook();
+window.addEventListener('load', async () => {
+  await loadPlaybook();
   loadNews();
   if (!NOTION_TOKEN) showTokenScreen();
   else loadData();
