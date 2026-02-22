@@ -57,8 +57,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .retry-btn{background:var(--green);color:#050510;border:none;border-radius:8px;padding:10px 24px;font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;cursor:pointer;margin-top:6px}
 
 /* APP */
-#app{display:none;position:relative;z-index:1}
-#app.on{display:block}
+#app{display:none;position:relative;z-index:1;opacity:1;visibility:visible}
+#app.on{display:block!important;opacity:1!important;visibility:visible!important}
 .wrap{max-width:1500px;margin:0 auto;padding:32px 20px}
 
 /* HEADER */
@@ -229,6 +229,41 @@ header{display:flex;justify-content:space-between;align-items:flex-start;margin-
 .ws-item{background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.12);border-radius:7px;padding:10px 12px;margin-bottom:7px}
 .ws-lbl{font-size:.54rem;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
 .ws-val{font-size:.58rem;color:#7777aa;line-height:1.6}
+
+/* FOREX NEWS */
+.news-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .15s;border-radius:6px;padding:8px}
+.news-item:hover{background:var(--s2)}
+.news-impact{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.news-impact.high{background:#ff3355;box-shadow:0 0 6px #ff3355}
+.news-impact.medium{background:#ffbb00}
+.news-impact.low{background:#4488ff}
+.news-time{font-size:.56rem;color:var(--muted2);min-width:48px;flex-shrink:0}
+.news-currency{font-size:.56rem;font-weight:700;min-width:28px;flex-shrink:0}
+.news-title{font-size:.6rem;color:var(--text);line-height:1.4}
+.news-forecast{font-size:.54rem;color:var(--muted);margin-top:2px}
+.impact-legend{display:flex;gap:12px;margin-bottom:12px}
+.il-item{display:flex;align-items:center;gap:5px;font-size:.56rem;color:var(--muted2)}
+.il-dot{width:7px;height:7px;border-radius:50%}
+
+/* WEEKLY PLAYBOOK */
+.playbook-day{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:10px}
+.pb-day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer}
+.pb-day-name{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700}
+.pb-day-badge{font-size:.54rem;padding:2px 8px;border-radius:10px;font-weight:600}
+.pb-section{margin-bottom:8px}
+.pb-section-label{font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px}
+.pb-textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.62rem;resize:vertical;min-height:60px;outline:none;line-height:1.6;transition:border-color .2s}
+.pb-textarea:focus{border-color:var(--green)}
+.pb-save-btn{background:var(--green);color:#050510;border:none;border-radius:6px;padding:6px 16px;font-family:'Syne',sans-serif;font-size:.65rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:opacity .2s;margin-top:8px}
+.pb-save-btn:hover{opacity:.85}
+.pb-saved{font-size:.56rem;color:var(--green);margin-left:8px;opacity:0;transition:opacity .3s}
+.week-nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+.week-nav button{background:var(--s2);border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-size:.7rem;width:26px;height:26px;cursor:pointer;transition:all .15s}
+.week-nav button:hover{border-color:var(--green);color:var(--green)}
+.week-label{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700}
+.checklist-item{display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer}
+.checklist-item input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;cursor:pointer}
+.checklist-item label{font-size:.62rem;color:var(--muted2);cursor:pointer;line-height:1.5}
 
 footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:.54rem;color:#1a1a33;letter-spacing:1.5px;text-transform:uppercase}
 
@@ -434,6 +469,76 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
     </div>
   </div>
 
+  <!-- FOREX NEWS + WEEKLY PLAYBOOK -->
+  <div class="row r-2" style="margin-bottom:12px">
+
+    <!-- FOREX NEWS -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div class="card-title">Forex Economic Calendar</div>
+        <button onclick="loadNews()" style="background:var(--s2);border:1px solid var(--border2);border-radius:5px;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:4px 10px;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:1px" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border2)'">↻ Refresh</button>
+      </div>
+      <div class="card-sub">High impact events this week · XAUUSD, EURUSD, GBPUSD relevant</div>
+      <div class="impact-legend">
+        <div class="il-item"><div class="il-dot" style="background:#ff3355;box-shadow:0 0 4px #ff3355"></div>High Impact</div>
+        <div class="il-item"><div class="il-dot" style="background:#ffbb00"></div>Medium</div>
+        <div class="il-item"><div class="il-dot" style="background:#4488ff"></div>Low</div>
+      </div>
+      <div id="news-container">
+        <div style="font-size:.62rem;color:var(--muted);font-style:italic;padding:20px 0;text-align:center">Loading economic calendar...</div>
+      </div>
+    </div>
+
+    <!-- WEEKLY PLAYBOOK -->
+    <div class="card">
+      <div class="card-title">Weekly Playbook</div>
+      <div class="card-sub">Plan your week · Saved in browser · Updates persist</div>
+
+      <div class="week-nav">
+        <button onclick="pbNav(-1)">‹</button>
+        <div class="week-label" id="pb-week-label">This Week</div>
+        <button onclick="pbNav(1)">›</button>
+      </div>
+
+      <!-- Weekly Bias -->
+      <div class="pb-section">
+        <div class="pb-section-label">Weekly Bias & HTF Context</div>
+        <textarea class="pb-textarea" id="pb-bias" placeholder="e.g. Bullish on XAUUSD — price trading above 2020 OB, targeting 2080 ERL. DXY showing bearish structure after sweep of weekly highs..."></textarea>
+      </div>
+
+      <!-- Key Levels -->
+      <div class="pb-section">
+        <div class="pb-section-label">Key Levels to Watch</div>
+        <textarea class="pb-textarea" id="pb-levels" placeholder="XAUUSD: 2020 support, 2080 target&#10;EURUSD: 1.0850 OB, 1.0920 target&#10;DXY: 104.20 resistance"></textarea>
+      </div>
+
+      <!-- Pre-trade Checklist -->
+      <div class="pb-section">
+        <div class="pb-section-label">Pre-Trade Checklist (A+ Setup)</div>
+        <div id="pb-checklist">
+          <div class="checklist-item"><input type="checkbox" id="chk1"><label for="chk1">London KZ · 1am–4am EST window</label></div>
+          <div class="checklist-item"><input type="checkbox" id="chk2"><label for="chk2">Liquidity sweep confirmed</label></div>
+          <div class="checklist-item"><input type="checkbox" id="chk3"><label for="chk3">SMT confirmation (DXY / GBPUSD)</label></div>
+          <div class="checklist-item"><input type="checkbox" id="chk4"><label for="chk4">Secondary CISD on M15/H1</label></div>
+          <div class="checklist-item"><input type="checkbox" id="chk5"><label for="chk5">C3 not yet expanded</label></div>
+          <div class="checklist-item"><input type="checkbox" id="chk6"><label for="chk6">SL above swing invalidation (not STL)</label></div>
+          <div class="checklist-item"><input type="checkbox" id="chk7"><label for="chk7">TP marked before entry</label></div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="pb-section">
+        <div class="pb-section-label">Weekly Notes & Mistakes to Avoid</div>
+        <textarea class="pb-textarea" id="pb-notes" placeholder="e.g. Last week I jumped in before SMT confirmed twice. This week: wait for the 3 confluences before entering..."></textarea>
+      </div>
+
+      <div style="display:flex;align-items:center">
+        <button class="pb-save-btn" onclick="savePlaybook()">💾 Save Playbook</button>
+        <span class="pb-saved" id="pb-saved">✓ Saved!</span>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <span>Abubakar Javaid · Trade Journal</span>
     <span id="footer-count">—</span>
@@ -469,11 +574,14 @@ function showError(msg) {
 }
 function showApp() {
   const loader = document.getElementById('loader');
-  loader.classList.add('out');
-  loader.style.display = 'none';
+  loader.style.opacity = '0';
+  loader.style.pointerEvents = 'none';
+  setTimeout(() => { loader.style.display = 'none'; }, 500);
   const app = document.getElementById('app');
-  app.classList.add('on');
   app.style.display = 'block';
+  app.style.opacity = '1';
+  app.style.visibility = 'visible';
+  app.classList.add('on');
 }
 function showTokenScreen() {
   document.getElementById('loader').classList.add('out');
@@ -501,13 +609,23 @@ function saveToken() {
 // ============================================================
 async function fetchPage(cursor = null) {
   const tok = localStorage.getItem('notion_token') || NOTION_TOKEN;
-  if (!tok) throw new Error('No token');
-  let url = `${WORKER_URL}?token=${encodeURIComponent(tok)}`;
+  if (!tok || tok.trim() === '' || tok === 'null' || tok === 'undefined') {
+    localStorage.removeItem('notion_token');
+    NOTION_TOKEN = '';
+    showTokenScreen();
+    throw new Error('No valid token found. Please enter your Notion token.');
+  }
+  let url = `${WORKER_URL}?token=${encodeURIComponent(tok.trim())}`;
   if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
-    if (res.status === 401) { localStorage.removeItem('notion_token'); throw new Error('Token invalid. Regenerate at notion.so/my-integrations'); }
+    if (res.status === 400 || res.status === 401) { 
+      localStorage.removeItem('notion_token'); 
+      NOTION_TOKEN = '';
+      showTokenScreen();
+      throw new Error('Token invalid or missing. Please re-enter your Notion token.'); 
+    }
     throw new Error(e.error || e.message || `HTTP ${res.status}`);
   }
   return res.json();
@@ -1071,22 +1189,59 @@ function renderWL(sortedMonths) {
   const W=300,H=150,pL=8,pR=8,pT=20,pB=26;
   const cW=W-pL-pR, cH=H-pT-pB;
   const maxT = Math.max(...months.map(m=>m.wins+m.losses+m.bes),1);
-  const bW = cW/months.length - 5;
-  svg.innerHTML += `<rect x="0" y="2" width="7" height="7" fill="#00e5a0" rx="1"/><text x="10" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Win</text>`;
-  svg.innerHTML += `<rect x="38" y="2" width="7" height="7" fill="#ff3355" rx="1"/><text x="48" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Loss</text>`;
-  svg.innerHTML += `<rect x="78" y="2" width="7" height="7" fill="#ffbb00" rx="1"/><text x="88" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">BE</text>`;
+  const bW = Math.max(cW/months.length - 5, 8);
+  const baseY = pT+cH;
+
+  // Legend
+  svg.innerHTML += `<rect x="0" y="2" width="7" height="7" fill="#00e5a0" rx="1"/>
+    <text x="10" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Win</text>
+    <rect x="38" y="2" width="7" height="7" fill="#ff3355" rx="1"/>
+    <text x="48" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Loss</text>
+    <rect x="78" y="2" width="7" height="7" fill="#ffbb00" rx="1"/>
+    <text x="88" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">BE</text>`;
+
   months.forEach((m,i) => {
-    const x = pL+i*(cW/months.length)+2, bY = pT+cH;
-    const lH=m.losses/maxT*cH, bH=m.bes/maxT*cH, wH=m.wins/maxT*cH;
-    [[lH,'#ff3355'],[bH,'#ffbb00'],[wH,'#00e5a0']].forEach(([h,c],j)=>{
-      if(!h) return;
-      const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      r.setAttribute('x',x); r.setAttribute('y',bY); r.setAttribute('width',bW); r.setAttribute('height',0);
-      r.setAttribute('fill',c); r.setAttribute('rx','2'); r.setAttribute('opacity','.85');
+    const x = pL + i*(cW/months.length) + 2;
+    const wH = (m.wins/maxT)*cH;
+    const lH = (m.losses/maxT)*cH;
+    const bH = (m.bes/maxT)*cH;
+    const total = m.wins+m.losses+m.bes;
+
+    // Draw stacked bars: losses at bottom, BE middle, wins top
+    const segments = [
+      {h: lH, color: '#ff3355'},
+      {h: bH, color: '#ffbb00'},
+      {h: wH, color: '#00e5a0'},
+    ];
+
+    let stackY = baseY;
+    segments.forEach(({h, color}) => {
+      if (h < 1) return;
+      const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      const finalY = stackY - h;
+      r.setAttribute('x', x);
+      r.setAttribute('y', baseY); // start from base
+      r.setAttribute('width', bW);
+      r.setAttribute('height', 0);
+      r.setAttribute('fill', color);
+      r.setAttribute('rx', '2');
+      r.setAttribute('opacity', '0.85');
       svg.appendChild(r);
-      setTimeout(()=>{r.style.transition='height .8s ease, y .8s ease'; const below=[lH,bH,wH].slice(0,j).reduce((s,v)=>s+v,0); r.setAttribute('height',h); r.setAttribute('y',bY-below-h);},200+i*60+j*40);
+      const capturedY = finalY;
+      const capturedH = h;
+      setTimeout(() => {
+        r.style.transition = 'height 0.8s ease, y 0.8s ease';
+        r.setAttribute('height', capturedH);
+        r.setAttribute('y', capturedY);
+      }, 300 + i * 80);
+      stackY = finalY;
     });
-    svg.innerHTML+=`<text x="${x+bW/2}" y="${H-4}" fill="#333355" font-size="6.5" font-family="JetBrains Mono" text-anchor="middle">${m.label.replace(' ','')}</text>`;
+
+    // Month label
+    svg.innerHTML += `<text x="${x+bW/2}" y="${H-4}" fill="#333355" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${m.label.replace(' ','')}</text>`;
+    // Total count
+    const totalH = wH+lH+bH;
+    if(total > 0) svg.innerHTML += `<text x="${x+bW/2}" y="${baseY-totalH-3}" fill="#444466" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${total}</text>`;
   });
 }
 
@@ -1230,96 +1385,95 @@ function showMistakeModal(idx, allTrades) {
 // RENDER: R DISTRIBUTION
 // ============================================================
 function renderRDist(valid) {
-  const svg = document.getElementById('rdist-svg');
-  svg.innerHTML = '';
-  const W=360,H=160,pL=28,pR=12,pT=14,pB=28;
-  const cW=W-pL-pR, cH=H-pT-pB;
+  const container = document.getElementById('rdist-wrap');
+  const svgEl = document.getElementById('rdist-svg');
+  svgEl.innerHTML = '';
 
+  // Build buckets
   const buckets = {};
   valid.forEach(t => {
     if (t.rMultiple === null || t.rMultiple === undefined) return;
-    const b = (Math.round(t.rMultiple/0.5)*0.5).toFixed(1);
-    if (!buckets[b]) buckets[b]={win:0,lose:0,be:0,total:0,r:parseFloat(b)};
-    const o = t.outcome?.toLowerCase();
-    if (o==='win') buckets[b].win++;
-    else if (o==='lose') buckets[b].lose++;
-    else buckets[b].be++;
-    buckets[b].total++;
+    const rounded = Math.round(t.rMultiple / 0.5) * 0.5;
+    const key = rounded.toFixed(1);
+    if (!buckets[key]) buckets[key] = { win:0, lose:0, be:0, total:0, val: rounded };
+    const o = (t.outcome||'').toLowerCase();
+    if (o === 'win') buckets[key].win++;
+    else if (o === 'lose' || o === 'loss') buckets[key].lose++;
+    else buckets[key].be++;
+    buckets[key].total++;
   });
 
-  const keys = Object.keys(buckets).sort((a,b)=>parseFloat(a)-parseFloat(b));
-  if (!keys.length) return;
-  const maxCount = Math.max(...Object.values(buckets).map(b=>b.total), 1);
-  const bW = Math.max(cW/Math.max(keys.length,1) - 3, 4);
-  const baseY = pT + cH;
-
-  // Legend
-  svg.innerHTML += `
-    <rect x="${pL}" y="2" width="8" height="8" fill="#00e5a0" rx="2"/>
-    <text x="${pL+11}" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Win</text>
-    <rect x="${pL+42}" y="2" width="8" height="8" fill="#ff3355" rx="2"/>
-    <text x="${pL+53}" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Loss</text>`;
-
-  // Zero marker
-  const zeroIdx = keys.findIndex(k=>parseFloat(k)>=0);
-  if (zeroIdx >= 0) {
-    const zx = pL + zeroIdx*(cW/keys.length) + bW/2;
-    svg.innerHTML += `<line x1="${zx}" x2="${zx}" y1="${pT}" y2="${baseY}" stroke="rgba(255,255,255,0.12)" stroke-dasharray="3,3"/>`;
-    svg.innerHTML += `<text x="${zx}" y="${H-2}" fill="#333355" font-size="6.5" font-family="JetBrains Mono" text-anchor="middle">0</text>`;
+  const keys = Object.keys(buckets).sort((a,b) => parseFloat(a) - parseFloat(b));
+  if (!keys.length) {
+    svgEl.innerHTML = '<text x="180" y="80" fill="#444466" font-size="12" font-family="JetBrains Mono" text-anchor="middle">No R data available</text>';
+    return;
   }
 
-  keys.forEach((k,i) => {
+  const W = 360, H = 160, pL = 32, pR = 10, pT = 18, pB = 32;
+  const cW = W - pL - pR;
+  const cH = H - pT - pB;
+  const maxCount = Math.max(...Object.values(buckets).map(b => b.total), 1);
+  const bW = Math.max(Math.floor(cW / keys.length) - 3, 6);
+  const baseY = pT + cH;
+  const tt = document.getElementById('rdist-tooltip');
+
+  // Grid lines
+  for (let g = 1; g <= 3; g++) {
+    const gy = baseY - (g/3)*cH;
+    svgEl.innerHTML += `<line x1="${pL}" x2="${W-pR}" y1="${gy}" y2="${gy}" stroke="rgba(255,255,255,0.04)"/>`;
+    svgEl.innerHTML += `<text x="${pL-4}" y="${gy+3}" fill="#333355" font-size="7" font-family="JetBrains Mono" text-anchor="end">${Math.round(maxCount*g/3)}</text>`;
+  }
+
+  // Base line
+  svgEl.innerHTML += `<line x1="${pL}" x2="${W-pR}" y1="${baseY}" y2="${baseY}" stroke="rgba(255,255,255,0.1)"/>`;
+
+  keys.forEach((k, i) => {
     const b = buckets[k];
-    const x = pL + i*(cW/keys.length) + 1;
     const isPos = parseFloat(k) >= 0;
     const clr = isPos ? '#00e5a0' : '#ff3355';
-    const bH = Math.max((b.total/maxCount)*cH, 2);
+    const bH = Math.max((b.total / maxCount) * cH, 3);
+    const x = pL + i * (cW / keys.length) + 1;
+    const finalY = baseY - bH;
 
-    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x', x); rect.setAttribute('y', baseY);
-    rect.setAttribute('width', bW); rect.setAttribute('height', 0);
-    rect.setAttribute('fill', clr); rect.setAttribute('rx', '2'); rect.setAttribute('opacity', '0.8');
-    rect.style.cursor = 'pointer';
+    // Draw bar using innerHTML for reliability
+    svgEl.innerHTML += `<rect x="${x}" y="${baseY}" width="${bW}" height="0" fill="${clr}" rx="2" opacity="0.85" id="rdbar_${i}"/>`;
 
-    // Tooltip
-    const tt = document.getElementById('rdist-tooltip');
-    rect.addEventListener('mouseenter', (e) => {
-      const wrap = document.getElementById('rdist-wrap');
-      const wRect = wrap.getBoundingClientRect();
-      tt.innerHTML = `<strong style="color:${clr}">${parseFloat(k)>0?'+':''}${k}R</strong><br>${b.total} trade${b.total!==1?'s':''}<br>${b.win}W / ${b.lose}L`;
-      tt.style.display = 'block';
-      tt.style.left = Math.min(e.clientX-wRect.left+8, wRect.width-130)+'px';
-      tt.style.top = (e.clientY-wRect.top-60)+'px';
-    });
-    rect.addEventListener('mouseleave', () => tt.style.display = 'none');
-    svg.appendChild(rect);
+    // X label
+    svgEl.innerHTML += `<text x="${x + bW/2}" y="${H - 4}" fill="#333355" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${parseFloat(k)>0?'+':''}${k}</text>`;
+
+    // Count on top
+    svgEl.innerHTML += `<text x="${x + bW/2}" y="${finalY - 3}" fill="${clr}" font-size="7" font-family="JetBrains Mono" text-anchor="middle" id="rdlbl_${i}">${b.total}</text>`;
+
+    // Animate after render
     setTimeout(() => {
-      rect.style.transition = 'height .8s ease, y .8s ease';
-      rect.setAttribute('height', bH); rect.setAttribute('y', baseY - bH);
-    }, 300 + i*25);
+      const bar = document.getElementById(`rdbar_${i}`);
+      if (bar) { bar.setAttribute('height', bH); bar.setAttribute('y', finalY); bar.style.transition = 'none'; }
+      const lbl = document.getElementById(`rdlbl_${i}`);
+      if (lbl) lbl.setAttribute('y', finalY - 3);
+    }, 100 + i * 20);
 
-    // Count label on top
-    if (b.total > 0) {
-      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
-      txt.setAttribute('x', x+bW/2); txt.setAttribute('y', baseY-bH-3);
-      txt.setAttribute('fill', clr); txt.setAttribute('font-size', '7');
-      txt.setAttribute('font-family', 'JetBrains Mono'); txt.setAttribute('text-anchor', 'middle');
-      txt.textContent = b.total;
-      setTimeout(() => svg.appendChild(txt), 800+i*25);
-    }
-
-    // X label (every other)
-    if (i%2===0 || keys.length <= 6) {
-      svg.innerHTML += `<text x="${x+bW/2}" y="${H-4}" fill="#2a2a44" font-size="6.5" font-family="JetBrains Mono" text-anchor="middle">${parseFloat(k)>0?'+':''}${k}</text>`;
-    }
+    // Hover tooltip
+    setTimeout(() => {
+      const bar = document.getElementById(`rdbar_${i}`);
+      if (!bar) return;
+      bar.style.cursor = 'pointer';
+      bar.addEventListener('mouseenter', (e) => {
+        const wRect = container.getBoundingClientRect();
+        tt.innerHTML = `<strong style="color:${clr}">${parseFloat(k)>0?'+':''}${k}R</strong><br>${b.total} trade${b.total!==1?'s':''}<br>✅ ${b.win}W &nbsp; ❌ ${b.lose}L &nbsp; ➖ ${b.be}BE`;
+        tt.style.display = 'block';
+        tt.style.left = Math.min(e.clientX - wRect.left + 10, wRect.width - 140) + 'px';
+        tt.style.top = Math.max(e.clientY - wRect.top - 70, 0) + 'px';
+      });
+      bar.addEventListener('mouseleave', () => tt.style.display = 'none');
+    }, 200 + i * 20);
   });
 
-  // Y axis
-  [Math.round(maxCount/2), maxCount].forEach(v => {
-    const y = baseY - v/maxCount*cH;
-    svg.innerHTML += `<text x="${pL-4}" y="${y+3}" fill="#222240" font-size="6.5" font-family="JetBrains Mono" text-anchor="end">${v}</text>`;
-    svg.innerHTML += `<line x1="${pL}" x2="${W-pR}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,0.04)"/>`;
-  });
+  // Legend
+  svgEl.innerHTML += `
+    <rect x="${pL}" y="2" width="8" height="8" fill="#00e5a0" rx="1"/>
+    <text x="${pL+11}" y="9" fill="#666688" font-size="7" font-family="JetBrains Mono">Positive R</text>
+    <rect x="${pL+80}" y="2" width="8" height="8" fill="#ff3355" rx="1"/>
+    <text x="${pL+91}" y="9" fill="#666688" font-size="7" font-family="JetBrains Mono">Negative R</text>`;
 }
 
 // ============================================================
@@ -1447,8 +1601,148 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
 });
 
+// ============================================================
+// FOREX NEWS (via ForexFactory RSS → allorigins proxy)
+// ============================================================
+let pbWeekOffset = 0;
+
+async function loadNews() {
+  const container = document.getElementById('news-container');
+  container.innerHTML = '<div style="font-size:.62rem;color:var(--muted);font-style:italic;padding:20px 0;text-align:center">Fetching economic calendar...</div>';
+
+  try {
+    // Use investing.com economic calendar data via a CORS proxy
+    // Fallback to hardcoded high-impact events relevant to XAUUSD/EURUSD/GBPUSD
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error('News fetch failed');
+    const events = await res.json();
+
+    const relevant = ['USD','EUR','GBP','XAU'];
+    const highImpact = events.filter(e => relevant.includes(e.country) && (e.impact === 'High' || e.impact === 'Medium')).slice(0, 20);
+
+    if (!highImpact.length) throw new Error('No events');
+
+    container.innerHTML = highImpact.map(ev => {
+      const impactClass = ev.impact === 'High' ? 'high' : ev.impact === 'Medium' ? 'medium' : 'low';
+      const date = new Date(ev.date);
+      const timeStr = date.toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      const forecast = ev.forecast ? `Forecast: ${ev.forecast} ${ev.previous ? `· Prev: ${ev.previous}` : ''}` : '';
+      return `<div class="news-item">
+        <div class="news-impact ${impactClass}" style="margin-top:4px"></div>
+        <div style="flex:1">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
+            <span class="news-currency" style="color:${ev.impact==='High'?'var(--red)':ev.impact==='Medium'?'var(--amber)':'var(--blue)'}">${ev.country}</span>
+            <span class="news-time">${timeStr}</span>
+          </div>
+          <div class="news-title">${ev.title}</div>
+          ${forecast ? `<div class="news-forecast">${forecast}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(err) {
+    // Fallback: show static important events for this week
+    container.innerHTML = renderStaticNews();
+  }
+}
+
+function renderStaticNews() {
+  const days = ['Mon','Tue','Wed','Thu','Fri'];
+  const staticEvents = [
+    { day:'Mon', time:'All Day', currency:'USD', title:'Markets Open - Check DXY Weekly Structure', impact:'low' },
+    { day:'Tue', time:'08:30', currency:'USD', title:'Consumer Confidence', impact:'medium' },
+    { day:'Wed', time:'08:15', currency:'USD', title:'ADP Employment Change', impact:'high' },
+    { day:'Wed', time:'14:00', currency:'USD', title:'FOMC Meeting Minutes / Fed Speakers', impact:'high' },
+    { day:'Thu', time:'08:30', currency:'USD', title:'Initial Jobless Claims', impact:'high' },
+    { day:'Thu', time:'08:30', currency:'USD', title:'GDP (if scheduled)', impact:'high' },
+    { day:'Fri', time:'08:30', currency:'USD', title:'Non-Farm Payrolls (NFP)', impact:'high' },
+    { day:'Fri', time:'08:30', currency:'USD', title:'Unemployment Rate', impact:'high' },
+  ];
+
+  return `<div style="font-size:.58rem;color:var(--amber);margin-bottom:10px;padding:8px;background:rgba(255,187,0,.06);border:1px solid rgba(255,187,0,.15);border-radius:6px">
+    ⚠ Live calendar unavailable. Showing typical weekly high-impact events. Check forexfactory.com for exact times.
+  </div>` + staticEvents.map(ev => `
+    <div class="news-item">
+      <div class="news-impact ${ev.impact}" style="margin-top:5px"></div>
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
+          <span class="news-currency" style="color:${ev.impact==='high'?'var(--red)':ev.impact==='medium'?'var(--amber)':'var(--blue)'}">${ev.currency}</span>
+          <span class="news-time" style="font-size:.54rem;color:var(--muted2)">${ev.day} ${ev.time} EST</span>
+        </div>
+        <div class="news-title">${ev.title}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ============================================================
+// WEEKLY PLAYBOOK
+// ============================================================
+function getWeekKey(offset = 0) {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  return `pb_${monday.getFullYear()}_${monday.getMonth()}_${monday.getDate()}`;
+}
+
+function getWeekLabel(offset = 0) {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (offset === 0) return `This Week · ${fmt(monday)} – ${fmt(friday)}`;
+  if (offset === -1) return `Last Week · ${fmt(monday)} – ${fmt(friday)}`;
+  if (offset === 1) return `Next Week · ${fmt(monday)} – ${fmt(friday)}`;
+  return `${fmt(monday)} – ${fmt(friday)}`;
+}
+
+function loadPlaybook() {
+  const key = getWeekKey(pbWeekOffset);
+  const saved = JSON.parse(localStorage.getItem(key) || '{}');
+  document.getElementById('pb-bias').value   = saved.bias   || '';
+  document.getElementById('pb-levels').value = saved.levels || '';
+  document.getElementById('pb-notes').value  = saved.notes  || '';
+  document.getElementById('pb-week-label').textContent = getWeekLabel(pbWeekOffset);
+
+  // Restore checkboxes
+  for (let i = 1; i <= 7; i++) {
+    const el = document.getElementById(`chk${i}`);
+    if (el) el.checked = saved[`chk${i}`] || false;
+  }
+}
+
+function savePlaybook() {
+  const key = getWeekKey(pbWeekOffset);
+  const data = {
+    bias:   document.getElementById('pb-bias').value,
+    levels: document.getElementById('pb-levels').value,
+    notes:  document.getElementById('pb-notes').value,
+  };
+  for (let i = 1; i <= 7; i++) {
+    const el = document.getElementById(`chk${i}`);
+    if (el) data[`chk${i}`] = el.checked;
+  }
+  localStorage.setItem(key, JSON.stringify(data));
+  const saved = document.getElementById('pb-saved');
+  saved.style.opacity = '1';
+  setTimeout(() => saved.style.opacity = '0', 2000);
+}
+
+function pbNav(dir) {
+  pbWeekOffset += dir;
+  loadPlaybook();
+}
+
+// ============================================================
 // Boot
+// ============================================================
 window.addEventListener('load', () => {
+  loadPlaybook();
+  loadNews();
   if (!NOTION_TOKEN) showTokenScreen();
   else loadData();
 });
