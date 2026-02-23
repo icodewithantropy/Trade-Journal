@@ -2236,12 +2236,16 @@ async function savePlaybook() {
   if (statusEl) statusEl.textContent = 'Saving to Notion...';
   try {
     const tok = localStorage.getItem('notion_token');
-    if (tok) {
+    if (!tok) {
+      if (statusEl) statusEl.textContent = 'No token — saved locally only';
+    } else {
       await savePlaybookToNotion(data);
-      if (statusEl) statusEl.textContent = '✓ Saved to Notion';
+      // status set inside savePlaybookToNotion
     }
   } catch(e) {
-    if (statusEl) statusEl.textContent = 'Saved locally (Notion sync failed)';
+    console.error('Notion sync error:', e.message);
+    const sEl = document.getElementById('pb-notion-status');
+    if (sEl) sEl.textContent = 'Sync failed: ' + e.message;
   }
 
   const savedEl = document.getElementById('pb-saved');
@@ -2251,64 +2255,128 @@ async function savePlaybook() {
 // ── SAVE PLAYBOOK TO NOTION ─────────────────────────────────
 async function savePlaybookToNotion(data) {
   const tok = localStorage.getItem('notion_token');
-  if (!tok) throw new Error('No token');
+  if (!tok) throw new Error('No Notion token found');
 
   const weekLabel = getWeekLabel(pbWeekOffset);
   const weekKey   = getWeekKey(pbWeekOffset);
+  const statusEl  = document.getElementById('pb-notion-status');
+  const setStatus = function(msg) { if (statusEl) statusEl.textContent = msg; };
 
-  // Notion property builder helpers
-  const txt  = (v) => ({ rich_text: [{ text: { content: (v||'').slice(0,2000) } }] });
-  const titl = (v) => ({ title:     [{ text: { content: (v||'').slice(0,255)  } }] });
-  const dt   = (v) => ({ date: { start: v } });
+  // Safe property builders — no template literals with newlines
+  function makeTxt(v) {
+    var safe = String(v || '').slice(0, 2000);
+    return { rich_text: [{ text: { content: safe } }] };
+  }
+  function makeTitle(v) {
+    var safe = String(v || '').slice(0, 255);
+    return { title: [{ text: { content: safe } }] };
+  }
+  function makeDate(v) {
+    return { date: { start: v } };
+  }
+  function join2(a, b) {
+    var parts = [];
+    if (a) parts.push(a);
+    if (b) parts.push(b);
+    return parts.join('\n\n');
+  }
+  function join4(a, b, c, d) {
+    var parts = [];
+    if (a) parts.push(a);
+    if (b) parts.push(b);
+    if (c) parts.push(c);
+    if (d) parts.push(d);
+    return parts.join('\n\n---\n\n');
+  }
 
-  // Get Monday of selected week
-  const now = new Date();
-  const day = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (day===0?6:day-1) + pbWeekOffset*7);
-  const mondayStr = monday.toISOString().split('T')[0];
+  // Get Monday date
+  var now    = new Date();
+  var day    = now.getDay();
+  var monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + pbWeekOffset * 7);
+  var mondayStr = monday.toISOString().split('T')[0];
 
-  const properties = {
-    'Week':       titl(weekLabel),
-    'Bias':       txt(data.bias || ''),
-    'Key Area':   txt([data.xau,data.eur,data.gbp,data.dxy2].filter(Boolean).join('\n\n---\n\n')),
-    'Notes':      txt([data.avoid, data.notes].filter(Boolean).join('\n\n')),
-    'Review':     txt([data.good, data.bad, data.next].filter(Boolean).join('\n\n---\n\n')),
-    'Week Start': dt(mondayStr),
+  // Build property values
+  var biasText    = join2(data.bias || '', data.dxy ? ('DXY: ' + data.dxy) : '');
+  var keyText     = join4(
+    data.xau  ? ('XAUUSD: ' + data.xau)  : '',
+    data.eur  ? ('EURUSD: ' + data.eur)  : '',
+    data.gbp  ? ('GBPUSD: ' + data.gbp)  : '',
+    data.dxy2 ? ('DXY: '    + data.dxy2) : ''
+  );
+  var notesText   = join2(data.avoid || '', data.notes || '');
+  var reviewParts = [];
+  if (data.good)           reviewParts.push('WENT WELL:\n'        + data.good);
+  if (data.bad)            reviewParts.push('WENT WRONG:\n'       + data.bad);
+  if (data.next)           reviewParts.push('NEXT WEEK:\n'        + data.next);
+  if (data['week-r'])      reviewParts.push('Week R: '            + data['week-r']);
+  if (data['week-trades']) reviewParts.push('Trades: '            + data['week-trades']);
+  var reviewText = reviewParts.join('\n\n');
+
+  var properties = {
+    'Week':       makeTitle(weekLabel),
+    'Bias':       makeTxt(biasText),
+    'Key Area':   makeTxt(keyText),
+    'Notes':      makeTxt(notesText),
+    'Review':     makeTxt(reviewText),
+    'Week Start': makeDate(mondayStr),
   };
 
-  // Check if entry for this week already exists
-  const queryUrl = `${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=query`;
-  const qRes  = await fetch(queryUrl);
-  const qData = await qRes.json();
-  const pages = qData.results || [];
+  // Step 1 — query to find existing entry
+  setStatus('Checking Notion...');
+  var qUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
+           + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
+           + '&action=query';
 
-  const existing = pages.find(p => {
-    const titleProp = Object.values(p.properties).find(v => v.type==='title');
-    const title = titleProp?.title?.map(t=>t.plain_text).join('') || '';
-    return title.includes(weekKey) || title === weekLabel;
-  });
+  var qRes  = await fetch(qUrl);
+  var qData = await qRes.json();
+  if (qData.object === 'error') throw new Error(qData.message || 'Notion query error');
+
+  var pages    = qData.results || [];
+  var existing = null;
+  for (var i = 0; i < pages.length; i++) {
+    var p      = pages[i];
+    var tProp  = null;
+    var pKeys  = Object.keys(p.properties);
+    for (var k = 0; k < pKeys.length; k++) {
+      if (p.properties[pKeys[k]].type === 'title') { tProp = p.properties[pKeys[k]]; break; }
+    }
+    var title = tProp ? (tProp.title || []).map(function(t){ return t.plain_text; }).join('') : '';
+    if (title.indexOf(weekKey) >= 0 || title === weekLabel) { existing = p; break; }
+  }
 
   if (existing) {
-    // UPDATE existing page
-    const updateUrl = `${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=update&pageId=${existing.id}`;
-    const uRes = await fetch(updateUrl, {
+    // UPDATE
+    setStatus('Updating Notion entry...');
+    var uUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
+             + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
+             + '&action=update&pageId=' + encodeURIComponent(existing.id);
+    var uRes  = await fetch(uUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ properties }),
+      body: JSON.stringify({ properties: properties }),
     });
-    if (!uRes.ok) throw new Error('Update failed: ' + uRes.status);
+    var uData = await uRes.json();
+    if (uData.object === 'error') throw new Error(uData.message || 'Update failed');
+    setStatus('✅ Synced to Notion · ' + new Date().toLocaleTimeString());
   } else {
-    // CREATE new page
-    const createUrl = `${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=create`;
-    const cRes = await fetch(createUrl, {
+    // CREATE
+    setStatus('Creating Notion entry...');
+    var cUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
+             + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
+             + '&action=create';
+    var cRes  = await fetch(cUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ properties }),
+      body: JSON.stringify({ properties: properties }),
     });
-    if (!cRes.ok) throw new Error('Create failed: ' + cRes.status);
+    var cData = await cRes.json();
+    if (cData.object === 'error') throw new Error(cData.message || 'Create failed');
+    setStatus('✅ Saved to Notion · ' + new Date().toLocaleTimeString());
   }
 }
+
+
 
 // ============================================================
 // LIVE PRICE ENGINE + ALERTS
