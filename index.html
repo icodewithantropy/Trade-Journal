@@ -1040,8 +1040,8 @@ const PLAYBOOK_DB_ID   = '30fc2f0e0158808a9ce1cb7ff70ce3aa';
 // ══════════════════════════════════════════════════════════
 // ██  PASTE YOUR API KEYS BELOW — LINES 1041 & 1042        ██
 // ══════════════════════════════════════════════════════════
-const TWELVE_DATA_KEY  = '5db5f72e03dc40b4ae453edf8a437232';
-const FRED_API_KEY     = '5d8f2796ad376f6a4336bdceb8818960';
+const TWELVE_DATA_KEY  = 'PASTE_TWELVE_DATA_KEY_HERE';
+const FRED_API_KEY     = 'PASTE_FRED_KEY_HERE';
 // ══════════════════════════════════════════════════════════
 let NOTION_TOKEN  = localStorage.getItem('notion_token') || '';
 let ALL_TRADES    = [];
@@ -2270,107 +2270,49 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
 });
 
-// ============================================================
-// PLAYBOOK TABS
-// ============================================================
-
 
 // ============================================================
-// FOREX NEWS — ForexFactory JSON + Filters + Bank Holidays
+// WEEK HELPERS + PLAYBOOK STATE
 // ============================================================
 let pbWeekOffset = 0;
 let _newsData    = [];
-let _newsFilters = { currencies: ['USD','EUR','GBP'], impact: ['High','Medium','Low'] };
-
-
-
-
-
-
-
-
-
-
-
-// ============================================================
-// WEEKLY PLAYBOOK — Notion connected
-// ============================================================
-
-
-
-
-
-
-
-
-// ── SAVE PLAYBOOK TO NOTION ─────────────────────────────────
-
-
-
-
-// ============================================================
-// LIVE PRICE ENGINE — Twelve Data + fallbacks
-// ============================================================
-const PRICE_PAIRS = {
-  EURUSD: { label:'EUR/USD', symbol:'EUR/USD', decimals:5 },
-  GBPUSD: { label:'GBP/USD', symbol:'GBP/USD', decimals:5 },
-  DXY:    { label:'DXY',     symbol:'DX-Y.NYB', decimals:3 },
-  XAUUSD: { label:'XAU/USD', symbol:'XAU/USD', decimals:2 },
-};
-
-let _prices        = {};
-let _alertLevels   = {};
-let _firedAlerts   = new Set();
+let _newsFilters = { currencies: ['USD','EUR','GBP','JPY','CHF'], impact: ['High','Medium','Low'] };
+let _prices      = {};
+let _alertLevels = {};
+let _firedAlerts = new Set();
 let _priceInterval = null;
 let _notifGranted  = false;
-let _lastPriceTs   = 0;
+let _macroData   = {};
+let _macroReady  = false;
 
-
-
-function applyPriceData(data) {
-  ['EURUSD','GBPUSD','DXY','XAUUSD'].forEach(function(sym) {
-    if (!data[sym]) return;
-    var prev = _prices[sym] ? _prices[sym].price : null;
-    var price = parseFloat(data[sym]);
-    _prices[sym] = {
-      price:     price,
-      change:    prev ? price - prev : 0,
-      changePct: prev ? ((price - prev) / prev * 100) : 0,
-      prev:      prev,
-      time:      Date.now(),
-    };
-  });
-  updateTickerUI();
-  checkAlerts();
-  updateMacroPrices();
+function getWeekKey(offset = 0) {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  return `pb_${mon.getFullYear()}_${mon.getMonth()}_${mon.getDate()}`;
 }
-
-
-
-function setTickerStatus(state, msg) {
-  var dot = document.getElementById('ticker-dot');
-  var txt = document.getElementById('ticker-status-text');
-  if (dot) dot.className = 'ticker-dot' + (state === 'live' ? '' : state === 'delayed' ? ' delayed' : ' stale');
-  if (txt) txt.textContent = msg;
+function getWeekLabel(offset = 0) {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if (offset === 0) return `This Week · ${fmt(mon)} – ${fmt(fri)}`;
+  if (offset === -1) return `Last Week · ${fmt(mon)} – ${fmt(fri)}`;
+  if (offset === 1) return `Next Week · ${fmt(mon)} – ${fmt(fri)}`;
+  return `${fmt(mon)} – ${fmt(fri)}`;
 }
-
-function fmtTime() {
-  return new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-}
-
-
-
-
-
-
-
+function pbNav(dir) { pbWeekOffset += dir; loadPlaybook(); }
 
 // ============================================================
 // PLAYBOOK TABS
 // ============================================================
 function pbTab(name) {
   ['plan','levels','charts','review'].forEach(t => {
-    document.getElementById(`pb-panel-${t}`).style.display = t === name ? 'block' : 'none';
+    const el = document.getElementById(`pb-panel-${t}`);
+    if (el) el.style.display = t === name ? 'block' : 'none';
     const btn = document.getElementById(`pbt-${t}`);
     if (btn) btn.classList.toggle('active', t === name);
   });
@@ -2378,1062 +2320,679 @@ function pbTab(name) {
 }
 
 // ============================================================
-// FOREX NEWS — ForexFactory JSON + Filters + Bank Holidays
+// FOREX NEWS
 // ============================================================
-
 async function loadNews() {
   const container = document.getElementById('news-container');
   if (!container) return;
   container.innerHTML = '<div style="font-size:.62rem;color:var(--muted);font-style:italic;padding:20px 0;text-align:center">⏳ Fetching ForexFactory calendar...</div>';
   try {
-    var newsUrl = WORKER_URL + '?action=news';
-    var res = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error('Worker news failed: ' + res.status);
-    var data = await res.json();
+    const res  = await fetch(WORKER_URL + '?action=news', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('Worker ' + res.status);
+    const data = await res.json();
     if (data.error) throw new Error(data.error);
     _newsData = Array.isArray(data) ? data : [];
-    if (_newsData.length === 0) throw new Error('Empty feed');
+    if (!_newsData.length) throw new Error('Empty');
     renderNews();
     console.log('[News] Loaded ' + _newsData.length + ' events from ForexFactory');
-  } catch(err) {
-    console.warn('[News] Live feed failed:', err.message, '— using static fallback');
+  } catch(e) {
+    console.warn('[News] Fallback:', e.message);
     _newsData = getStaticNews();
     renderNews(true);
   }
 }
-
 function renderNews(isStatic = false) {
   const container = document.getElementById('news-container');
   if (!container) return;
-
-  const filters = _newsFilters;
-  const impactMap = { 'High':'high', 'Medium':'medium', 'Low':'low', 'Non-Economic':'low', 'Holiday':'holiday' };
-
+  const f = _newsFilters;
   const filtered = _newsData.filter(ev => {
-    const cur  = ev.country || ev.currency || '';
-    const imp  = ev.impact  || '';
-    if (!filters.currencies.includes(cur)) return false;
-    const normImp = imp.charAt(0).toUpperCase() + imp.slice(1).toLowerCase();
-    if (!filters.impact.includes(normImp) && imp !== 'Holiday') return false;
-    return true;
+    const cur = ev.country || '';
+    const imp = (ev.impact||'').charAt(0).toUpperCase() + (ev.impact||'').slice(1).toLowerCase();
+    return f.currencies.includes(cur) && (f.impact.includes(imp) || imp === 'Holiday');
   });
-
   let html = '';
-
-  // Static warning
-  if (isStatic) {
-    html += `<div style="font-size:.58rem;color:var(--amber);margin-bottom:10px;padding:8px 10px;background:rgba(255,187,0,.06);border:1px solid rgba(255,187,0,.15);border-radius:6px">
-      ⚠ Live feed unavailable. Showing typical weekly events. <a href="https://www.forexfactory.com/calendar" target="_blank" style="color:var(--green)">forexfactory.com ↗</a>
-    </div>`;
-  }
-
+  if (isStatic) html += `<div style="font-size:.58rem;color:var(--amber);margin-bottom:10px;padding:8px;background:rgba(255,187,0,.06);border:1px solid rgba(255,187,0,.15);border-radius:6px">⚠ Live feed unavailable · <a href="https://forexfactory.com" target="_blank" style="color:var(--green)">forexfactory.com ↗</a></div>`;
   // Filter bar
-  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-    <span style="font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Impact:</span>
+  html += `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+    <span style="font-size:.52rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Impact:</span>
     ${['High','Medium','Low'].map(imp => {
       const clr = imp==='High'?'var(--red)':imp==='Medium'?'var(--amber)':'var(--blue)';
-      const active = filters.impact.includes(imp);
-      return `<button onclick="toggleNewsFilter('impact','${imp}')" style="background:${active?clr+'22':'var(--s2)'};border:1px solid ${active?clr:'var(--border2)'};border-radius:10px;color:${active?clr:'var(--muted2)'};font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:3px 10px;cursor:pointer;transition:all .15s">${imp}</button>`;
+      const on  = f.impact.includes(imp);
+      return `<button onclick="toggleNewsFilter('impact','${imp}')" style="background:${on?clr+'22':'var(--s2)'};border:1px solid ${on?clr:'var(--border2)'};border-radius:10px;color:${on?clr:'var(--muted2)'};font-size:.52rem;padding:3px 8px;cursor:pointer">${imp}</button>`;
     }).join('')}
-    <span style="font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-left:4px">Currency:</span>
+    <span style="font-size:.52rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-left:4px">CCY:</span>
     ${['USD','EUR','GBP','JPY','CHF'].map(cur => {
-      const active = filters.currencies.includes(cur);
-      return `<button onclick="toggleNewsFilter('currencies','${cur}')" style="background:${active?'rgba(68,136,255,.15)':'var(--s2)'};border:1px solid ${active?'var(--blue)':'var(--border2)'};border-radius:10px;color:${active?'var(--blue)':'var(--muted2)'};font-family:'JetBrains Mono',monospace;font-size:.54rem;padding:3px 10px;cursor:pointer;transition:all .15s">${cur}</button>`;
+      const on = f.currencies.includes(cur);
+      return `<button onclick="toggleNewsFilter('currencies','${cur}')" style="background:${on?'rgba(68,136,255,.15)':'var(--s2)'};border:1px solid ${on?'var(--blue)':'var(--border2)'};border-radius:10px;color:${on?'var(--blue)':'var(--muted2)'};font-size:.52rem;padding:3px 8px;cursor:pointer">${cur}</button>`;
     }).join('')}
   </div>`;
-
-  // Bank Holidays
-  const holidays = _newsData.filter(ev => (ev.impact||'').toLowerCase() === 'holiday' || (ev.title||'').toLowerCase().includes('holiday'));
-  if (holidays.length) {
-    html += `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(68,136,255,.06);border:1px solid rgba(68,136,255,.15);border-radius:6px">
-      <div style="font-size:.54rem;color:var(--blue);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">🏦 Bank Holidays This Week</div>
-      ${holidays.map(h => `<div style="font-size:.6rem;color:#8888aa;padding:2px 0">${h.country||''} · ${h.title||''} · ${formatNewsDate(h.date)}</div>`).join('')}
-    </div>`;
-  }
-
-  if (!filtered.length) {
-    html += `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.64rem">No events matching current filters</div>`;
+  // Group by day
+  const byDay = {};
+  filtered.forEach(ev => {
+    const dk = new Date(ev.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    (byDay[dk] = byDay[dk]||[]).push(ev);
+  });
+  if (!Object.keys(byDay).length) {
+    html += `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.62rem">No events match filters</div>`;
   } else {
-    // Group by day
-    const byDay = {};
-    filtered.forEach(ev => {
-      const d = new Date(ev.date);
-      const dayKey = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-      if (!byDay[dayKey]) byDay[dayKey] = [];
-      byDay[dayKey].push(ev);
-    });
-
-    Object.entries(byDay).forEach(([day, events]) => {
-      html += `<div style="font-size:.56rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;padding:6px 0 4px;border-top:1px solid var(--border);margin-top:4px">${day}</div>`;
-      events.forEach(ev => {
-        const imp = (ev.impact||'Low');
-        const normImp = imp.charAt(0).toUpperCase() + imp.slice(1).toLowerCase();
-        const impCls = normImp === 'High' ? 'high' : normImp === 'Medium' ? 'medium' : 'low';
-        const impClr = normImp === 'High' ? 'var(--red)' : normImp === 'Medium' ? 'var(--amber)' : 'var(--blue)';
-        const t = new Date(ev.date);
-        const timeStr = isNaN(t) ? '' : t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-        const forecast = ev.forecast ? ` · F: <strong style="color:var(--text)">${ev.forecast}</strong>` : '';
-        const previous = ev.previous ? ` · P: ${ev.previous}` : '';
-
+    Object.entries(byDay).forEach(([day, evs]) => {
+      html += `<div style="font-size:.54rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;padding:6px 0 4px;border-top:1px solid var(--border);margin-top:4px">${day}</div>`;
+      evs.forEach(ev => {
+        const imp  = (ev.impact||'Low');
+        const nImp = imp.charAt(0).toUpperCase()+imp.slice(1).toLowerCase();
+        const clr  = nImp==='High'?'var(--red)':nImp==='Medium'?'var(--amber)':'var(--blue)';
+        const cls  = nImp.toLowerCase();
+        const tm   = (() => { try { return new Date(ev.date).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); } catch(e){ return ''; } })();
         html += `<div class="news-item">
-          <div class="news-impact ${impCls}" style="margin-top:5px;flex-shrink:0"></div>
-          <div style="flex:1;min-width:0">
+          <div class="news-impact ${cls}" style="margin-top:5px;flex-shrink:0"></div>
+          <div style="flex:1">
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
-              <span style="font-size:.58rem;font-weight:700;color:${impClr};min-width:28px">${ev.country||''}</span>
-              <span style="font-size:.54rem;color:var(--muted2)">${timeStr}</span>
-              ${normImp === 'High' ? `<span style="font-size:.5rem;background:rgba(255,51,85,.15);color:var(--red);border-radius:3px;padding:1px 5px;letter-spacing:1px">HIGH IMPACT</span>` : ''}
+              <span style="font-size:.58rem;font-weight:700;color:${clr};min-width:28px">${ev.country||''}</span>
+              <span style="font-size:.52rem;color:var(--muted2)">${tm}</span>
+              ${nImp==='High'?`<span style="font-size:.48rem;background:rgba(255,51,85,.15);color:var(--red);border-radius:3px;padding:1px 4px">HIGH</span>`:''}
             </div>
-            <div style="font-size:.62rem;color:var(--text);line-height:1.4">${ev.title||''}</div>
-            ${(forecast||previous) ? `<div style="font-size:.56rem;color:var(--muted2);margin-top:2px">${forecast}${previous}</div>` : ''}
+            <div style="font-size:.6rem;color:var(--text)">${ev.title||''}</div>
+            ${ev.forecast?`<div style="font-size:.54rem;color:var(--muted2);margin-top:2px">F: <strong style="color:var(--text)">${ev.forecast}</strong>${ev.previous?' · P: '+ev.previous:''}</div>`:''}
           </div>
         </div>`;
       });
     });
   }
-
   container.innerHTML = html;
 }
-
-function toggleNewsFilter(type, value) {
+function toggleNewsFilter(type, val) {
   const arr = _newsFilters[type];
-  const idx = arr.indexOf(value);
-  if (idx >= 0) arr.splice(idx, 1); else arr.push(value);
-  renderNews(_newsData === getStaticNews());
+  const i   = arr.indexOf(val);
+  if (i >= 0) arr.splice(i,1); else arr.push(val);
+  renderNews();
 }
-
-function formatNewsDate(dateStr) {
-  try { return new Date(dateStr).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
-  catch(e) { return dateStr; }
-}
-
+function formatNewsDate(s) { try { return new Date(s).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); } catch(e){ return s; } }
 function getStaticNews() {
+  const d = (add) => new Date(Date.now()+86400000*add).toISOString();
   return [
-    {country:'USD',title:'S&P Global Services PMI',impact:'Medium',date:new Date(Date.now()-86400000*1).toISOString()},
-    {country:'USD',title:'ISM Non-Manufacturing PMI',impact:'High',date:new Date(Date.now()-86400000*1).toISOString()},
-    {country:'USD',title:'ADP Non-Farm Employment Change',impact:'High',date:new Date(Date.now()+86400000*1).toISOString()},
-    {country:'USD',title:'FOMC Meeting Minutes',impact:'High',date:new Date(Date.now()+86400000*1).toISOString()},
-    {country:'EUR',title:'ECB Monetary Policy Meeting Accounts',impact:'High',date:new Date(Date.now()+86400000*1).toISOString()},
-    {country:'USD',title:'Initial Jobless Claims',impact:'High',date:new Date(Date.now()+86400000*2).toISOString()},
-    {country:'GBP',title:'GDP m/m',impact:'High',date:new Date(Date.now()+86400000*2).toISOString()},
-    {country:'USD',title:'Non-Farm Payrolls',impact:'High',date:new Date(Date.now()+86400000*3).toISOString()},
-    {country:'USD',title:'Unemployment Rate',impact:'High',date:new Date(Date.now()+86400000*3).toISOString()},
-    {country:'GBP',title:'Manufacturing Production m/m',impact:'Medium',date:new Date(Date.now()+86400000*3).toISOString()},
+    {country:'USD',title:'ADP Non-Farm Employment Change',impact:'High',date:d(1)},
+    {country:'USD',title:'ISM Non-Manufacturing PMI',impact:'High',date:d(1)},
+    {country:'EUR',title:'ECB Monetary Policy Meeting Accounts',impact:'High',date:d(1)},
+    {country:'USD',title:'Initial Jobless Claims',impact:'High',date:d(2)},
+    {country:'GBP',title:'GDP m/m',impact:'High',date:d(2)},
+    {country:'USD',title:'Non-Farm Payrolls',impact:'High',date:d(3)},
+    {country:'USD',title:'Unemployment Rate',impact:'High',date:d(3)},
   ];
 }
 
 // ============================================================
-// WEEKLY PLAYBOOK — Notion connected
+// WEEKLY PLAYBOOK
 // ============================================================
 async function loadPlaybook() {
   const key   = getWeekKey(pbWeekOffset);
-  const saved = JSON.parse(localStorage.getItem(key) || '{}');
-
-  const fields = ['bias','dxy','avoid','xau','eur','gbp','dxy2','good','bad','next'];
-  fields.forEach(f => {
+  const saved = JSON.parse(localStorage.getItem(key)||'{}');
+  ['bias','dxy','avoid','xau','eur','gbp','dxy2','good','bad','next','week-r','week-trades','week-wins','week-losses'].forEach(f => {
     const el = document.getElementById(`pb-${f}`);
     if (el) el.value = saved[f] || '';
   });
-  const numFields = ['week-r','week-trades','week-wins','week-losses'];
-  numFields.forEach(f => {
-    const el = document.getElementById(`pb-${f}`);
-    if (el) el.value = saved[f] || '';
-  });
-  for (let i = 1; i <= 8; i++) {
-    const el = document.getElementById(`chk${i}`);
-    if (el) el.checked = saved[`chk${i}`] || false;
-  }
-
-  document.getElementById('pb-week-label').textContent = getWeekLabel(pbWeekOffset);
-
-  // Try load from Notion
+  for (let i=1;i<=8;i++) { const el=document.getElementById(`chk${i}`); if(el) el.checked=saved[`chk${i}`]||false; }
+  const lbl = document.getElementById('pb-week-label');
+  if (lbl) lbl.textContent = getWeekLabel(pbWeekOffset);
   await loadPlaybookFromNotion();
 }
 
 async function loadPlaybookFromNotion() {
   const statusEl = document.getElementById('pb-notion-status');
-  if (statusEl) statusEl.textContent = 'Loading from Notion...';
+  const setS = msg => { if(statusEl) statusEl.textContent = msg; };
+  setS('Loading from Notion...');
   try {
     const tok = localStorage.getItem('notion_token') || NOTION_TOKEN;
-    if (!tok || tok === 'null' || tok.trim() === '') {
-      if (statusEl) statusEl.textContent = 'No token — enter token to sync';
-      return;
-    }
-    const url = WORKER_URL + '?token=' + encodeURIComponent(tok.trim())
-              + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
-              + '&action=query';
-    const res  = await fetch(url);
+    if (!tok || tok==='null' || !tok.trim()) { setS('No token — enter token to sync'); return; }
+    const res  = await fetch(`${WORKER_URL}?token=${encodeURIComponent(tok.trim())}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=query`);
     const data = await res.json();
-    if (data.object === 'error') throw new Error(data.message);
-    const pages = data.results || [];
-
-    // Log actual property names for debugging
-    if (pages.length > 0) {
+    if (data.object==='error') throw new Error(data.message);
+    const pages = data.results||[];
+    if (pages.length) {
       window._notionPlaybookProps = Object.keys(pages[0].properties);
       console.log('[Playbook] Notion props:', window._notionPlaybookProps);
     }
-
-    // Find this week's entry
-    const weekKey = getWeekKey(pbWeekOffset);
+    const weekKey   = getWeekKey(pbWeekOffset);
     const weekLabel = getWeekLabel(pbWeekOffset);
     const match = pages.find(p => {
-      const tProp = Object.values(p.properties).find(v => v.type === 'title');
-      const title = (tProp?.title || []).map(t => t.plain_text).join('');
-      return title.indexOf(weekKey) >= 0 || title === weekLabel;
+      const tp = Object.values(p.properties).find(v=>v.type==='title');
+      const t  = (tp?.title||[]).map(t=>t.plain_text).join('');
+      return t.includes(weekKey) || t===weekLabel;
     });
-
     if (match) {
       const props = match.properties;
-      // Get text from any rich_text property by trying multiple name variants
-      const getText = (names) => {
-        for (var i = 0; i < names.length; i++) {
-          var p = props[names[i]];
-          if (p && p.rich_text) return p.rich_text.map(t => t.plain_text).join('');
-        }
+      const getText = (...names) => {
+        for (const n of names) { const p=props[n]; if(p?.rich_text) return p.rich_text.map(t=>t.plain_text).join(''); }
         return '';
       };
-      const setVal = (id, val) => {
-        const el = document.getElementById(id);
-        if (el && val) el.value = val;
-      };
-
-      const biasText   = getText(['Bias','Weekly Bias','Bias & Context']);
-      const keyText    = getText(['Key Area','Key Levels','Key Areas','Levels']);
-      const notesText  = getText(['Notes','Weekly Notes','Note']);
-      const reviewText = getText(['Review','Week Review','Reflection']);
-
-      // Parse combined fields back into individual fields
-      setVal('pb-bias', biasText);
-      // Split key area back into pairs
+      const sv = (id,v) => { const el=document.getElementById(id); if(el&&v) el.value=v; };
+      const biasText  = getText('Bias','Weekly Bias');
+      const keyText   = getText('Key Area','Key Levels','Levels');
+      const notesText = getText('Notes','Weekly Notes');
+      const revText   = getText('Review','Week Review');
+      sv('pb-bias', biasText);
       if (keyText) {
-        const parts = keyText.split('---');
-        parts.forEach(part => {
+        keyText.split('---').forEach(part => {
           const t = part.trim();
-          if (t.startsWith('XAUUSD:')) setVal('pb-xau', t.replace('XAUUSD:','').trim());
-          else if (t.startsWith('EURUSD:')) setVal('pb-eur', t.replace('EURUSD:','').trim());
-          else if (t.startsWith('GBPUSD:')) setVal('pb-gbp', t.replace('GBPUSD:','').trim());
-          else if (t.startsWith('DXY:'))    setVal('pb-dxy2', t.replace('DXY:','').trim());
-          else if (t) setVal('pb-xau', t); // fallback
+          if (t.startsWith('XAUUSD:')) sv('pb-xau', t.replace('XAUUSD:','').trim());
+          else if (t.startsWith('EURUSD:')) sv('pb-eur', t.replace('EURUSD:','').trim());
+          else if (t.startsWith('GBPUSD:')) sv('pb-gbp', t.replace('GBPUSD:','').trim());
+          else if (t.startsWith('DXY:'))    sv('pb-dxy2',t.replace('DXY:','').trim());
+          else if (t) sv('pb-xau', t);
         });
       }
-      if (notesText) setVal('pb-avoid', notesText);
-      if (reviewText) {
-        const rParts = reviewText.split(/WENT WELL:|WENT WRONG:|NEXT WEEK:/);
-        if (rParts[1]) setVal('pb-good', rParts[1].trim());
-        if (rParts[2]) setVal('pb-bad',  rParts[2].trim());
-        if (rParts[3]) setVal('pb-next', rParts[3].trim());
+      sv('pb-avoid', notesText);
+      if (revText) {
+        const rp = revText.split(/WENT WELL:|WENT WRONG:|NEXT WEEK:/);
+        if (rp[1]) sv('pb-good', rp[1].trim());
+        if (rp[2]) sv('pb-bad',  rp[2].trim());
+        if (rp[3]) sv('pb-next', rp[3].trim());
       }
-
-      if (statusEl) statusEl.textContent = '✓ Synced from Notion · ' + new Date().toLocaleTimeString();
+      setS('✓ Synced from Notion · '+new Date().toLocaleTimeString());
     } else {
-      if (statusEl) statusEl.textContent = 'No entry for this week yet · Save to create one';
+      setS('No entry for this week yet · Save to create one');
     }
   } catch(e) {
     console.error('[Playbook] Load error:', e.message);
-    if (statusEl) statusEl.textContent = 'Sync error: ' + e.message;
+    setS('Sync error: '+e.message);
   }
 }
 
 async function loadPlaybookCharts() {
-  const chartsEl = document.getElementById('pb-notion-charts');
-  if (!chartsEl) return;
-  chartsEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.62rem">⏳ Loading charts from Notion...</div>';
+  const el = document.getElementById('pb-notion-charts');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.62rem">⏳ Loading charts...</div>';
   try {
     const tok = localStorage.getItem('notion_token');
     if (!tok) throw new Error('No token');
-    const url = `${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed');
+    const res  = await fetch(`${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=query`);
     const data = await res.json();
-    const pages = data.results || [];
-
-    let allImages = [];
-    pages.forEach(p => {
-      const fileProps = Object.values(p.properties).filter(v => v.type === 'files');
-      fileProps.forEach(fp => {
+    const imgs = [];
+    (data.results||[]).forEach(p => {
+      Object.values(p.properties).filter(v=>v.type==='files').forEach(fp => {
         (fp.files||[]).forEach(f => {
-          const url = f.file?.url || f.external?.url;
-          if (url) allImages.push({ url, name: f.name || 'Chart' });
+          const u = f.file?.url||f.external?.url;
+          if (u) imgs.push({url:u, name:f.name||'Chart'});
         });
       });
     });
-
-    if (!allImages.length) {
-      chartsEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:.66rem">
-        <div style="font-size:1.5rem;margin-bottom:8px">📊</div>
-        No charts uploaded yet.<br>
-        <span style="font-size:.58rem">Add annotated screenshots to the Charts property in your Weekly Playbook Notion database.</span>
-      </div>`;
-      return;
+    if (!imgs.length) {
+      el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:.62rem">📊 No charts uploaded yet.<br><small>Add screenshots to the Charts property in your Notion Playbook database.</small></div>`;
+    } else {
+      el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${imgs.map(img=>`<div style="border-radius:8px;overflow:hidden;border:1px solid var(--border2);cursor:pointer" onclick="window.open('${img.url}','_blank')"><img src="${img.url}" style="width:100%;display:block" alt="${img.name}" onerror="this.parentElement.innerHTML='<div style=padding:16px;text-align:center;color:var(--muted);font-size:.58rem>Image expired — re-upload in Notion</div>'"><div style="font-size:.52rem;color:var(--muted2);padding:4px 8px;background:var(--s2)">${img.name}</div></div>`).join('')}</div>`;
     }
-
-    chartsEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-      ${allImages.map(img => `
-        <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border2);cursor:pointer" onclick="window.open('${img.url}','_blank')">
-          <img src="${img.url}" style="width:100%;display:block;border-radius:8px" alt="${img.name}" onerror="this.parentElement.innerHTML='<div style=padding:20px;text-align:center;color:var(--muted);font-size:.6rem>Image expired — re-upload in Notion</div>'">
-          <div style="font-size:.54rem;color:var(--muted2);padding:5px 8px;background:var(--s2)">${img.name}</div>
-        </div>`).join('')}
-    </div>`;
   } catch(e) {
-    chartsEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:.62rem">Could not load charts: ${e.message}</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:.62rem">Charts error: ${e.message}</div>`;
   }
 }
 
 async function savePlaybook() {
-  const key = getWeekKey(pbWeekOffset);
+  const key  = getWeekKey(pbWeekOffset);
   const data = {};
-  ['bias','dxy','avoid','xau','eur','gbp','dxy2','good','bad','next'].forEach(f => {
+  ['bias','dxy','avoid','xau','eur','gbp','dxy2','good','bad','next','week-r','week-trades','week-wins','week-losses'].forEach(f => {
     const el = document.getElementById(`pb-${f}`);
     if (el) data[f] = el.value;
   });
-  ['week-r','week-trades','week-wins','week-losses'].forEach(f => {
-    const el = document.getElementById(`pb-${f}`);
-    if (el) data[f] = el.value;
-  });
-  for (let i = 1; i <= 8; i++) {
-    const el = document.getElementById(`chk${i}`);
-    if (el) data[`chk${i}`] = el.checked;
-  }
+  for (let i=1;i<=8;i++) { const el=document.getElementById(`chk${i}`); if(el) data[`chk${i}`]=el.checked; }
   localStorage.setItem(key, JSON.stringify(data));
-
-  // Try save to Notion
+  parseAlertLevels();
   const statusEl = document.getElementById('pb-notion-status');
-  if (statusEl) statusEl.textContent = 'Saving to Notion...';
+  if (statusEl) statusEl.textContent = 'Saving...';
   try {
     const tok = localStorage.getItem('notion_token');
-    if (!tok) {
-      if (statusEl) statusEl.textContent = 'No token — saved locally only';
-    } else {
-      await savePlaybookToNotion(data);
-      // status set inside savePlaybookToNotion
-    }
+    if (tok) await savePlaybookToNotion(data);
+    else if (statusEl) statusEl.textContent = 'Saved locally (no token)';
   } catch(e) {
-    console.error('Notion sync error:', e.message);
-    const sEl = document.getElementById('pb-notion-status');
-    if (sEl) sEl.textContent = 'Sync failed: ' + e.message;
+    console.error('[Playbook] Save error:', e.message);
+    if (statusEl) statusEl.textContent = 'Sync failed: '+e.message;
   }
-
-  const savedEl = document.getElementById('pb-saved');
-  if (savedEl) { savedEl.style.opacity='1'; setTimeout(()=>savedEl.style.opacity='0',2500); }
+  const sv = document.getElementById('pb-saved');
+  if (sv) { sv.style.opacity='1'; setTimeout(()=>sv.style.opacity='0',2500); }
 }
 
-// ── SAVE PLAYBOOK TO NOTION ─────────────────────────────────
 async function savePlaybookToNotion(data) {
   const tok = localStorage.getItem('notion_token');
-  if (!tok) throw new Error('No Notion token found');
-
+  if (!tok) throw new Error('No token');
   const weekLabel = getWeekLabel(pbWeekOffset);
   const weekKey   = getWeekKey(pbWeekOffset);
   const statusEl  = document.getElementById('pb-notion-status');
-  const setStatus = function(msg) { if (statusEl) statusEl.textContent = msg; };
+  const setS = msg => { if (statusEl) statusEl.textContent = msg; };
 
-  // Safe property builders — no template literals with newlines
-  function makeTxt(v) {
-    var safe = String(v || '').slice(0, 2000);
-    return { rich_text: [{ text: { content: safe } }] };
-  }
-  function makeTitle(v) {
-    var safe = String(v || '').slice(0, 255);
-    return { title: [{ text: { content: safe } }] };
-  }
-  function makeDate(v) {
-    return { date: { start: v } };
-  }
-  function join2(a, b) {
-    var parts = [];
-    if (a) parts.push(a);
-    if (b) parts.push(b);
-    return parts.join('\n\n');
-  }
-  function join4(a, b, c, d) {
-    var parts = [];
-    if (a) parts.push(a);
-    if (b) parts.push(b);
-    if (c) parts.push(c);
-    if (d) parts.push(d);
-    return parts.join('\n\n---\n\n');
-  }
+  const makeTxt   = v => ({ rich_text: [{ text: { content: String(v||'').slice(0,2000) } }] });
+  const makeTitle = v => ({ title:     [{ text: { content: String(v||'').slice(0,255)  } }] });
+  const makeDate  = v => ({ date: { start: v } });
 
-  // Get Monday date
-  var now    = new Date();
-  var day    = now.getDay();
-  var monday = new Date(now);
-  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + pbWeekOffset * 7);
-  var mondayStr = monday.toISOString().split('T')[0];
+  // Monday date
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day===0?6:day-1) + pbWeekOffset*7);
+  const monStr = mon.toISOString().split('T')[0];
 
-  // Build property values
-  var biasText    = join2(data.bias || '', data.dxy ? ('DXY: ' + data.dxy) : '');
-  var keyText     = join4(
-    data.xau  ? ('XAUUSD: ' + data.xau)  : '',
-    data.eur  ? ('EURUSD: ' + data.eur)  : '',
-    data.gbp  ? ('GBPUSD: ' + data.gbp)  : '',
-    data.dxy2 ? ('DXY: '    + data.dxy2) : ''
-  );
-  var notesText   = join2(data.avoid || '', data.notes || '');
-  var reviewParts = [];
-  if (data.good)           reviewParts.push('WENT WELL:\n'        + data.good);
-  if (data.bad)            reviewParts.push('WENT WRONG:\n'       + data.bad);
-  if (data.next)           reviewParts.push('NEXT WEEK:\n'        + data.next);
-  if (data['week-r'])      reviewParts.push('Week R: '            + data['week-r']);
-  if (data['week-trades']) reviewParts.push('Trades: '            + data['week-trades']);
-  var reviewText = reviewParts.join('\n\n');
+  const nl = '\n'; const sep = '\n\n---\n\n';
+  const keyParts = [
+    data.xau  ? 'XAUUSD: '+data.xau  : '',
+    data.eur  ? 'EURUSD: '+data.eur  : '',
+    data.gbp  ? 'GBPUSD: '+data.gbp  : '',
+    data.dxy2 ? 'DXY: '  +data.dxy2 : '',
+  ].filter(Boolean);
 
-  // Build properties using EXACT names from schema fetch
-  var schemaProps = window._notionPlaybookProps || [];
-  console.log('[Playbook] Building with schema props:', schemaProps);
+  // Step 1: Get schema to find exact property names
+  setS('Reading schema...');
+  const schRes  = await fetch(`${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=schema`);
+  const schData = await schRes.json();
+  if (schData.object==='error') throw new Error('Schema: '+schData.message);
 
-  // Helper: find exact prop name case-insensitively
-  function findExact(keyword) {
-    var kw = keyword.toLowerCase().replace(/[^a-z]/g,'');
-    for (var i = 0; i < schemaProps.length; i++) {
-      var clean = schemaProps[i].toLowerCase().replace(/[^a-z]/g,'');
-      if (clean === kw || clean.includes(kw) || kw.includes(clean)) return schemaProps[i];
+  const propNames  = Object.keys(schData.properties||{});
+  const propTypes  = {};
+  Object.entries(schData.properties||{}).forEach(([k,v]) => propTypes[k]=v.type);
+  window._notionPlaybookProps     = propNames;
+  window._notionPlaybookPropTypes = propTypes;
+  console.log('[Playbook] Schema props:', propNames, propTypes);
+
+  // Find title prop
+  const titleProp = propNames.find(k => propTypes[k]==='title') || propNames[0];
+
+  // Find text props case-insensitively
+  const findProp = (...keys) => {
+    for (const key of keys) {
+      const kl = key.toLowerCase().replace(/\s/g,'');
+      const found = propNames.find(p => p.toLowerCase().replace(/\s/g,'')===kl);
+      if (found && propTypes[found]==='rich_text') return found;
     }
     return null;
-  }
-
-  // Find the title property (always include it — it's the required one)
-  var titlePropName = null;
-  for (var si = 0; si < schemaProps.length; si++) {
-    // title type is usually the first prop or named 'Week'/'Name'
-    if (/^(week|name|title)$/i.test(schemaProps[si])) { titlePropName = schemaProps[si]; break; }
-  }
-  if (!titlePropName && schemaProps.length > 0) titlePropName = schemaProps[0];
-
-  var pBias      = findExact('bias')      || 'Bias';
-  var pKeyArea   = findExact('keyarea') || findExact('key')  || 'Key Area';
-  var pNotes     = findExact('notes')     || 'Notes';
-  var pReview    = findExact('review')    || 'Review';
-  var pWeekStart = findExact('weekstart') || findExact('date') || 'Week Start';
-
-  var properties = {};
-  if (titlePropName) properties[titlePropName] = makeTitle(weekLabel);
-  properties[pBias]      = makeTxt(biasText);
-  properties[pKeyArea]   = makeTxt(keyText);
-  properties[pNotes]     = makeTxt(notesText);
-  properties[pReview]    = makeTxt(reviewText);
-  // Only add date if prop type is 'date' (not text/title)
-  var propTypes = window._notionPlaybookPropTypes || {};
-  if (pWeekStart && pWeekStart !== titlePropName && propTypes[pWeekStart] === 'date') {
-    properties[pWeekStart] = makeDate(mondayStr);
-  }
-  // Remove any properties whose type doesn't match what we're sending
-  // (e.g. don't send rich_text to a title field or vice versa)
-  Object.keys(properties).forEach(function(k) {
-    var t = propTypes[k];
-    if (t && t !== 'title' && t !== 'rich_text' && t !== 'date') {
-      console.log('[Playbook] Skipping unsupported prop type:', k, t);
-      delete properties[k];
+  };
+  const findDateProp = (...keys) => {
+    for (const key of keys) {
+      const kl = key.toLowerCase().replace(/\s/g,'');
+      const found = propNames.find(p => p.toLowerCase().replace(/\s/g,'')===kl);
+      if (found && propTypes[found]==='date') return found;
     }
+    return null;
+  };
+
+  const pBias  = findProp('Bias','Weekly Bias','bias');
+  const pKey   = findProp('Key Area','Key Levels','Key Areas','keyarea');
+  const pNotes = findProp('Notes','Weekly Notes','notes');
+  const pRev   = findProp('Review','Week Review','review');
+  const pDate  = findDateProp('Week Start','Date','Start Date','weekstart');
+
+  const reviewParts = [
+    data.good  ? 'WENT WELL:\n'+data.good  : '',
+    data.bad   ? 'WENT WRONG:\n'+data.bad  : '',
+    data.next  ? 'NEXT WEEK:\n'+data.next  : '',
+    data['week-r']      ? 'Week R: '+data['week-r'] : '',
+    data['week-trades'] ? 'Trades: '+data['week-trades'] : '',
+  ].filter(Boolean);
+
+  const properties = {};
+  properties[titleProp] = makeTitle(weekLabel);
+  if (pBias)  properties[pBias]  = makeTxt((data.bias||'')+(data.dxy?'\nDXY: '+data.dxy:''));
+  if (pKey)   properties[pKey]   = makeTxt(keyParts.join(sep));
+  if (pNotes) properties[pNotes] = makeTxt(data.avoid||'');
+  if (pRev)   properties[pRev]   = makeTxt(reviewParts.join('\n\n'));
+  if (pDate)  properties[pDate]  = makeDate(monStr);
+
+  console.log('[Playbook] Sending:', Object.keys(properties));
+
+  // Step 2: Query for existing entry
+  setS('Checking for existing entry...');
+  const qRes  = await fetch(`${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=query`);
+  const qData = await qRes.json();
+  if (qData.object==='error') throw new Error(qData.message);
+
+  const existing = (qData.results||[]).find(p => {
+    const tp = Object.values(p.properties).find(v=>v.type==='title');
+    const t  = (tp?.title||[]).map(t=>t.plain_text).join('');
+    return t.includes(weekKey) || t===weekLabel;
   });
-
-  console.log('[Playbook] Sending properties:', Object.keys(properties));
-
-  // Step 1 — fetch DB schema to get EXACT property names
-  setStatus('Reading Notion schema...');
-  var schemaUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
-                + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
-                + '&action=schema';
-  var schRes  = await fetch(schemaUrl);
-  var schData = await schRes.json();
-  if (schData.object === 'error') throw new Error('Schema error: ' + schData.message);
-  if (schData.properties) {
-    window._notionPlaybookProps     = Object.keys(schData.properties);
-    window._notionPlaybookPropTypes = {};
-    Object.entries(schData.properties).forEach(function(kv) {
-      window._notionPlaybookPropTypes[kv[0]] = kv[1].type;
-    });
-    console.log('[Playbook] Notion props:', window._notionPlaybookProps);
-    console.log('[Playbook] Prop types:', window._notionPlaybookPropTypes);
-  }
-
-  // Step 2 — query for existing week entry
-  setStatus('Checking for existing entry...');
-  var qUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
-           + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
-           + '&action=query';
-  var qRes  = await fetch(qUrl);
-  var qData = await qRes.json();
-  if (qData.object === 'error') throw new Error(qData.message || 'Notion error');
-
-  var pages    = qData.results || [];
-  var existing = null;
-  for (var i = 0; i < pages.length; i++) {
-    var p      = pages[i];
-    var tProp  = null;
-    var pKeys  = Object.keys(p.properties);
-    for (var k = 0; k < pKeys.length; k++) {
-      if (p.properties[pKeys[k]].type === 'title') { tProp = p.properties[pKeys[k]]; break; }
-    }
-    var title = tProp ? (tProp.title || []).map(function(t){ return t.plain_text; }).join('') : '';
-    if (title.indexOf(weekKey) >= 0 || title === weekLabel) { existing = p; break; }
-  }
 
   if (existing) {
-    // UPDATE
-    setStatus('Updating Notion entry...');
-    var uUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
-             + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
-             + '&action=update&pageId=' + encodeURIComponent(existing.id);
-    var uRes  = await fetch(uUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ properties: properties }),
+    setS('Updating...');
+    const uRes  = await fetch(`${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=update&pageId=${encodeURIComponent(existing.id)}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({properties}),
     });
-    var uData = await uRes.json();
-    if (uData.object === 'error') throw new Error(uData.message || 'Update failed');
-    setStatus('✅ Synced to Notion · ' + new Date().toLocaleTimeString());
+    const uData = await uRes.json();
+    if (uData.object==='error') throw new Error(uData.message);
+    setS('✅ Updated in Notion · '+new Date().toLocaleTimeString());
   } else {
-    // CREATE
-    setStatus('Creating Notion entry...');
-    var cUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
-             + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
-             + '&action=create';
-    var cRes  = await fetch(cUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ properties: properties }),
+    setS('Creating...');
+    const cRes  = await fetch(`${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}&action=create`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({properties}),
     });
-    var cData = await cRes.json();
-    if (cData.object === 'error') throw new Error(cData.message || 'Create failed');
-    setStatus('✅ Saved to Notion · ' + new Date().toLocaleTimeString());
+    const cData = await cRes.json();
+    if (cData.object==='error') throw new Error(cData.message);
+    setS('✅ Saved to Notion · '+new Date().toLocaleTimeString());
   }
 }
 
-
-
 // ============================================================
-// LIVE PRICE ENGINE + ALERTS
+// LIVE PRICES — Twelve Data via Worker → exchangerate-api fallback
 // ============================================================
-const PRICE_SYMBOLS = {
-  EURUSD: { label:'EUR/USD', decimals:5 },
-  GBPUSD: { label:'GBP/USD', decimals:5 },
-  DXY:    { label:'DXY',     decimals:3 },
-  XAUUSD: { label:'XAU/USD', decimals:2 },
-};
-
-
-// Parse alert levels from playbook key area fields
-function parseAlertLevels() {
-  _alertLevels = {};
-  const fieldMap = {
-    EURUSD: 'pb-eur',
-    GBPUSD: 'pb-gbp',
-    DXY:    'pb-dxy2',
-    XAUUSD: 'pb-xau',
-  };
-  Object.entries(fieldMap).forEach(([sym, fieldId]) => {
-    const el = document.getElementById(fieldId);
-    if (!el || !el.value) return;
-    const nums = el.value.match(/\d{1,5}\.?\d{0,5}/g);
-    if (nums) {
-      _alertLevels[sym] = nums.map(parseFloat).filter(n => n > 0);
-    }
-  });
-}
-
-// ── PRICE ENGINE — open.er-api.com (free, no key, CORS ok) ──
 async function fetchPrices() {
-  var hasTD   = TWELVE_DATA_KEY && TWELVE_DATA_KEY !== 'PASTE_TWELVE_DATA_KEY_HERE';
-  var source  = hasTD ? 'twelvedata' : 'exchangerate';
-
+  const hasTD = TWELVE_DATA_KEY && TWELVE_DATA_KEY !== 'PASTE_TWELVE_DATA_KEY_HERE';
+  let url = WORKER_URL + '?action=prices&source=' + (hasTD ? 'twelvedata' : 'exchangerate');
+  if (hasTD) url += '&tdkey=' + encodeURIComponent(TWELVE_DATA_KEY);
   try {
-    // Build worker URL — always pass tdkey if we have it so worker uses Twelve Data
-    var url = WORKER_URL + '?action=prices&source=' + source;
-    if (hasTD) {
-      url += '&tdkey=' + encodeURIComponent(TWELVE_DATA_KEY);
-    }
-
-    var res  = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var data = await res.json();
+    const res  = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
     if (data.error) throw new Error(data.error);
-
-    // Apply prices
-    ['EURUSD','GBPUSD','DXY','XAUUSD'].forEach(function(sym) {
+    ['EURUSD','GBPUSD','DXY','XAUUSD'].forEach(sym => {
       if (!data[sym]) return;
-      var prev = _prices[sym] ? _prices[sym].price : null;
-      var price = parseFloat(data[sym]);
+      const prev  = _prices[sym]?.price ?? null;
+      const price = parseFloat(data[sym]);
       if (isNaN(price)) return;
       _prices[sym] = {
-        price:     price,
-        change:    prev !== null ? +(price - prev).toFixed(6) : 0,
-        changePct: prev !== null ? +((price - prev) / prev * 100).toFixed(4) : 0,
-        prev:      prev,
-        time:      Date.now(),
+        price, prev,
+        change:    prev !== null ? +(price-prev).toFixed(6) : 0,
+        changePct: prev !== null ? +((price-prev)/prev*100).toFixed(4) : 0,
+        time: Date.now(),
       };
     });
-
     updateTickerUI();
     updateMacroPrices();
     checkAlerts();
-
-    var dot = document.getElementById('ticker-dot');
-    var txt = document.getElementById('ticker-status-text');
+    const dot = document.getElementById('ticker-dot');
+    const txt = document.getElementById('ticker-status-text');
     if (dot) dot.className = 'ticker-dot';
-    if (txt) {
-      var srcLabel = data.source === 'twelvedata' ? 'Twelve Data · Live' : 'Rate feed · Hourly';
-      txt.textContent = srcLabel + ' · ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    }
-    console.log('[Prices] Updated from', data.source || source, '| EURUSD:', _prices.EURUSD ? _prices.EURUSD.price : 'N/A');
-
+    if (txt) txt.textContent = (data.source==='twelvedata' ? 'Twelve Data · Live' : 'Rate feed · Hourly')
+      + ' · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    console.log('[Prices] '+data.source+' | EUR:',_prices.EURUSD?.price,'XAU:',_prices.XAUUSD?.price);
   } catch(e) {
-    console.warn('[Prices] Fetch failed:', e.message);
-    var dot2 = document.getElementById('ticker-dot');
-    var txt2 = document.getElementById('ticker-status-text');
-    if (dot2) dot2.className = 'ticker-dot stale';
-    if (txt2) txt2.textContent = 'Prices paused · Retrying...';
+    console.warn('[Prices] Failed:', e.message);
+    const dot = document.getElementById('ticker-dot');
+    const txt = document.getElementById('ticker-status-text');
+    if (dot) dot.className = 'ticker-dot stale';
+    if (txt) txt.textContent = 'Prices paused · Retrying...';
   }
 }
 
-function setPriceData(sym, price, change) {
-  var prev = _prices[sym] ? _prices[sym].price : null;
-  _prices[sym] = { price: price, change: change, changePct: 0, prev: prev, time: Date.now() };
-}
-
-function round(v, d) {
-  var factor = Math.pow(10, d);
-  return Math.round(v * factor) / factor;
-}
+function round(v,d) { return Math.round(v*Math.pow(10,d))/Math.pow(10,d); }
 
 function updateTickerUI() {
-  var pairs = {
-    EURUSD: { label:'EUR/USD', dec:5 },
-    GBPUSD: { label:'GBP/USD', dec:5 },
-    DXY:    { label:'DXY',    dec:3 },
-    XAUUSD: { label:'XAU/USD', dec:2 },
-  };
-  Object.keys(pairs).forEach(function(sym) {
-    var d   = _prices[sym];
-    var cfg = pairs[sym];
-    if (!d) return;
-    var prEl = document.getElementById('tick-price-' + sym);
-    var cgEl = document.getElementById('tick-chg-'   + sym);
-    if (!prEl || !cgEl) return;
-    var isUp  = d.change >= 0;
-    var clr   = isUp ? 'var(--green)' : 'var(--red)';
-    var arrow = isUp ? '▲' : '▼';
-    // Flash color on change
+  const pairs = {EURUSD:{dec:5},GBPUSD:{dec:5},DXY:{dec:3},XAUUSD:{dec:2}};
+  Object.entries(pairs).forEach(([sym,cfg]) => {
+    const d   = _prices[sym]; if (!d) return;
+    const prEl = document.getElementById('tick-price-'+sym);
+    const cgEl = document.getElementById('tick-chg-'+sym);
+    if (!prEl||!cgEl) return;
+    const up  = d.change >= 0;
+    const clr = up ? 'var(--green)' : 'var(--red)';
     if (d.prev !== null && d.prev !== d.price) {
-      prEl.style.transition = 'color 0s';
-      prEl.style.color = clr;
-      setTimeout(function(){ prEl.style.color = 'var(--text)'; prEl.style.transition = 'color 1.5s'; }, 800);
+      prEl.style.transition='color 0s'; prEl.style.color=clr;
+      setTimeout(()=>{prEl.style.color='var(--text)';prEl.style.transition='color 1.5s';},800);
     }
     prEl.textContent = d.price.toFixed(cfg.dec);
-    cgEl.textContent = arrow + ' ' + Math.abs(d.change).toFixed(cfg.dec) + ' (' + Math.abs(d.changePct).toFixed(2) + '%)';
+    cgEl.textContent = (up?'▲':'▼')+' '+Math.abs(d.change).toFixed(cfg.dec)+' ('+Math.abs(d.changePct).toFixed(2)+'%)';
     cgEl.style.color = clr;
   });
+}
+
+function updateMacroPrices() {
+  const s = (id,v,c) => { const e=document.getElementById(id); if(e){e.textContent=v;if(c)e.style.color=c;} };
+  if (_prices.DXY) {
+    const up=_prices.DXY.change>=0;
+    s('mk-dxy-val',_prices.DXY.price.toFixed(3), up?'var(--red)':'var(--green)');
+    s('mk-dxy-sub', up?'⬆ USD Strengthening':'⬇ USD Weakening');
+    s('usd-dxy-live',_prices.DXY.price.toFixed(3), up?'var(--red)':'var(--green)');
+  }
+  if (_prices.EURUSD) s('eurusd-live-price',_prices.EURUSD.price.toFixed(5),_prices.EURUSD.change>=0?'var(--green)':'var(--red)');
+  if (_prices.GBPUSD) s('gbp-live-price',_prices.GBPUSD.price.toFixed(5),_prices.GBPUSD.change>=0?'var(--green)':'var(--red)');
+  if (_prices.XAUUSD) s('gold-live-price','$'+_prices.XAUUSD.price.toFixed(2),'var(--amber)');
 }
 
 function startPriceMonitor() {
   fetchPrices();
   if (_priceInterval) clearInterval(_priceInterval);
-
-  var hasTD    = TWELVE_DATA_KEY && TWELVE_DATA_KEY !== 'PASTE_TWELVE_DATA_KEY_HERE';
-  // 800 req/day ÷ 16hr trading day = 50 req/hr = 1 req per 72s
-  // Use 120s to stay well within limit and leave room for FRED calls
-  var interval = hasTD ? 120000 : 300000;
-  _priceInterval = setInterval(fetchPrices, interval);
-
-  console.log('[Prices] Monitor started · Source:', hasTD ? 'Twelve Data (2min)' : 'exchangerate-api (5min)');
-}
-
-
-
-
-function getWeekKey(offset = 0) {
-  const now = new Date();
-  const day = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
-  return `pb_${monday.getFullYear()}_${monday.getMonth()}_${monday.getDate()}`;
-}
-
-function getWeekLabel(offset = 0) {
-  const now = new Date();
-  const day = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
-  const fmt = (d) => d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
-  if (offset === 0) return `This Week · ${fmt(monday)} – ${fmt(friday)}`;
-  if (offset === -1) return `Last Week · ${fmt(monday)} – ${fmt(friday)}`;
-  if (offset === 1) return `Next Week · ${fmt(monday)} – ${fmt(friday)}`;
-  return `${fmt(monday)} – ${fmt(friday)}`;
-}
-
-function pbNav(dir) {
-  pbWeekOffset += dir;
-  loadPlaybook();
+  const hasTD = TWELVE_DATA_KEY && TWELVE_DATA_KEY !== 'PASTE_TWELVE_DATA_KEY_HERE';
+  _priceInterval = setInterval(fetchPrices, hasTD ? 120000 : 300000);
+  console.log('[Prices] Monitor · Source:', hasTD ? 'Twelve Data (2min)' : 'exchangerate-api (5min)');
 }
 
 // ============================================================
-// Boot
+// PRICE ALERTS
 // ============================================================
-// ── MACRO DATA LOADER — ForexFactory + current 2025 values ──
-// ============================================================
-// MACRO DATA ENGINE — FRED API + World Bank + ForexFactory
-// ============================================================
+function parseAlertLevels() {
+  _alertLevels = {};
+  const map = {EURUSD:'pb-eur',GBPUSD:'pb-gbp',DXY:'pb-dxy2',XAUUSD:'pb-xau'};
+  Object.entries(map).forEach(([sym,id]) => {
+    const el = document.getElementById(id);
+    if (!el||!el.value) return;
+    const nums = el.value.match(/\d{1,5}\.?\d{0,5}/g);
+    if (nums) _alertLevels[sym] = nums.map(parseFloat).filter(n=>n>0);
+  });
+}
 
-// FRED Series IDs for key indicators
-var FRED_SERIES = {
-  FED_RATE:  'FEDFUNDS',        // Effective Federal Funds Rate
-  CPI:       'CPIAUCSL',        // CPI All Urban Consumers
-  CPI_YOY:   'CPIAUCSL',        // same, we compute YoY
-  NFP:       'PAYEMS',          // Nonfarm Payrolls
-  UNEMP:     'UNRATE',          // Unemployment Rate
-  GDP:       'A191RL1Q225SBEA', // Real GDP Growth Rate QoQ
-  CORE_CPI:  'CPILFESL',        // Core CPI (ex food/energy)
-  PCE:       'PCEPI',           // PCE Price Index (Fed's preferred)
-  RETAIL:    'RSXFS',           // Retail Sales
-  ISM_MFG:   'NAPM',            // ISM Manufacturing PMI
-};
-
-var _macroData  = {};
-var _macroReady = false;
-
-async function loadMacroData() {
-  // 1. Load from cache first (instant display)
-  try {
-    var cached = JSON.parse(localStorage.getItem('macro_v2') || '{}');
-    if (cached.ts && Date.now() - cached.ts < 3600000) { // 1hr cache
-      _macroData = cached;
-      _macroReady = true;
-      renderMacro();
-      console.log('[Macro] Loaded from cache (' + Math.round((Date.now()-cached.ts)/60000) + 'min old)');
-    }
-  } catch(e) {}
-
-  // 2. Fetch fresh data
-  await Promise.allSettled([
-    fetchFREDData(),
-    fetchWorldBankRates(),
-    fetchFFNews(),
-  ]).then(function(results) {
-    results.forEach(function(r, i) {
-      if (r.status === 'rejected') console.warn('[Macro] Source ' + i + ' failed:', r.reason?.message);
+function checkAlerts() {
+  if (!Object.keys(_alertLevels).length) return;
+  const ac = document.getElementById('alert-banners');
+  if (!ac) return;
+  Object.entries(_alertLevels).forEach(([sym,levels]) => {
+    const price = _prices[sym]?.price;
+    if (!price) return;
+    levels.forEach(level => {
+      const dist = Math.abs(price-level)/level*100;
+      const key  = sym+':'+level;
+      const type = dist<=0.15 ? 'hit' : dist<=0.40 ? 'near' : null;
+      if (!type) return;
+      const fkey = key+':'+type;
+      if (_firedAlerts.has(fkey)) return;
+      _firedAlerts.add(fkey);
+      setTimeout(()=>_firedAlerts.delete(fkey), type==='hit'?1800000:900000);
+      if (type==='hit' && _notifGranted) {
+        try { new Notification('🚨 '+sym+' HIT level '+level,{body:'Price: '+price.toFixed(5)}); } catch(e){}
+      }
+      if (!document.getElementById('al-'+fkey.replace(/[:.]/g,'_'))) {
+        const div = document.createElement('div');
+        div.id = 'al-'+fkey.replace(/[:.]/g,'_');
+        div.className = 'alert-banner '+(type==='hit'?'alert-hit':'alert-near');
+        div.innerHTML = (type==='hit'?'🚨 ':'⚠ ')+'<strong>'+sym+'</strong> '+(type==='hit'?'HIT':'approaching')+' level <strong>'+level+'</strong> · '+price.toFixed(sym==='XAUUSD'?2:5)+' <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer">✕</button>';
+        ac.appendChild(div);
+      }
     });
-    _macroReady = true;
-    _macroData.ts = Date.now();
-    try { localStorage.setItem('macro_v2', JSON.stringify(_macroData)); } catch(e) {}
+  });
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+async function requestNotifications() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') { _notifGranted=true; return; }
+  if (Notification.permission !== 'denied') {
+    try { const p=await Notification.requestPermission(); _notifGranted=p==='granted'; }
+    catch(e){ _notifGranted=false; }
+  }
+}
+function requestNotificationsManual() {
+  requestNotifications().then(() => {
+    const btn = document.getElementById('notif-btn');
+    if (btn) btn.textContent = _notifGranted ? '🔔 Alerts On' : '🔕 Blocked';
+    if (_notifGranted) try { new Notification('✅ Alerts enabled',{body:'You will be notified when price hits your levels.'}); } catch(e){}
+  });
+}
+
+// ============================================================
+// MACRO DATA — FRED + ForexFactory
+// ============================================================
+async function loadMacroData() {
+  try {
+    const cached = JSON.parse(localStorage.getItem('macro_v2')||'{}');
+    if (cached.ts && Date.now()-cached.ts < 3600000) {
+      _macroData=cached; _macroReady=true; renderMacro();
+      console.log('[Macro] Cache ('+ Math.round((Date.now()-cached.ts)/60000)+'min old)');
+    }
+  } catch(e){}
+  await Promise.allSettled([fetchFREDData(), fetchWorldBankRates(), fetchFFNews()]).then(() => {
+    _macroReady=true; _macroData.ts=Date.now();
+    try { localStorage.setItem('macro_v2',JSON.stringify(_macroData)); } catch(e){}
     renderMacro();
     console.log('[Macro] All sources loaded. Data:', Object.keys(_macroData).join(', '));
   });
 }
 
 async function fetchFREDData() {
-  if (!FRED_API_KEY) {
-    console.log('[Macro] No FRED key — using World Bank + cached data only');
-    return;
+  if (!FRED_API_KEY || FRED_API_KEY==='PASTE_FRED_KEY_HERE') {
+    console.log('[Macro] No FRED key'); return;
   }
-  var series = ['FEDFUNDS','CPIAUCSL','PAYEMS','UNRATE','A191RL1Q225SBEA','CPILFESL'];
-  var fetches = series.map(function(id) {
-    var url = WORKER_URL + '?action=fred&series=' + id + '&fredkey=' + encodeURIComponent(FRED_API_KEY);
-    return fetch(url, { signal: AbortSignal.timeout(10000) })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var obs = data.observations || [];
+  const series = ['FEDFUNDS','CPIAUCSL','PAYEMS','UNRATE','A191RL1Q225SBEA','CPILFESL'];
+  await Promise.allSettled(series.map(id =>
+    fetch(`${WORKER_URL}?action=fred&series=${id}&fredkey=${encodeURIComponent(FRED_API_KEY)}`,{signal:AbortSignal.timeout(10000)})
+      .then(r=>r.json()).then(data => {
+        const obs = (data.observations||[]).filter(o=>o.value!='.');
         if (!obs.length) return;
-        // Get latest non-null value
-        var latest = null;
-        for (var i = obs.length - 1; i >= 0; i--) {
-          if (obs[i].value !== '.' && obs[i].value !== '') {
-            latest = obs[i];
-            break;
-          }
-        }
-        if (!latest) return;
-        var prev = obs.length > 1 ? obs[obs.length - 2] : null;
+        const latest = obs[obs.length-1];
+        const prev   = obs[obs.length-2];
         _macroData[id] = {
-          value:    parseFloat(latest.value),
-          date:     latest.date,
-          prev:     prev ? parseFloat(prev.value) : null,
-          change:   prev ? parseFloat(latest.value) - parseFloat(prev.value) : 0,
-          raw:      obs.slice(-13), // last 13 months for chart
+          value: parseFloat(latest.value), date: latest.date,
+          prev:  prev ? parseFloat(prev.value) : null,
+          change: prev ? parseFloat(latest.value)-parseFloat(prev.value) : 0,
+          raw:   obs.slice(-25),
         };
-      })
-      .catch(function(e) { console.warn('[FRED]', id, e.message); });
-  });
-  await Promise.allSettled(fetches);
+      }).catch(e=>console.warn('[FRED]',id,e.message))
+  ));
 }
 
 async function fetchWorldBankRates() {
-  // ECB rate and UK rate from World Bank (no key needed)
-  var endpoints = [
-    { key:'ECB_RATE', url:'https://api.worldbank.org/v2/country/XC/indicator/FR.INR.RINR?format=json&mrv=1' },
-    { key:'UK_RATE',  url:'https://api.worldbank.org/v2/country/GB/indicator/FR.INR.RINR?format=json&mrv=1' },
-  ];
-  for (var i = 0; i < endpoints.length; i++) {
+  for (const {key,url} of [
+    {key:'ECB_RATE',url:'https://api.worldbank.org/v2/country/XC/indicator/FR.INR.RINR?format=json&mrv=1'},
+    {key:'UK_RATE', url:'https://api.worldbank.org/v2/country/GB/indicator/FR.INR.RINR?format=json&mrv=1'},
+  ]) {
     try {
-      var proxied = WORKER_URL + '?action=proxy&url=' + encodeURIComponent(endpoints[i].url);
-      var res = await fetch(proxied, { signal: AbortSignal.timeout(8000) });
-      var data = await res.json();
-      var d = data[1] && data[1][0];
-      if (d && d.value) _macroData[endpoints[i].key] = { value: parseFloat(d.value.toFixed(2)), date: d.date };
-    } catch(e) { console.warn('[WorldBank]', endpoints[i].key, e.message); }
+      const res  = await fetch(`${WORKER_URL}?action=proxy&url=${encodeURIComponent(url)}`,{signal:AbortSignal.timeout(8000)});
+      const data = await res.json();
+      const d    = data[1]?.[0];
+      if (d?.value) _macroData[key]={value:parseFloat(d.value.toFixed(2)),date:d.date};
+    } catch(e){ console.warn('[WorldBank]',key,e.message); }
   }
-  // Use hard fallback values if World Bank fails (well-known current rates)
-  if (!_macroData.ECB_RATE) _macroData.ECB_RATE = { value: 3.15, date: 'Jan 2025' };
-  if (!_macroData.UK_RATE)  _macroData.UK_RATE  = { value: 4.75, date: 'Feb 2025' };
+  if (!_macroData.ECB_RATE) _macroData.ECB_RATE={value:3.15,date:'Jan 2025'};
+  if (!_macroData.UK_RATE)  _macroData.UK_RATE ={value:4.75,date:'Feb 2025'};
 }
 
 async function fetchFFNews() {
   try {
-    var res = await fetch(WORKER_URL + '?action=news', { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error('Worker news ' + res.status);
-    var events = await res.json();
+    const res    = await fetch(`${WORKER_URL}?action=news`,{signal:AbortSignal.timeout(10000)});
+    const events = await res.json();
     if (!Array.isArray(events)) throw new Error('Bad format');
     _macroData.ff_events = events;
     _macroData.ff_ts     = Date.now();
     console.log('[Macro] FF events:', events.length);
-
-    // Extract latest actual values from FF data
-    events.filter(function(e){ return e.actual; }).forEach(function(e) {
-      var t = (e.title || '').toLowerCase();
-      if (/non-farm payrolls/i.test(t) && e.country === 'USD') {
-        _macroData.FF_NFP = { value: e.actual, date: e.date, forecast: e.forecast, prev: e.previous };
-      }
-      if (/consumer price index.*year|cpi.*y\/y/i.test(t) && e.country === 'USD') {
-        _macroData.FF_CPI = { value: e.actual, date: e.date, forecast: e.forecast, prev: e.previous };
-      }
-      if (/interest rate decision/i.test(t) && e.country === 'USD') {
-        _macroData.FF_FED = { value: e.actual, date: e.date };
-      }
-      if (/interest rate decision/i.test(t) && e.country === 'EUR') {
-        _macroData.FF_ECB = { value: e.actual, date: e.date };
-      }
-      if (/interest rate decision/i.test(t) && e.country === 'GBP') {
-        _macroData.FF_BOE = { value: e.actual, date: e.date };
-      }
+    events.filter(e=>e.actual).forEach(e => {
+      const t = (e.title||'').toLowerCase();
+      if (/non-farm payrolls/i.test(t)&&e.country==='USD') _macroData.FF_NFP={value:e.actual,date:e.date,forecast:e.forecast,prev:e.previous};
+      if (/cpi.*y\/y|consumer price.*year/i.test(t)&&e.country==='USD') _macroData.FF_CPI={value:e.actual,date:e.date};
+      if (/interest rate decision/i.test(t)&&e.country==='USD') _macroData.FF_FED={value:e.actual,date:e.date};
+      if (/interest rate decision/i.test(t)&&e.country==='EUR') _macroData.FF_ECB={value:e.actual,date:e.date};
+      if (/interest rate decision/i.test(t)&&e.country==='GBP') _macroData.FF_BOE={value:e.actual,date:e.date};
     });
-  } catch(e) { console.warn('[Macro] FF news failed:', e.message); }
-}
-
-function getFREDVal(id, decimals, suffix) {
-  var d = _macroData[id];
-  if (!d) return null;
-  return { val: d.value.toFixed(decimals || 2) + (suffix||''), date: d.date, change: d.change, raw: d.raw };
+  } catch(e){ console.warn('[Macro] FF news failed:',e.message); }
 }
 
 function renderMacro() {
-  var D = _macroData;
-  function el(id) { return document.getElementById(id); }
-  function setV(id, val, color) { var e = el(id); if(e){ e.textContent = val; if(color) e.style.color = color; } }
-  function setSub(id, val) { var e = el(id); if(e) e.textContent = val; }
-  function fmtDate(d) {
-    if (!d) return '';
-    try { return new Date(d).toLocaleDateString('en-US',{month:'short',year:'numeric'}); }
-    catch(e) { return d; }
-  }
+  const D = _macroData;
+  const s = (id,v,c) => { const e=document.getElementById(id); if(e){e.textContent=v;if(c)e.style.color=c;} };
+  const fmtD = d => { try{return new Date(d).toLocaleDateString('en-US',{month:'short',year:'numeric'});}catch(e){return d||'';} };
+  const fmtV = (d, decimals=2, suffix='%') => {
+    if (!d) return null;
+    return typeof d.value==='number' ? d.value.toFixed(decimals)+suffix : d.value;
+  };
 
-  // ── Fed Rate ─────────────────────────────────────────────
-  var fed = D.FEDFUNDS || D.FF_FED;
-  if (fed) {
-    var fedVal = typeof fed.value === 'number' ? fed.value.toFixed(2) + '%' : fed.value;
-    setV('live-fed-rate', fedVal, 'var(--amber)');
-    setSub('live-fed-rate-sub', 'FOMC · ' + fmtDate(fed.date));
-  }
-
-  // ── CPI ──────────────────────────────────────────────────
-  var cpi = D.FF_CPI || D.CPIAUCSL;
+  const fed = D.FEDFUNDS||D.FF_FED;
+  if (fed) { s('live-fed-rate',fmtV(fed),'var(--amber)'); s('live-fed-rate-sub','FOMC · '+fmtD(fed.date)); }
+  const cpi = D.FF_CPI||D.CPIAUCSL;
   if (cpi) {
-    var cpiVal = cpi.value;
-    // FF gives string like "2.9%", FRED gives raw number
-    if (typeof cpiVal === 'number') cpiVal = cpiVal.toFixed(1) + '%';
-    var cpiNum = parseFloat(cpiVal);
-    setV('live-cpi', cpiVal, cpiNum > 3 ? 'var(--red)' : cpiNum > 2 ? 'var(--amber)' : 'var(--green)');
-    setSub('live-cpi-sub', fmtDate(cpi.date) + ' · Target: 2.0%');
+    const v = fmtV(cpi,1); const n=parseFloat(v);
+    s('live-cpi',v, n>3?'var(--red)':n>2?'var(--amber)':'var(--green)');
+    s('live-cpi-sub', fmtD(cpi.date)+' · Target: 2.0%');
   }
-
-  // ── NFP ──────────────────────────────────────────────────
-  var nfp = D.FF_NFP || D.PAYEMS;
+  const nfp = D.FF_NFP||D.PAYEMS;
   if (nfp) {
-    var nfpVal = nfp.value;
-    if (typeof nfpVal === 'number') {
-      // FRED gives total employed in thousands — compute MoM change
-      nfpVal = (nfp.change >= 0 ? '+' : '') + Math.round(nfp.change) + 'K';
-    }
-    var nfpNum = parseFloat(nfpVal.replace(/[^0-9.-]/g,''));
-    setV('live-nfp', nfpVal, nfpNum > 150 ? 'var(--green)' : nfpNum < 50 ? 'var(--red)' : 'var(--amber)');
-    setSub('live-nfp-sub', fmtDate(nfp.date) + (nfp.forecast ? ' · F: ' + nfp.forecast : ''));
+    let v = typeof nfp.value==='number' ? (nfp.change>=0?'+':'')+Math.round(nfp.change)+'K' : nfp.value;
+    const n = parseFloat(String(v).replace(/[^0-9.-]/g,''));
+    s('live-nfp',v, n>150?'var(--green)':n<50?'var(--red)':'var(--amber)');
+    s('live-nfp-sub', fmtD(nfp.date)+(nfp.forecast?' · F:'+nfp.forecast:''));
   }
+  if (D.UNRATE) { s('live-unemp',D.UNRATE.value.toFixed(1)+'%',D.UNRATE.value<4?'var(--green)':D.UNRATE.value>5?'var(--red)':'var(--amber)'); s('live-unemp-sub',fmtD(D.UNRATE.date)); }
+  if (D.A191RL1Q225SBEA) { const v=(D.A191RL1Q225SBEA.value>=0?'+':'')+D.A191RL1Q225SBEA.value.toFixed(1)+'%'; s('live-gdp',v,D.A191RL1Q225SBEA.value>2?'var(--green)':D.A191RL1Q225SBEA.value<0?'var(--red)':'var(--amber)'); s('live-gdp-sub',fmtD(D.A191RL1Q225SBEA.date)+' QoQ'); }
+  const ecb = D.FF_ECB||D.ECB_RATE; if (ecb) s('live-ecb-rate',fmtV(ecb),'var(--blue)');
+  const boe = D.FF_BOE||D.UK_RATE;  if (boe) s('live-boe-rate',fmtV(boe),'var(--purple)');
+  if (D.CPILFESL) s('live-core-cpi',D.CPILFESL.value.toFixed(1)+'%',D.CPILFESL.value>3?'var(--red)':'var(--amber)');
 
-  // ── Unemployment ─────────────────────────────────────────
-  var un = D.UNRATE;
-  if (un) {
-    setV('live-unemp', un.value.toFixed(1) + '%', un.value < 4 ? 'var(--green)' : un.value > 5 ? 'var(--red)' : 'var(--amber)');
-    setSub('live-unemp-sub', fmtDate(un.date));
-  }
+  const lu = document.getElementById('macro-last-update');
+  if (lu) lu.textContent = 'Live · '+(FRED_API_KEY&&FRED_API_KEY!=='PASTE_FRED_KEY_HERE'?'FRED + ':'')+'ForexFactory · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 
-  // ── GDP ──────────────────────────────────────────────────
-  var gdp = D.A191RL1Q225SBEA;
-  if (gdp) {
-    var gdpVal = (gdp.value >= 0 ? '+' : '') + gdp.value.toFixed(1) + '%';
-    setV('live-gdp', gdpVal, gdp.value > 2 ? 'var(--green)' : gdp.value < 0 ? 'var(--red)' : 'var(--amber)');
-    setSub('live-gdp-sub', fmtDate(gdp.date) + ' QoQ');
-  }
-
-  // ── ECB Rate ─────────────────────────────────────────────
-  var ecb = D.FF_ECB || D.ECB_RATE;
-  if (ecb) {
-    var ecbVal = typeof ecb.value === 'number' ? ecb.value.toFixed(2) + '%' : ecb.value;
-    setV('live-ecb-rate', ecbVal, 'var(--blue)');
-  }
-
-  // ── BoE Rate ─────────────────────────────────────────────
-  var boe = D.FF_BOE || D.UK_RATE;
-  if (boe) {
-    var boeVal = typeof boe.value === 'number' ? boe.value.toFixed(2) + '%' : boe.value;
-    setV('live-boe-rate', boeVal, 'var(--purple)');
-  }
-
-  // ── Core CPI ─────────────────────────────────────────────
-  var core = D.CPILFESL;
-  if (core) {
-    setV('live-core-cpi', core.value.toFixed(1) + '%', core.value > 3 ? 'var(--red)' : 'var(--amber)');
-  }
-
-  // ── Last update ──────────────────────────────────────────
-  var luEl = el('macro-last-update');
-  if (luEl) {
-    var src = FRED_API_KEY ? 'FRED + ForexFactory' : 'ForexFactory';
-    luEl.textContent = 'Live · ' + src + ' · ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-  }
-
-  // ── Upcoming events banner ───────────────────────────────
   renderMacroEventsBanner();
-
-  // ── Draw mini sparkline charts ───────────────────────────
   renderMacroCharts();
 }
 
 function renderMacroEventsBanner() {
-  var bannerEl = document.getElementById('macro-events-banner');
-  if (!bannerEl || !_macroData.ff_events) return;
-  var upcoming = _macroData.ff_events.filter(function(e) {
-    return e.impact === 'High' && new Date(e.date) > new Date();
-  }).slice(0, 6);
-  if (!upcoming.length) { bannerEl.style.display = 'none'; return; }
-  bannerEl.style.display = 'block';
-  var inner = document.getElementById('macro-events-banner-inner');
-  if (!inner) return;
-  inner.innerHTML = upcoming.map(function(e) {
-    var d  = new Date(e.date);
-    var dy = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-    var tm = isNaN(d) ? '' : d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    return '<div class="meb-item">'
-      + '<span style="color:var(--red);font-weight:700;min-width:28px">' + (e.country||'') + '</span>'
-      + '<span style="color:var(--text);flex:1">' + (e.title||'').slice(0,45) + '</span>'
-      + '<span style="color:var(--muted2);font-size:.54rem">' + dy + ' ' + tm + '</span>'
-      + (e.forecast ? '<span style="color:var(--green);font-size:.54rem">F:' + e.forecast + '</span>' : '')
-      + (e.previous ? '<span style="color:var(--muted2);font-size:.54rem">P:' + e.previous + '</span>' : '')
-      + '</div>';
+  const b = document.getElementById('macro-events-banner');
+  const i = document.getElementById('macro-events-banner-inner');
+  if (!b||!i||!_macroData.ff_events) return;
+  const up = _macroData.ff_events.filter(e=>e.impact==='High'&&new Date(e.date)>new Date()).slice(0,6);
+  if (!up.length) { b.style.display='none'; return; }
+  b.style.display='block';
+  i.innerHTML = up.map(e => {
+    const d=new Date(e.date);
+    const dy=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const tm=isNaN(d)?'':d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="meb-item"><span style="color:var(--red);font-weight:700;min-width:28px">${e.country||''}</span><span style="flex:1">${(e.title||'').slice(0,45)}</span><span style="color:var(--muted2);font-size:.54rem">${dy} ${tm}</span>${e.forecast?`<span style="color:var(--green);font-size:.52rem">F:${e.forecast}</span>`:''}</div>`;
   }).join('');
 }
 
 function renderMacroCharts() {
-  // Mini sparkline for CPI trend (last 12 months from FRED)
-  var cpiData = _macroData.CPIAUCSL;
-  if (cpiData && cpiData.raw && cpiData.raw.length > 1) {
-    // Compute YoY for each month
-    var raw = cpiData.raw;
-    var yoyData = [];
-    for (var i = 12; i < raw.length; i++) {
-      if (raw[i].value !== '.' && raw[i-12] && raw[i-12].value !== '.') {
-        var yoy = ((parseFloat(raw[i].value) - parseFloat(raw[i-12].value)) / parseFloat(raw[i-12].value) * 100);
-        yoyData.push({ v: parseFloat(yoy.toFixed(2)), d: raw[i].date });
+  function drawSparkline(id, data, color, target) {
+    const c=document.getElementById(id); if(!c||!data?.length) return;
+    const ctx=c.getContext('2d'),W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+    const vals=data.map(d=>d.v), mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1;
+    const pad=8,cW=W-pad*2,cH=H-pad*2,bW=cW/vals.length-1;
+    if (target!==undefined) {
+      const ty=pad+cH-((target-mn)/rng*cH);
+      ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(pad,ty);ctx.lineTo(W-pad,ty);ctx.stroke();ctx.setLineDash([]);
+    }
+    vals.forEach((v,i) => {
+      const x=pad+i*(cW/vals.length),bH=Math.max((v-mn)/rng*cH,2),y=pad+cH-bH;
+      ctx.fillStyle=v>=0?color:'var(--red)';ctx.globalAlpha=0.8;
+      ctx.fillRect(x,y,Math.max(bW,2),bH);
+    });
+    ctx.globalAlpha=1;
+  }
+
+  const cpiRaw = _macroData.CPIAUCSL?.raw;
+  if (cpiRaw?.length>12) {
+    const yoy=[];
+    for(let i=12;i<cpiRaw.length;i++){
+      if(cpiRaw[i].value!='.'&&cpiRaw[i-12]?.value!='.'){
+        yoy.push({v:parseFloat(((parseFloat(cpiRaw[i].value)-parseFloat(cpiRaw[i-12].value))/parseFloat(cpiRaw[i-12].value)*100).toFixed(2))});
       }
     }
-    drawSparkline('macro-cpi-chart', yoyData.slice(-12), 'var(--amber)', 2.0);
+    drawSparkline('macro-cpi-chart',yoy.slice(-12),'var(--amber)',2.0);
   }
-
-  // Mini sparkline for NFP (MoM change)
-  var nfpData = _macroData.PAYEMS;
-  if (nfpData && nfpData.raw && nfpData.raw.length > 1) {
-    var raw2 = nfpData.raw;
-    var moms = [];
-    for (var j = 1; j < raw2.length; j++) {
-      if (raw2[j].value !== '.' && raw2[j-1].value !== '.') {
-        var mom = parseFloat(raw2[j].value) - parseFloat(raw2[j-1].value);
-        moms.push({ v: parseFloat(mom.toFixed(0)), d: raw2[j].date });
-      }
+  const nfpRaw = _macroData.PAYEMS?.raw;
+  if (nfpRaw?.length>1) {
+    const moms=[];
+    for(let i=1;i<nfpRaw.length;i++){
+      if(nfpRaw[i].value!='.'&&nfpRaw[i-1].value!='.') moms.push({v:parseFloat(nfpRaw[i].value)-parseFloat(nfpRaw[i-1].value)});
     }
-    drawSparkline('macro-nfp-chart', moms.slice(-12), 'var(--green)', 150);
+    drawSparkline('macro-nfp-chart',moms.slice(-12),'var(--green)',150);
   }
 }
-
-function drawSparkline(canvasId, data, color, targetLine) {
-  var canvas = document.getElementById(canvasId);
-  if (!canvas || !data || !data.length) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-  var vals = data.map(function(d){ return d.v; });
-  var mn   = Math.min.apply(null, vals);
-  var mx   = Math.max.apply(null, vals);
-  var rng  = mx - mn || 1;
-  var pad  = 8;
-  var cW   = W - pad*2;
-  var cH   = H - pad*2;
-  var bW   = cW / vals.length - 1;
-
-  // Target line
-  if (targetLine !== undefined) {
-    var ty = pad + cH - ((targetLine - mn) / rng * cH);
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(pad, ty); ctx.lineTo(W-pad, ty); ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // Bars
-  vals.forEach(function(v, i) {
-    var x = pad + i * (cW / vals.length);
-    var bH = Math.max((v - mn) / rng * cH, 2);
-    var y  = pad + cH - bH;
-    var clr = v >= 0 ? color : 'var(--red)';
-    ctx.fillStyle = clr;
-    ctx.globalAlpha = 0.8;
-    ctx.fillRect(x, y, Math.max(bW, 2), bH);
-  });
-  ctx.globalAlpha = 1;
-}
-
-
 
 function setMacroTab(name) {
   ['overview','usd','eur','gbp','gold'].forEach(t => {
-    var panel = document.getElementById('macro-' + t);
-    var btn   = document.getElementById('mt-' + t);
-    if (panel) panel.style.display = t === name ? 'block' : 'none';
-    if (btn)   btn.classList.toggle('active', t === name);
+    const p=document.getElementById('macro-'+t); const b=document.getElementById('mt-'+t);
+    if(p) p.style.display=t===name?'block':'none';
+    if(b) b.classList.toggle('active',t===name);
   });
 }
 
-
-function updateMacroPrices() {
-  function setEl(id, val, clr) { var e = document.getElementById(id); if(e){ e.textContent = val; if(clr) e.style.color = clr; } }
-  if (_prices.DXY) {
-    var dxy   = _prices.DXY;
-    var isUp  = (dxy.change || 0) >= 0;
-    var clrDXY = isUp ? 'var(--red)' : 'var(--green)'; // DXY up = bad for pairs
-    setEl('mk-dxy-val', dxy.price.toFixed(3), clrDXY);
-    setEl('mk-dxy-sub', isUp ? '⬆ USD Strengthening' : '⬇ USD Weakening');
-    setEl('usd-dxy-live', dxy.price.toFixed(3), clrDXY);
-  }
-  if (_prices.EURUSD) {
-    setEl('eurusd-live-price', _prices.EURUSD.price.toFixed(5), _prices.EURUSD.change >= 0 ? 'var(--green)' : 'var(--red)');
-  }
-  if (_prices.GBPUSD) {
-    setEl('gbp-live-price', _prices.GBPUSD.price.toFixed(5), _prices.GBPUSD.change >= 0 ? 'var(--green)' : 'var(--red)');
-  }
-  if (_prices.XAUUSD) {
-    setEl('gold-live-price', '$' + _prices.XAUUSD.price.toFixed(2), 'var(--amber)');
-  }
-}
-
-// updateMacroPrices is called directly from within updateTickerUI below
-
+// ============================================================
+// BOOT
+// ============================================================
 window.addEventListener('load', async () => {
   await loadPlaybook();
   loadNews();
@@ -3443,6 +3002,7 @@ window.addEventListener('load', async () => {
   if (!NOTION_TOKEN) showTokenScreen();
   else loadData();
 });
+
 </script>
 </body>
 </html>
