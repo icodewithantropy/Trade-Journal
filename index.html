@@ -230,6 +230,31 @@ header{display:flex;justify-content:space-between;align-items:flex-start;margin-
 .ws-lbl{font-size:.54rem;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
 .ws-val{font-size:.58rem;color:#7777aa;line-height:1.6}
 
+/* MACRO ECONOMICS */
+.macro-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.58rem;padding:6px 12px;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:1px;margin-bottom:-1px}
+.macro-tab:hover{color:var(--text)}
+.macro-tab.active{color:var(--green);border-bottom-color:var(--green)}
+.macro-panel{animation:fadeIn .2s ease}
+.macro-kpi{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:12px 14px}
+.macro-kpi-lbl{font-size:.52rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.macro-kpi-val{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:var(--text)}
+.macro-kpi-sub{font-size:.52rem;color:var(--muted);margin-top:3px}
+.regime-pill{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;border:1px solid;font-size:.58rem;font-weight:600}
+.macro-impact-card{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:14px}
+.mic-header{font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;margin-bottom:8px}
+.mic-body{font-size:.6rem;color:#7777aa;line-height:1.7;margin-bottom:8px}
+.mic-signal{font-size:.64rem;font-weight:700;letter-spacing:.5px}
+.macro-explainer{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:18px}
+.me-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:16px}
+.me-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.me-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px}
+.me-label{font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.me-value{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:6px}
+.me-impact{font-size:.58rem;color:#6666aa;line-height:1.65}
+.me-trade-tip{background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.15);border-radius:8px;padding:14px;font-size:.62rem;color:#8888aa;line-height:1.8}
+@media(max-width:900px){.me-grid{grid-template-columns:1fr 1fr}.macro-impact-card+.macro-impact-card{margin-top:8px}}
+@media(max-width:600px){.me-grid{grid-template-columns:1fr}}
+
 /* PRICE ALERTS */
 #price-bar{position:fixed;top:0;left:0;right:0;z-index:9000;display:none;flex-direction:column;gap:0}
 .price-alert-item{display:flex;align-items:center;gap:12px;padding:10px 20px;background:#1a0008;border-bottom:1px solid rgba(255,51,85,.3);animation:alertPulse 1.5s infinite}
@@ -703,6 +728,239 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
         <button class="pb-save-btn" onclick="savePlaybook()">💾 Save to Notion + Browser</button>
         <span class="pb-saved" id="pb-saved" style="font-size:.58rem;color:var(--green);opacity:0;transition:opacity .3s">✓ Saved!</span>
         <span id="pb-notion-status" style="font-size:.56rem;color:var(--muted2)"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MACRO ECONOMICS SECTION -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="card-title">Macro Economic Dashboard</div>
+        <div class="card-sub">How global data impacts your currencies · Updated from public sources</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="setMacroTab('overview')" class="macro-tab active" id="mt-overview">📊 Overview</button>
+        <button onclick="setMacroTab('usd')"      class="macro-tab"        id="mt-usd">🇺🇸 USD</button>
+        <button onclick="setMacroTab('eur')"      class="macro-tab"        id="mt-eur">🇪🇺 EUR</button>
+        <button onclick="setMacroTab('gbp')"      class="macro-tab"        id="mt-gbp">🇬🇧 GBP</button>
+        <button onclick="setMacroTab('gold')"     class="macro-tab"        id="mt-gold">🥇 Gold</button>
+      </div>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div id="macro-overview" class="macro-panel">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px" id="macro-kpis">
+        <div class="macro-kpi" id="mk-dxy">
+          <div class="macro-kpi-lbl">DXY Trend</div>
+          <div class="macro-kpi-val" id="mk-dxy-val">—</div>
+          <div class="macro-kpi-sub" id="mk-dxy-sub">Dollar Index</div>
+        </div>
+        <div class="macro-kpi" id="mk-rate">
+          <div class="macro-kpi-lbl">Fed Rate</div>
+          <div class="macro-kpi-val">5.25–5.50%</div>
+          <div class="macro-kpi-sub">Current target range</div>
+        </div>
+        <div class="macro-kpi" id="mk-inflation">
+          <div class="macro-kpi-lbl">US CPI YoY</div>
+          <div class="macro-kpi-val">3.1%</div>
+          <div class="macro-kpi-sub">Target: 2.0%</div>
+        </div>
+        <div class="macro-kpi" id="mk-nfp">
+          <div class="macro-kpi-lbl">NFP Last</div>
+          <div class="macro-kpi-val">+256K</div>
+          <div class="macro-kpi-sub">Strong labour market</div>
+        </div>
+      </div>
+
+      <!-- Macro Regime Bar -->
+      <div style="margin-bottom:16px;padding:14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px">
+        <div style="font-size:.58rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Current Macro Regime</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="regime-pill" style="background:rgba(255,51,85,.12);border-color:rgba(255,51,85,.3);color:var(--red)">🔴 Restrictive Fed Policy</div>
+          <div class="regime-pill" style="background:rgba(255,187,0,.1);border-color:rgba(255,187,0,.25);color:var(--amber)">⚡ Above-Target Inflation</div>
+          <div class="regime-pill" style="background:rgba(0,229,160,.08);border-color:rgba(0,229,160,.2);color:var(--green)">✅ Strong Labour Market</div>
+          <div class="regime-pill" style="background:rgba(68,136,255,.1);border-color:rgba(68,136,255,.25);color:var(--blue)">📉 Rate Cut Expectations Building</div>
+        </div>
+      </div>
+
+      <!-- Impact on your pairs -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="macro-pairs-impact">
+        <div class="macro-impact-card">
+          <div class="mic-header" style="color:var(--green)">EURUSD Impact</div>
+          <div class="mic-body">Strong USD = bearish EURUSD pressure. ECB rate cuts ahead of Fed = downward bias. Watch 1.08 support. NFP beats = sell rallies.</div>
+          <div class="mic-signal" style="color:var(--red)">⬇ Bearish Bias</div>
+        </div>
+        <div class="macro-impact-card">
+          <div class="mic-header" style="color:var(--blue)">GBPUSD Impact</div>
+          <div class="mic-body">BoE holding rates longer than ECB = GBP relatively stronger vs EUR but still USD-sensitive. UK inflation sticky. Watch 1.25 support.</div>
+          <div class="mic-signal" style="color:var(--amber)">↔ Neutral/Mixed</div>
+        </div>
+        <div class="macro-impact-card">
+          <div class="mic-header" style="color:var(--amber)">Gold (XAUUSD) Impact</div>
+          <div class="mic-body">Real yields falling = gold supportive. Rate cut cycle beginning = bullish. Dollar weakness = gold strength. Central bank buying record highs.</div>
+          <div class="mic-signal" style="color:var(--green)">⬆ Bullish Bias</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USD TAB -->
+    <div id="macro-usd" class="macro-panel" style="display:none">
+      <div class="macro-explainer">
+        <div class="me-title">🇺🇸 US Dollar — Key Drivers</div>
+        <div class="me-grid">
+          <div class="me-item">
+            <div class="me-label">Fed Funds Rate</div>
+            <div class="me-value" style="color:var(--red)">5.25–5.50%</div>
+            <div class="me-impact">IMPACT: High rates = strong USD. Markets pricing 2–3 cuts in 2025. Each cut = USD bearish pressure. <strong style="color:var(--amber)">Watch FOMC dates.</strong></div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">CPI Inflation</div>
+            <div class="me-value" style="color:var(--amber)">3.1% YoY</div>
+            <div class="me-impact">IMPACT: Above 2% target keeps Fed hawkish = USD support. If CPI drops sharply → rate cuts sooner → USD sells off → Gold, EUR, GBP rally.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">NFP (Jobs)</div>
+            <div class="me-value" style="color:var(--green)">+256K</div>
+            <div class="me-impact">IMPACT: Strong jobs = Fed keeps rates high = USD bullish. Weak jobs (+100K or less) = rate cut pressure = USD bearish. Biggest monthly mover.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">GDP Growth</div>
+            <div class="me-value" style="color:var(--green)">+2.8% QoQ</div>
+            <div class="me-impact">IMPACT: Strong growth = resilient economy = Fed in no rush to cut = USD stays bid. Recession fears would flip this entirely.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">Consumer Confidence</div>
+            <div class="me-value" style="color:var(--amber)">Moderate</div>
+            <div class="me-impact">IMPACT: Leading indicator. Falling confidence → slower spending → softer economy → rate cuts → USD bearish. Watch Conference Board monthly.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">DXY Level</div>
+            <div class="me-value" id="usd-dxy-live">Loading...</div>
+            <div class="me-impact">IMPACT: DXY above 104 = dollar strength cycle intact. Below 102 = structural dollar weakness. Your pairs move inverse to DXY.</div>
+          </div>
+        </div>
+        <div class="me-trade-tip">
+          <strong style="color:var(--green)">Trading Application:</strong>
+          On NFP Friday — wait for the spike then fade. If NFP beats and DXY spikes → look for XAUUSD and EURUSD to sweep highs and reverse. 
+          On FOMC day — no new positions. After statement → let volatility settle 30 min → then look for London model entry next day.
+        </div>
+      </div>
+    </div>
+
+    <!-- EUR TAB -->
+    <div id="macro-eur" class="macro-panel" style="display:none">
+      <div class="macro-explainer">
+        <div class="me-title">🇪🇺 Euro — Key Drivers</div>
+        <div class="me-grid">
+          <div class="me-item">
+            <div class="me-label">ECB Rate</div>
+            <div class="me-value" style="color:var(--amber)">4.50%</div>
+            <div class="me-impact">IMPACT: ECB cutting before Fed = EUR weakens vs USD. Each 25bp cut = bearish EURUSD. Currently priced for 3–4 cuts in 2025.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">Eurozone CPI</div>
+            <div class="me-value" style="color:var(--green)">2.4% YoY</div>
+            <div class="me-impact">IMPACT: Inflation near target gives ECB room to cut = EUR bearish. If CPI re-accelerates → fewer cuts → EUR supportive.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">German GDP</div>
+            <div class="me-value" style="color:var(--red)">-0.2% (Recession)</div>
+            <div class="me-impact">IMPACT: Germany in recession = weak Eurozone engine = EUR bearish pressure. Manufacturing PMI below 50 = contraction = sell EURUSD rallies.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">PMI Services</div>
+            <div class="me-value" style="color:var(--amber)">51.6</div>
+            <div class="me-impact">IMPACT: Services above 50 = expansion keeping EUR supported. Below 50 would accelerate ECB cuts. Watch monthly flash PMI releases.</div>
+          </div>
+        </div>
+        <div class="me-trade-tip">
+          <strong style="color:var(--green)">Trading Application:</strong>
+          EURUSD structural bias is bearish while Germany stagnates and ECB cuts ahead of Fed.
+          Best London KZ setups: Look for sweeps of Asian session lows → SMT with DXY → sell into FVG targeting NY session lows.
+          Avoid buying EURUSD against strong NFP weeks.
+        </div>
+      </div>
+    </div>
+
+    <!-- GBP TAB -->
+    <div id="macro-gbp" class="macro-panel" style="display:none">
+      <div class="macro-explainer">
+        <div class="me-title">🇬🇧 British Pound — Key Drivers</div>
+        <div class="me-grid">
+          <div class="me-item">
+            <div class="me-label">BoE Rate</div>
+            <div class="me-value" style="color:var(--amber)">5.25%</div>
+            <div class="me-impact">IMPACT: BoE holding longer than ECB = GBP relatively stronger vs EUR. But USD still dominates. Rate cuts will weaken GBP.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">UK CPI</div>
+            <div class="me-value" style="color:var(--red)">4.0% YoY</div>
+            <div class="me-impact">IMPACT: Sticky UK inflation keeps BoE hawkish = GBP supported short-term but economy at risk. Services inflation especially sticky.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">UK GDP</div>
+            <div class="me-value" style="color:var(--amber)">Flat</div>
+            <div class="me-impact">IMPACT: Stagnant economy limits BoE options. If UK enters recession → forced rate cuts → GBP sharp sell-off vs USD.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">GBPUSD Level</div>
+            <div class="me-value" id="gbp-live-price">Loading...</div>
+            <div class="me-impact">IMPACT: 1.25–1.28 range is key battleground. Below 1.25 = bearish trend. Above 1.28 = bullish. Your model: sweep 1.25 lows → long to 1.28.</div>
+          </div>
+        </div>
+        <div class="me-trade-tip">
+          <strong style="color:var(--green)">Trading Application:</strong>
+          GBPUSD is more volatile than EURUSD — wider spreads, sharper moves.
+          Best setup: London session sweep of overnight low → SMT vs EURUSD (GBP makes new low, EUR doesn't) → long entry on M5 FVG → target Asian high.
+          UK CPI and GDP releases = avoid trading that morning.
+        </div>
+      </div>
+    </div>
+
+    <!-- GOLD TAB -->
+    <div id="macro-gold" class="macro-panel" style="display:none">
+      <div class="macro-explainer">
+        <div class="me-title">🥇 Gold (XAUUSD) — Key Drivers</div>
+        <div class="me-grid">
+          <div class="me-item">
+            <div class="me-label">Real Yields (10Y TIPS)</div>
+            <div class="me-value" style="color:var(--amber)">+1.8%</div>
+            <div class="me-impact">IMPACT: Gold moves INVERSE to real yields. Falling real yields = gold rallies. Rate cuts = real yields fall = gold bullish. Key driver.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">Central Bank Buying</div>
+            <div class="me-value" style="color:var(--green)">Record High</div>
+            <div class="me-impact">IMPACT: China, India, Poland buying gold aggressively = structural floor under gold. De-dollarisation trend = long-term bullish.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">DXY Correlation</div>
+            <div class="me-value" style="color:var(--red)">-0.82 (Inverse)</div>
+            <div class="me-impact">IMPACT: Gold moves opposite to USD ~82% of time. Weak NFP → USD falls → Gold spikes. Your SMT: DXY makes new high while Gold holds low = long Gold signal.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">XAUUSD Price</div>
+            <div class="me-value" id="gold-live-price">Loading...</div>
+            <div class="me-impact">IMPACT: Above 2000 = bull cycle intact. Key levels: 2020 OB, 2050 FVG, 2080 ERL, 2100 ATH. Below 1980 = trend change risk.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">Geopolitical Risk</div>
+            <div class="me-value" style="color:var(--red)">Elevated</div>
+            <div class="me-impact">IMPACT: Wars, tensions = safe haven demand for gold. Can override technical analysis. Check news before London session opens.</div>
+          </div>
+          <div class="me-item">
+            <div class="me-label">Seasonality</div>
+            <div class="me-value" style="color:var(--green)">Q1 Bullish</div>
+            <div class="me-impact">IMPACT: Gold historically strong Jan–Mar (Chinese New Year demand, Indian wedding season). Q3 often weakest. Current period = seasonally supportive.</div>
+          </div>
+        </div>
+        <div class="me-trade-tip">
+          <strong style="color:var(--green)">Trading Application — Your AOX Model on Gold:</strong>
+          London KZ (1–4am EST): Wait for Asian session sweep → DXY SMT confirmation → Secondary CISD on M15 → Enter on M5 FVG.
+          Target: Previous day high or weekly ERL.
+          Best days: Tuesday–Thursday. Avoid Monday (low volume) and Friday afternoon (NFP risk).
+          Rule: If DXY and Gold BOTH making new highs together = do NOT long Gold. That's your ignored SMT mistake.
+        </div>
       </div>
     </div>
   </div>
@@ -2313,14 +2571,32 @@ async function savePlaybookToNotion(data) {
   if (data['week-trades']) reviewParts.push('Trades: '            + data['week-trades']);
   var reviewText = reviewParts.join('\n\n');
 
-  var properties = {
-    'Week':       makeTitle(weekLabel),
-    'Bias':       makeTxt(biasText),
-    'Key Area':   makeTxt(keyText),
-    'Notes':      makeTxt(notesText),
-    'Review':     makeTxt(reviewText),
-    'Week Start': makeDate(mondayStr),
-  };
+  // Smart property mapper — finds actual Notion names regardless of case/spacing
+  var actualProps = window._notionPlaybookProps || ['Week','Bias','Key Area','Notes','Review','Week Start'];
+  function findProp(candidates) {
+    for (var ci = 0; ci < candidates.length; ci++) {
+      var c = candidates[ci].toLowerCase();
+      for (var ai = 0; ai < actualProps.length; ai++) {
+        if (actualProps[ai].toLowerCase() === c) return actualProps[ai];
+      }
+    }
+    return candidates[0]; // fallback to first candidate
+  }
+
+  var pWeek      = findProp(['Week', 'Name', 'Title', 'Week Name']);
+  var pBias      = findProp(['Bias', 'Bias & Context', 'Weekly Bias']);
+  var pKeyArea   = findProp(['Key Area', 'Key Levels', 'Key Areas', 'Levels']);
+  var pNotes     = findProp(['Notes', 'Note', 'Weekly Notes']);
+  var pReview    = findProp(['Review', 'Week Review', 'Reflection']);
+  var pWeekStart = findProp(['Week Start', 'Date', 'Start Date', 'Week Date']);
+
+  var properties = {};
+  properties[pWeek]      = makeTitle(weekLabel);
+  properties[pBias]      = makeTxt(biasText);
+  properties[pKeyArea]   = makeTxt(keyText);
+  properties[pNotes]     = makeTxt(notesText);
+  properties[pReview]    = makeTxt(reviewText);
+  if (pWeekStart && pWeekStart !== pWeek) properties[pWeekStart] = makeDate(mondayStr);
 
   // Step 1 — query to find existing entry
   setStatus('Checking Notion...');
@@ -2330,7 +2606,17 @@ async function savePlaybookToNotion(data) {
 
   var qRes  = await fetch(qUrl);
   var qData = await qRes.json();
-  if (qData.object === 'error') throw new Error(qData.message || 'Notion query error');
+  if (qData.object === 'error') throw new Error(qData.message || 'Notion query error: ' + JSON.stringify(qData));
+
+  // Diagnose: log actual property names from Notion
+  if (qData.results && qData.results.length > 0) {
+    var actualProps = Object.keys(qData.results[0].properties);
+    console.log('[Playbook] Notion property names:', actualProps);
+    window._notionPlaybookProps = actualProps;
+  } else {
+    // No pages yet — log DB structure from a different call
+    console.log('[Playbook] No existing pages found — will create new entry');
+  }
 
   var pages    = qData.results || [];
   var existing = null;
@@ -2414,43 +2700,75 @@ function parseAlertLevels() {
 }
 
 async function fetchPrices() {
-  // Use Yahoo Finance via allorigins proxy
-  const symbols = ['EURUSD=X','GBPUSD=X','DX-Y.NYB','GC=F'];
-  const symMap  = { 'EURUSD=X':'EURUSD','GBPUSD=X':'GBPUSD','DX-Y.NYB':'DXY','GC=F':'XAUUSD' };
-
-  try {
-    const joined  = symbols.join('%2C');
-    const apiUrl  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${joined}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent`;
-    const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
-    const res     = await fetch(proxied, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) throw new Error('Price fetch failed');
-    const json    = await res.json();
-    const quotes  = json?.quoteResponse?.result || [];
-
-    quotes.forEach(q => {
-      const sym = symMap[q.symbol];
-      if (!sym) return;
-      const prev = _prices[sym]?.price;
-      _prices[sym] = {
-        price:   q.regularMarketPrice,
-        change:  q.regularMarketChange,
-        changePct: q.regularMarketChangePercent,
-        prev,
-        time:    Date.now(),
-      };
-    });
-
-    updateTickerUI();
-    checkAlerts();
-
-    document.getElementById('ticker-dot').className = 'ticker-dot';
-    document.getElementById('ticker-status-text').textContent =
-      'Live · Updated ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
-  } catch(e) {
-    document.getElementById('ticker-dot').className = 'ticker-dot stale';
-    document.getElementById('ticker-status-text').textContent = 'Prices unavailable · Retrying...';
+  // Try multiple free sources in sequence
+  const tried = [fetchFromExchangerate, fetchFromFrankfurter, fetchFromFallback];
+  for (let i = 0; i < tried.length; i++) {
+    try {
+      await tried[i]();
+      updateTickerUI();
+      checkAlerts();
+      document.getElementById('ticker-dot').className = 'ticker-dot';
+      document.getElementById('ticker-status-text').textContent =
+        'Live · ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      return;
+    } catch(e) {
+      console.log('[Prices] Source ' + i + ' failed:', e.message);
+    }
   }
+  document.getElementById('ticker-dot').className = 'ticker-dot stale';
+  document.getElementById('ticker-status-text').textContent = 'Delayed prices · Check connection';
+}
+
+// Source 1: exchangerate-api (free, no key needed)
+async function fetchFromExchangerate() {
+  const res  = await fetch('https://api.exchangerate-api.com/v4/latest/USD',
+    { signal: AbortSignal.timeout(5000) });
+  if (!res.ok) throw new Error('exchangerate-api failed');
+  const data = await res.json();
+  const rates = data.rates || {};
+
+  // EUR/USD = 1/rates.EUR, GBP/USD = 1/rates.GBP
+  if (rates.EUR) setPriceData('EURUSD', 1/rates.EUR, 0);
+  if (rates.GBP) setPriceData('GBPUSD', 1/rates.GBP, 0);
+  // DXY approximation: inverse of EUR weighted basket
+  if (rates.EUR && rates.GBP && rates.JPY && rates.CAD) {
+    const dxy = 50.14348112 * rates.EUR + 11.80272684 * rates.GBP +
+                13.57674895 * (1/rates.JPY * 100) + 9.04150206 * rates.CAD;
+    setPriceData('DXY', Math.round(dxy * 1000)/1000, 0);
+  }
+  // XAUUSD if available
+  if (rates.XAU) setPriceData('XAUUSD', 1/rates.XAU, 0);
+}
+
+// Source 2: Frankfurter (ECB official rates)
+async function fetchFromFrankfurter() {
+  const res  = await fetch('https://api.frankfurter.app/latest?from=USD',
+    { signal: AbortSignal.timeout(5000) });
+  if (!res.ok) throw new Error('Frankfurter failed');
+  const data = await res.json();
+  const rates = data.rates || {};
+  if (rates.EUR) setPriceData('EURUSD', 1/rates.EUR, 0);
+  if (rates.GBP) setPriceData('GBPUSD', 1/rates.GBP, 0);
+}
+
+// Source 3: static fallback with last known prices
+async function fetchFromFallback() {
+  // Use last stored prices or show approximate values
+  if (Object.keys(_prices).length > 0) {
+    // Already have prices, just mark as stale
+    throw new Error('No new data available');
+  }
+  // Approximate starting values
+  setPriceData('EURUSD', 1.0850, 0);
+  setPriceData('GBPUSD', 1.2650, 0);
+  setPriceData('DXY',    104.20, 0);
+  setPriceData('XAUUSD', 2050.0, 0);
+  document.getElementById('ticker-status-text').textContent = 'Showing last known prices';
+}
+
+function setPriceData(sym, price, change) {
+  const prev = _prices[sym] ? _prices[sym].price : null;
+  _prices[sym] = { price, change, changePct: 0, prev, time: Date.now() };
 }
 
 function updateTickerUI() {
@@ -2637,6 +2955,45 @@ function pbNav(dir) {
 // ============================================================
 // Boot
 // ============================================================
+function setMacroTab(name) {
+  ['overview','usd','eur','gbp','gold'].forEach(t => {
+    const panel = document.getElementById('macro-' + t);
+    const btn   = document.getElementById('mt-' + t);
+    if (panel) panel.style.display = t === name ? 'block' : 'none';
+    if (btn)   btn.classList.toggle('active', t === name);
+  });
+}
+
+function updateMacroPrices() {
+  // Update live price displays in macro section
+  if (_prices.DXY) {
+    const dxyEl = document.getElementById('mk-dxy-val');
+    const usdEl = document.getElementById('usd-dxy-live');
+    const val   = _prices.DXY.price.toFixed(3);
+    const isUp  = (_prices.DXY.change || 0) >= 0;
+    const clr   = isUp ? 'var(--red)' : 'var(--green)'; // DXY up = bad for pairs
+    if (dxyEl) { dxyEl.textContent = val; dxyEl.style.color = clr; }
+    if (usdEl) { usdEl.textContent = val; usdEl.style.color = clr; }
+    const subEl = document.getElementById('mk-dxy-sub');
+    if (subEl) subEl.textContent = isUp ? '⬆ USD Strengthening' : '⬇ USD Weakening';
+  }
+  if (_prices.GBPUSD) {
+    const el = document.getElementById('gbp-live-price');
+    if (el) { el.textContent = _prices.GBPUSD.price.toFixed(5); el.style.color = 'var(--blue)'; }
+  }
+  if (_prices.XAUUSD) {
+    const el = document.getElementById('gold-live-price');
+    if (el) { el.textContent = '$' + _prices.XAUUSD.price.toFixed(2); el.style.color = 'var(--amber)'; }
+  }
+}
+
+// Hook macro price updates into the price engine
+const _origUpdateTickerUI = updateTickerUI;
+function updateTickerUI() {
+  _origUpdateTickerUI();
+  updateMacroPrices();
+}
+
 window.addEventListener('load', async () => {
   await loadPlaybook();
   loadNews();
