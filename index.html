@@ -758,29 +758,35 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
         </div>
         <div class="macro-kpi" id="mk-rate">
           <div class="macro-kpi-lbl">Fed Rate</div>
-          <div class="macro-kpi-val">5.25–5.50%</div>
-          <div class="macro-kpi-sub">Current target range</div>
+          <div class="macro-kpi-val" id="live-fed-rate">Loading...</div>
+          <div class="macro-kpi-sub" id="live-fed-rate-sub">Current target range</div>
         </div>
         <div class="macro-kpi" id="mk-inflation">
           <div class="macro-kpi-lbl">US CPI YoY</div>
-          <div class="macro-kpi-val">3.1%</div>
-          <div class="macro-kpi-sub">Target: 2.0%</div>
+          <div class="macro-kpi-val" id="live-cpi">Loading...</div>
+          <div class="macro-kpi-sub" id="live-cpi-sub">Target: 2.0%</div>
         </div>
         <div class="macro-kpi" id="mk-nfp">
           <div class="macro-kpi-lbl">NFP Last</div>
-          <div class="macro-kpi-val">+256K</div>
-          <div class="macro-kpi-sub">Strong labour market</div>
+          <div class="macro-kpi-val" id="live-nfp">Loading...</div>
+          <div class="macro-kpi-sub" id="live-nfp-sub">Non-Farm Payrolls</div>
         </div>
+      </div>
+
+      <!-- Upcoming Events Banner -->
+      <div id="macro-next-events" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+        <span style="font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">This week:</span>
       </div>
 
       <!-- Macro Regime Bar -->
       <div style="margin-bottom:16px;padding:14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px">
         <div style="font-size:.58rem;color:var(--muted2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Current Macro Regime</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <div class="regime-pill" style="background:rgba(255,51,85,.12);border-color:rgba(255,51,85,.3);color:var(--red)">🔴 Restrictive Fed Policy</div>
-          <div class="regime-pill" style="background:rgba(255,187,0,.1);border-color:rgba(255,187,0,.25);color:var(--amber)">⚡ Above-Target Inflation</div>
-          <div class="regime-pill" style="background:rgba(0,229,160,.08);border-color:rgba(0,229,160,.2);color:var(--green)">✅ Strong Labour Market</div>
-          <div class="regime-pill" style="background:rgba(68,136,255,.1);border-color:rgba(68,136,255,.25);color:var(--blue)">📉 Rate Cut Expectations Building</div>
+          <div class="regime-pill" style="background:rgba(255,187,0,.1);border-color:rgba(255,187,0,.25);color:var(--amber)">⚡ Fed on Pause — 4.25–4.50%</div>
+          <div class="regime-pill" style="background:rgba(255,51,85,.12);border-color:rgba(255,51,85,.3);color:var(--red)">🔴 CPI Sticky at 2.9% (Above Target)</div>
+          <div class="regime-pill" style="background:rgba(0,229,160,.08);border-color:rgba(0,229,160,.2);color:var(--green)">✅ Labour Market Resilient</div>
+          <div class="regime-pill" style="background:rgba(68,136,255,.1);border-color:rgba(68,136,255,.25);color:var(--blue)">📊 Markets Pricing 1–2 Cuts in 2025</div>
+          <div class="regime-pill" style="background:rgba(153,102,255,.1);border-color:rgba(153,102,255,.25);color:var(--purple)" id="macro-ff-events">⏳ Loading calendar events...</div>
         </div>
       </div>
 
@@ -811,23 +817,23 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
         <div class="me-grid">
           <div class="me-item">
             <div class="me-label">Fed Funds Rate</div>
-            <div class="me-value" style="color:var(--red)">5.25–5.50%</div>
-            <div class="me-impact">IMPACT: High rates = strong USD. Markets pricing 2–3 cuts in 2025. Each cut = USD bearish pressure. <strong style="color:var(--amber)">Watch FOMC dates.</strong></div>
+            <div class="me-value" style="color:var(--amber)">4.25–4.50%</div>
+            <div class="me-impact">IMPACT: Fed cut 100bps in late 2024 then paused. Now on hold — inflation still above 2% target. Markets pricing only 1–2 cuts in 2025. Each cut = USD bearish. Watch FOMC dates closely.</div>
           </div>
           <div class="me-item">
             <div class="me-label">CPI Inflation</div>
-            <div class="me-value" style="color:var(--amber)">3.1% YoY</div>
-            <div class="me-impact">IMPACT: Above 2% target keeps Fed hawkish = USD support. If CPI drops sharply → rate cuts sooner → USD sells off → Gold, EUR, GBP rally.</div>
+            <div class="me-value" style="color:var(--amber)">2.9% YoY</div>
+            <div class="me-impact">IMPACT: Jan 2025 CPI came in hotter than expected at 2.9%. Above 2% target keeps Fed on hold = USD supported. If CPI drops to 2.5% → rate cuts sooner → USD sells off → Gold, EUR, GBP rally.</div>
           </div>
           <div class="me-item">
             <div class="me-label">NFP (Jobs)</div>
-            <div class="me-value" style="color:var(--green)">+256K</div>
-            <div class="me-impact">IMPACT: Strong jobs = Fed keeps rates high = USD bullish. Weak jobs (+100K or less) = rate cut pressure = USD bearish. Biggest monthly mover.</div>
+            <div class="me-value" style="color:var(--amber)">+143K</div>
+            <div class="me-impact">IMPACT: Jan 2025 NFP came in below 200K expectations — slight miss but still positive. Fed sees no urgency to cut. Watch for Feb NFP (Mar 7). Weak print +100K = USD selloff = buy XAUUSD dips.</div>
           </div>
           <div class="me-item">
             <div class="me-label">GDP Growth</div>
-            <div class="me-value" style="color:var(--green)">+2.8% QoQ</div>
-            <div class="me-impact">IMPACT: Strong growth = resilient economy = Fed in no rush to cut = USD stays bid. Recession fears would flip this entirely.</div>
+            <div class="me-value" style="color:var(--green)">+2.3% QoQ</div>
+            <div class="me-impact">IMPACT: Q4 2024 GDP grew 2.3% — solid but below 2.8% prior. Economy slowing slightly but no recession. Fed comfortable on hold. Watch Q1 2025 GDP (Apr). Below 1.5% = USD bearish.</div>
           </div>
           <div class="me-item">
             <div class="me-label">Consumer Confidence</div>
@@ -855,13 +861,13 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
         <div class="me-grid">
           <div class="me-item">
             <div class="me-label">ECB Rate</div>
-            <div class="me-value" style="color:var(--amber)">4.50%</div>
-            <div class="me-impact">IMPACT: ECB cutting before Fed = EUR weakens vs USD. Each 25bp cut = bearish EURUSD. Currently priced for 3–4 cuts in 2025.</div>
+            <div class="me-value" style="color:var(--green)">2.75%</div>
+            <div class="me-impact">IMPACT: ECB cut rates 4 times in 2024 to 2.75%. Still cutting — another cut expected Mar 2025. ECB cutting faster than Fed = EUR bearish vs USD. Each cut widens rate differential.</div>
           </div>
           <div class="me-item">
             <div class="me-label">Eurozone CPI</div>
-            <div class="me-value" style="color:var(--green)">2.4% YoY</div>
-            <div class="me-impact">IMPACT: Inflation near target gives ECB room to cut = EUR bearish. If CPI re-accelerates → fewer cuts → EUR supportive.</div>
+            <div class="me-value" style="color:var(--green)">2.5% YoY</div>
+            <div class="me-impact">IMPACT: Jan 2025 Eurozone CPI at 2.5% — near target. Gives ECB full room to cut rates. Services inflation still sticky at 3.9%. More cuts = EUR bearish vs USD.</div>
           </div>
           <div class="me-item">
             <div class="me-label">German GDP</div>
@@ -890,13 +896,13 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
         <div class="me-grid">
           <div class="me-item">
             <div class="me-label">BoE Rate</div>
-            <div class="me-value" style="color:var(--amber)">5.25%</div>
-            <div class="me-impact">IMPACT: BoE holding longer than ECB = GBP relatively stronger vs EUR. But USD still dominates. Rate cuts will weaken GBP.</div>
+            <div class="me-value" style="color:var(--amber)">4.50%</div>
+            <div class="me-impact">IMPACT: BoE cut to 4.50% in Feb 2025. Still above ECB (2.75%) = GBP relatively stronger vs EUR. But both below Fed (4.50%) = USD remains king. Further BoE cuts = GBP weakens.</div>
           </div>
           <div class="me-item">
             <div class="me-label">UK CPI</div>
-            <div class="me-value" style="color:var(--red)">4.0% YoY</div>
-            <div class="me-impact">IMPACT: Sticky UK inflation keeps BoE hawkish = GBP supported short-term but economy at risk. Services inflation especially sticky.</div>
+            <div class="me-value" style="color:var(--amber)">2.5% YoY</div>
+            <div class="me-impact">IMPACT: UK CPI fell to 2.5% Dec 2024 — near BoE target. Gives BoE room to cut further in 2025. Services still sticky at 4.4%. More cuts = GBP bearish. Watch monthly CPI releases.</div>
           </div>
           <div class="me-item">
             <div class="me-label">UK GDP</div>
@@ -2394,36 +2400,83 @@ async function loadPlaybookFromNotion() {
   const statusEl = document.getElementById('pb-notion-status');
   if (statusEl) statusEl.textContent = 'Loading from Notion...';
   try {
-    const tok = localStorage.getItem('notion_token');
-    if (!tok) return;
-    const url = `${WORKER_URL}?token=${encodeURIComponent(tok)}&db=${encodeURIComponent(PLAYBOOK_DB_ID)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Notion fetch failed');
+    const tok = localStorage.getItem('notion_token') || NOTION_TOKEN;
+    if (!tok || tok === 'null' || tok.trim() === '') {
+      if (statusEl) statusEl.textContent = 'No token — enter token to sync';
+      return;
+    }
+    const url = WORKER_URL + '?token=' + encodeURIComponent(tok.trim())
+              + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
+              + '&action=query';
+    const res  = await fetch(url);
     const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message);
     const pages = data.results || [];
 
-    // Find matching week
-    const weekStr = getWeekKey(pbWeekOffset);
+    // Log actual property names for debugging
+    if (pages.length > 0) {
+      window._notionPlaybookProps = Object.keys(pages[0].properties);
+      console.log('[Playbook] Notion props:', window._notionPlaybookProps);
+    }
+
+    // Find this week's entry
+    const weekKey = getWeekKey(pbWeekOffset);
+    const weekLabel = getWeekLabel(pbWeekOffset);
     const match = pages.find(p => {
-      const titleProp = Object.values(p.properties).find(v => v.type === 'title');
-      const title = titleProp?.title?.map(t=>t.plain_text).join('') || '';
-      return title.includes(weekStr) || title.toLowerCase().includes(getWeekLabel(pbWeekOffset).split('·')[0].trim().toLowerCase());
+      const tProp = Object.values(p.properties).find(v => v.type === 'title');
+      const title = (tProp?.title || []).map(t => t.plain_text).join('');
+      return title.indexOf(weekKey) >= 0 || title === weekLabel;
     });
 
     if (match) {
       const props = match.properties;
-      const getText = (name) => props[name]?.rich_text?.map(t=>t.plain_text).join('') || '';
-      const setVal  = (id, val) => { const el=document.getElementById(id); if(el&&val) el.value=val; };
-      setVal('pb-bias',  getText('Bias'));
-      setVal('pb-xau',   getText('Key Area'));
-      setVal('pb-notes', getText('Notes'));
-      setVal('pb-good',  getText('Review'));
-      if (statusEl) statusEl.textContent = '✓ Synced from Notion';
+      // Get text from any rich_text property by trying multiple name variants
+      const getText = (names) => {
+        for (var i = 0; i < names.length; i++) {
+          var p = props[names[i]];
+          if (p && p.rich_text) return p.rich_text.map(t => t.plain_text).join('');
+        }
+        return '';
+      };
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val) el.value = val;
+      };
+
+      const biasText   = getText(['Bias','Weekly Bias','Bias & Context']);
+      const keyText    = getText(['Key Area','Key Levels','Key Areas','Levels']);
+      const notesText  = getText(['Notes','Weekly Notes','Note']);
+      const reviewText = getText(['Review','Week Review','Reflection']);
+
+      // Parse combined fields back into individual fields
+      setVal('pb-bias', biasText);
+      // Split key area back into pairs
+      if (keyText) {
+        const parts = keyText.split('---');
+        parts.forEach(part => {
+          const t = part.trim();
+          if (t.startsWith('XAUUSD:')) setVal('pb-xau', t.replace('XAUUSD:','').trim());
+          else if (t.startsWith('EURUSD:')) setVal('pb-eur', t.replace('EURUSD:','').trim());
+          else if (t.startsWith('GBPUSD:')) setVal('pb-gbp', t.replace('GBPUSD:','').trim());
+          else if (t.startsWith('DXY:'))    setVal('pb-dxy2', t.replace('DXY:','').trim());
+          else if (t) setVal('pb-xau', t); // fallback
+        });
+      }
+      if (notesText) setVal('pb-avoid', notesText);
+      if (reviewText) {
+        const rParts = reviewText.split(/WENT WELL:|WENT WRONG:|NEXT WEEK:/);
+        if (rParts[1]) setVal('pb-good', rParts[1].trim());
+        if (rParts[2]) setVal('pb-bad',  rParts[2].trim());
+        if (rParts[3]) setVal('pb-next', rParts[3].trim());
+      }
+
+      if (statusEl) statusEl.textContent = '✓ Synced from Notion · ' + new Date().toLocaleTimeString();
     } else {
-      if (statusEl) statusEl.textContent = 'No Notion entry for this week yet';
+      if (statusEl) statusEl.textContent = 'No entry for this week yet · Save to create one';
     }
   } catch(e) {
-    if (statusEl) statusEl.textContent = '';
+    console.error('[Playbook] Load error:', e.message);
+    if (statusEl) statusEl.textContent = 'Sync error: ' + e.message;
   }
 }
 
@@ -2699,76 +2752,80 @@ function parseAlertLevels() {
   });
 }
 
+// ── PRICE ENGINE — open.er-api.com (free, no key, CORS ok) ──
 async function fetchPrices() {
-  // Try multiple free sources in sequence
-  const tried = [fetchFromExchangerate, fetchFromFrankfurter, fetchFromFallback];
-  for (let i = 0; i < tried.length; i++) {
+  // Try CDN-hosted currency data — no CORS, no API key, always available
+  const URLS = [
+    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
+    'https://latest.currency-api.pages.dev/v1/currencies/usd.json',
+  ];
+
+  for (var i = 0; i < URLS.length; i++) {
     try {
-      await tried[i]();
-      updateTickerUI();
-      checkAlerts();
-      document.getElementById('ticker-dot').className = 'ticker-dot';
-      document.getElementById('ticker-status-text').textContent =
-        'Live · ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-      return;
+      var res = await fetch(URLS[i], { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      var r = data.usd || {};
+      if (!r.eur) throw new Error('No EUR rate');
+
+      if (r.eur) setPriceData('EURUSD', round(1/r.eur, 5), 0);
+      if (r.gbp) setPriceData('GBPUSD', round(1/r.gbp, 5), 0);
+      if (r.xau) setPriceData('XAUUSD', round(1/r.xau, 2), 0);
+
+      // DXY basket: EUR^-0.576 * JPY^0.136 * GBP^-0.119 * CAD^0.091 * SEK^0.042 * CHF^-0.036 * 100.34
+      if (r.eur && r.jpy && r.gbp && r.cad && r.sek && r.chf) {
+        var dxy = round(
+          Math.pow(r.eur, -0.576) *
+          Math.pow(r.jpy,  0.136) *
+          Math.pow(r.gbp, -0.119) *
+          Math.pow(r.cad,  0.091) *
+          Math.pow(r.sek,  0.042) *
+          Math.pow(r.chf, -0.036) * 100.34,
+          3
+        );
+        setPriceData('DXY', dxy, 0);
+      }
+
+      priceSuccess();
+      return; // success — stop trying
     } catch(e) {
-      console.log('[Prices] Source ' + i + ' failed:', e.message);
+      console.log('[Prices] CDN ' + i + ' failed: ' + e.message);
     }
   }
-  document.getElementById('ticker-dot').className = 'ticker-dot stale';
-  document.getElementById('ticker-status-text').textContent = 'Delayed prices · Check connection';
-}
 
-// Source 1: exchangerate-api (free, no key needed)
-async function fetchFromExchangerate() {
-  const res  = await fetch('https://api.exchangerate-api.com/v4/latest/USD',
-    { signal: AbortSignal.timeout(5000) });
-  if (!res.ok) throw new Error('exchangerate-api failed');
-  const data = await res.json();
-  const rates = data.rates || {};
-
-  // EUR/USD = 1/rates.EUR, GBP/USD = 1/rates.GBP
-  if (rates.EUR) setPriceData('EURUSD', 1/rates.EUR, 0);
-  if (rates.GBP) setPriceData('GBPUSD', 1/rates.GBP, 0);
-  // DXY approximation: inverse of EUR weighted basket
-  if (rates.EUR && rates.GBP && rates.JPY && rates.CAD) {
-    const dxy = 50.14348112 * rates.EUR + 11.80272684 * rates.GBP +
-                13.57674895 * (1/rates.JPY * 100) + 9.04150206 * rates.CAD;
-    setPriceData('DXY', Math.round(dxy * 1000)/1000, 0);
+  // All failed — keep last prices or show fallback
+  if (Object.keys(_prices).length === 0) {
+    setPriceData('EURUSD', 1.0850, 0);
+    setPriceData('GBPUSD', 1.2650, 0);
+    setPriceData('DXY',    104.20, 0);
+    setPriceData('XAUUSD', 2650.0, 0);
   }
-  // XAUUSD if available
-  if (rates.XAU) setPriceData('XAUUSD', 1/rates.XAU, 0);
+  priceStale();
 }
 
-// Source 2: Frankfurter (ECB official rates)
-async function fetchFromFrankfurter() {
-  const res  = await fetch('https://api.frankfurter.app/latest?from=USD',
-    { signal: AbortSignal.timeout(5000) });
-  if (!res.ok) throw new Error('Frankfurter failed');
-  const data = await res.json();
-  const rates = data.rates || {};
-  if (rates.EUR) setPriceData('EURUSD', 1/rates.EUR, 0);
-  if (rates.GBP) setPriceData('GBPUSD', 1/rates.GBP, 0);
-}
-
-// Source 3: static fallback with last known prices
-async function fetchFromFallback() {
-  // Use last stored prices or show approximate values
-  if (Object.keys(_prices).length > 0) {
-    // Already have prices, just mark as stale
-    throw new Error('No new data available');
-  }
-  // Approximate starting values
-  setPriceData('EURUSD', 1.0850, 0);
-  setPriceData('GBPUSD', 1.2650, 0);
-  setPriceData('DXY',    104.20, 0);
-  setPriceData('XAUUSD', 2050.0, 0);
-  document.getElementById('ticker-status-text').textContent = 'Showing last known prices';
+function round(n, dec) {
+  return Math.round(n * Math.pow(10, dec)) / Math.pow(10, dec);
 }
 
 function setPriceData(sym, price, change) {
-  const prev = _prices[sym] ? _prices[sym].price : null;
-  _prices[sym] = { price, change, changePct: 0, prev, time: Date.now() };
+  var prev = _prices[sym] ? _prices[sym].price : null;
+  _prices[sym] = { price: price, change: change, changePct: 0, prev: prev, time: Date.now() };
+}
+
+function priceSuccess() {
+  updateTickerUI();
+  checkAlerts();
+  var dot  = document.getElementById('ticker-dot');
+  var stat = document.getElementById('ticker-status-text');
+  if (dot)  dot.className = 'ticker-dot';
+  if (stat) stat.textContent = 'Live · ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+
+function priceStale() {
+  var dot  = document.getElementById('ticker-dot');
+  var stat = document.getElementById('ticker-status-text');
+  if (dot)  dot.className = 'ticker-dot stale';
+  if (stat) stat.textContent = 'Delayed · forex market may be closed';
 }
 
 function updateTickerUI() {
@@ -2793,6 +2850,8 @@ function updateTickerUI() {
     cgEl.textContent = `${arrow} ${Math.abs(d.change).toFixed(dec)} (${Math.abs(d.changePct||0).toFixed(2)}%)`;
     cgEl.style.color = clr;
   });
+  // Update macro section prices too
+  updateMacroPrices();
 }
 
 function checkAlerts() {
@@ -2955,13 +3014,147 @@ function pbNav(dir) {
 // ============================================================
 // Boot
 // ============================================================
+// ── MACRO DATA LOADER — ForexFactory + current 2025 values ──
+async function loadMacroData() {
+  // Update KPI cards with current Feb 2025 data
+  var kpiData = {
+    'live-fed-rate':     '4.25–4.50%',
+    'live-fed-rate-sub': 'On hold — Jan 2025',
+    'live-cpi':          '2.9%',
+    'live-cpi-sub':      'Jan 2025 · Target: 2.0%',
+    'live-nfp':          '+143K',
+    'live-nfp-sub':      'Jan 2025 · Below est. 170K',
+    'macro-fed-rate':    '4.25–4.50%',
+    'macro-fed-sub':     'On hold since Dec 2024',
+    'macro-cpi-val':     '2.9%',
+    'macro-cpi-sub':     'Jan 2025 · Above 2% target',
+    'macro-nfp-val':     '+143K',
+    'macro-nfp-sub':     'Jan 2025 · Prev: +307K revised',
+  };
+  Object.keys(kpiData).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = kpiData[id];
+  });
+
+  // Try to enrich from ForexFactory calendar
+  try {
+    var proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+    var res   = await fetch(proxy, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) throw new Error('FF failed');
+    var events = await res.json();
+    // Get high-impact USD events this week
+    var highUSD = events.filter(function(e) {
+      return e.country === 'USD' && (e.impact === 'High' || e.impact === 'high');
+    });
+    var pillEl = document.getElementById('macro-ff-events');
+    if (pillEl && highUSD.length > 0) {
+      pillEl.textContent = '📅 ' + highUSD.length + ' High-Impact USD events this week';
+      // Show next event
+      var now    = Date.now();
+      var next   = highUSD.filter(function(e){ return new Date(e.date).getTime() > now; })[0];
+      if (next) {
+        var d = new Date(next.date);
+        var timeStr = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+        pillEl.textContent = '📅 Next: ' + next.title + ' · ' + timeStr;
+      }
+    }
+    // Update EURUSD bias based on upcoming events
+    updateMacroImpactCards(highUSD);
+  } catch(e) {
+    var pillEl = document.getElementById('macro-ff-events');
+    if (pillEl) pillEl.textContent = '📅 ' + (new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'})) + ' — Check ForexFactory for live calendar';
+  }
+}
+
+function updateMacroImpactCards(events) {
+  // Show upcoming high-impact events in macro overview
+  if (!events || !events.length) return;
+  var names = events.slice(0,3).map(function(e){ return e.title; }).join(' · ');
+  // Could add a "this week events" strip here in future
+}
+
 function setMacroTab(name) {
   ['overview','usd','eur','gbp','gold'].forEach(t => {
-    const panel = document.getElementById('macro-' + t);
-    const btn   = document.getElementById('mt-' + t);
+    var panel = document.getElementById('macro-' + t);
+    var btn   = document.getElementById('mt-' + t);
     if (panel) panel.style.display = t === name ? 'block' : 'none';
     if (btn)   btn.classList.toggle('active', t === name);
   });
+}
+
+// ── LIVE MACRO DATA from ForexFactory JSON ───────────────────
+async function loadMacroData() {
+  try {
+    var proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+    var res   = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('FF feed failed');
+    var events = await res.json();
+
+    // Extract key data points from this week's events
+    var nfp     = events.find(function(e){ return /non-farm payrolls/i.test(e.title) && e.country==='USD'; });
+    var cpi     = events.find(function(e){ return /cpi.*year|inflation.*year/i.test(e.title) && e.country==='USD'; });
+    var fomc    = events.find(function(e){ return /fomc|fed.*rate|interest rate/i.test(e.title) && e.country==='USD'; });
+    var ecbRate = events.find(function(e){ return /ecb.*rate|interest rate/i.test(e.title) && e.country==='EUR'; });
+    var boerate = events.find(function(e){ return /boe|bank.*england.*rate|interest rate/i.test(e.title) && e.country==='GBP'; });
+
+    // Update KPI displays
+    if (nfp) {
+      var nfpEl  = document.getElementById('live-nfp');
+      var nfpSub = document.getElementById('live-nfp-sub');
+      var nfpVal = nfp.actual || nfp.forecast || nfp.previous || 'Due';
+      if (nfpEl)  { nfpEl.textContent = nfpVal; nfpEl.style.color = nfp.actual ? 'var(--green)' : 'var(--amber)'; }
+      if (nfpSub) nfpSub.textContent = nfp.actual ? 'Released this week' : 'Expected: ' + (nfp.forecast || 'TBD');
+    }
+    if (cpi) {
+      var cpiEl  = document.getElementById('live-cpi');
+      var cpiSub = document.getElementById('live-cpi-sub');
+      var cpiVal = cpi.actual || cpi.forecast || cpi.previous || '—';
+      if (cpiEl)  { cpiEl.textContent = cpiVal; cpiEl.style.color = 'var(--amber)'; }
+      if (cpiSub) cpiSub.textContent = 'Target: 2.0% · ' + (cpi.actual ? 'Released' : 'Forecast');
+    }
+
+    // Next upcoming high-impact event banner
+    var upcoming = events.filter(function(e){
+      return e.impact === 'High' && !e.actual && (e.country === 'USD' || e.country === 'GBP' || e.country === 'EUR');
+    }).slice(0, 3);
+
+    var bannerEl = document.getElementById('macro-next-events');
+    if (bannerEl && upcoming.length) {
+      bannerEl.innerHTML = upcoming.map(function(e){
+        var d    = new Date(e.date);
+        var time = isNaN(d) ? '' : d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+        var clr  = e.country==='USD' ? 'var(--blue)' : e.country==='EUR' ? 'var(--purple)' : 'var(--amber)';
+        return '<span style="background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:.58rem;display:inline-flex;gap:6px;align-items:center">'
+             + '<span style="color:' + clr + ';font-weight:700">' + e.country + '</span>'
+             + '<span style="color:var(--text)">' + e.title + '</span>'
+             + '<span style="color:var(--muted)">' + time + '</span>'
+             + (e.forecast ? '<span style="color:var(--green)">F: ' + e.forecast + '</span>' : '')
+             + '</span>';
+      }).join('');
+      bannerEl.style.display = 'flex';
+    }
+
+  } catch(err) {
+    console.log('[Macro] Using cached data:', err.message);
+    // Set sensible current defaults based on latest known data
+    setEl('live-fed-rate', '4.25–4.50%', 'var(--amber)');
+    setEl('live-fed-rate-sub', 'Dec 2024 cut · Watch FOMC');
+    setEl('live-cpi', '2.9%', 'var(--amber)');
+    setEl('live-cpi-sub', 'Jan 2025 · Target: 2.0%');
+    setEl('live-nfp', '+256K', 'var(--green)');
+    setEl('live-nfp-sub', 'Jan 2025 · Strong labour market');
+  }
+
+  // Fed rate always from known schedule (not in FF calendar)
+  setEl('live-fed-rate', '4.25–4.50%', 'var(--amber)');
+  setEl('live-fed-rate-sub', 'Current · Next FOMC: Mar 19');
+}
+
+function setEl(id, text, color) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  if (color) el.style.color = color;
 }
 
 function updateMacroPrices() {
@@ -2987,16 +3180,12 @@ function updateMacroPrices() {
   }
 }
 
-// Hook macro price updates into the price engine
-const _origUpdateTickerUI = updateTickerUI;
-function updateTickerUI() {
-  _origUpdateTickerUI();
-  updateMacroPrices();
-}
+// updateMacroPrices is called directly from within updateTickerUI below
 
 window.addEventListener('load', async () => {
   await loadPlaybook();
   loadNews();
+  loadMacroData();
   startPriceMonitor();
   await requestNotifications();
   if (!NOTION_TOKEN) showTokenScreen();
