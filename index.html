@@ -797,7 +797,13 @@ function parseTrade(page) {
     date:       find('date','date'),
     pair:       find('pair','select') || find('pair','rich_text'),
     direction:  find('direction','select'),
-    outcome:    find('outcome','select'),
+    outcome:    (()=>{
+      const raw = find('outcome','select')||'';
+      if (/win/i.test(raw)) return 'Win';
+      if (/loss|lose/i.test(raw)) return 'Lose';
+      if (/be|breakeven|break.even/i.test(raw)) return 'Breakeven';
+      return raw;
+    })(),
     rMultiple:  find('multiple','number') ?? find('r multiple','number'),
     session:    find('session','select'),
     htfContext: find('htf','select'),
@@ -905,7 +911,7 @@ function analyze(trades) {
     if (!months[k]) months[k] = { label: d.toLocaleString('en-US',{month:'short',year:'2-digit'}), wins:0,losses:0,bes:0,r:0,trades:[],order:d.getFullYear()*100+d.getMonth() };
     months[k].trades.push(t);
     if (t.outcome==='Win') months[k].wins++;
-    else if (t.outcome==='Lose') months[k].losses++;
+    else if (t.outcome==='Lose' || t.outcome==='Loss') months[k].losses++;
     else months[k].bes++;
     months[k].r += t.rMultiple||0;
   });
@@ -1271,33 +1277,36 @@ function renderMonthlyR(sortedMonths) {
   svg.innerHTML = '';
   const months = sortedMonths.slice(-8);
   if (!months.length) return;
-  const W=300,H=150,pL=8,pR=8,pT=14,pB=26;
-  const cW=W-pL-pR, cH=H-pT-pB;
-  const maxAbs = Math.max(...months.map(m=>Math.abs(m.r)),1);
-  const bW = cW/months.length - 5;
-  const zY = pT + cH/2;
 
-  svg.innerHTML += `<line x1="${pL}" x2="${W-pR}" y1="${zY}" y2="${zY}" stroke="rgba(255,255,255,0.07)" stroke-dasharray="3,3"/>`;
+  const W=300, H=150, pL=10, pR=8, pT=16, pB=28;
+  const cW = W-pL-pR, cH = H-pT-pB;
+  const maxAbs = Math.max(...months.map(m=>Math.abs(m.r)), 0.1);
+  const bW = Math.max(Math.floor(cW/months.length) - 4, 6);
+  const zY = pT + cH/2; // zero line in middle
 
-  months.forEach((m,i) => {
+  // zero line
+  svg.innerHTML += `<line x1="${pL}" x2="${W-pR}" y1="${zY}" y2="${zY}" stroke="rgba(255,255,255,0.1)" stroke-dasharray="3,3"/>`;
+
+  months.forEach((m, i) => {
     const x = pL + i*(cW/months.length) + 2;
-    const order = m.order;
-    let clr;
-    if (order < 202511) clr = '#00e5a0';
-    else if (order === 202511) clr = '#00e5a0';
-    else if (order === 202512) clr = '#ff3355';
-    else clr = '#ffbb00';
-    const bH = Math.abs(m.r)/maxAbs*(cH/2);
-    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x',x); rect.setAttribute('y',zY); rect.setAttribute('width',bW); rect.setAttribute('height',0);
-    rect.setAttribute('fill',clr); rect.setAttribute('rx','3'); rect.setAttribute('opacity','0.85');
-    svg.appendChild(rect);
-    setTimeout(()=>{rect.style.transition='height .8s ease, y .8s ease'; rect.setAttribute('height',bH); if(m.r>=0) rect.setAttribute('y',zY-bH);},200+i*60);
-    svg.innerHTML+=`<text x="${x+bW/2}" y="${m.r>=0?zY-bH-3:zY+bH+9}" fill="${clr}" font-size="7" font-family="JetBrains Mono" text-anchor="middle">${m.r>0?'+':''}${m.r}</text>`;
-    svg.innerHTML+=`<text x="${x+bW/2}" y="${H-4}" fill="#333355" font-size="6.5" font-family="JetBrains Mono" text-anchor="middle">${m.label.replace(' ','')}</text>`;
+    const ord = m.order;
+    const clr = ord < 202511 ? '#00e5a0' : ord === 202511 ? '#00e5a0' : ord === 202512 ? '#ff3355' : '#ffbb00';
+    const halfH = cH / 2;
+    const bH = Math.max((Math.abs(m.r) / maxAbs) * halfH, 2);
+    const isPos = m.r >= 0;
+    const barY = isPos ? zY - bH : zY;
+
+    // Draw bar immediately — no transition needed
+    svg.innerHTML += `<rect x="${x}" y="${barY}" width="${bW}" height="${bH}" fill="${clr}" rx="2" opacity="0.88"/>`;
+
+    // Value label
+    const lblY = isPos ? barY - 4 : barY + bH + 9;
+    svg.innerHTML += `<text x="${x+bW/2}" y="${lblY}" fill="${clr}" font-size="7" font-family="JetBrains Mono" text-anchor="middle">${m.r>0?'+':''}${m.r}</text>`;
+
+    // Month label
+    svg.innerHTML += `<text x="${x+bW/2}" y="${H-5}" fill="#334" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${m.label.replace(' ','')}</text>`;
   });
 }
-
 // ============================================================
 // RENDER: W/L BARS
 // ============================================================
@@ -1306,65 +1315,57 @@ function renderWL(sortedMonths) {
   svg.innerHTML = '';
   const months = sortedMonths.slice(-8);
   if (!months.length) return;
-  const W=300,H=150,pL=8,pR=8,pT=20,pB=26;
-  const cW=W-pL-pR, cH=H-pT-pB;
-  const maxT = Math.max(...months.map(m=>m.wins+m.losses+m.bes),1);
-  const bW = Math.max(cW/months.length - 5, 8);
-  const baseY = pT+cH;
+
+  const W=300, H=150, pL=8, pR=8, pT=22, pB=26;
+  const cW = W-pL-pR, cH = H-pT-pB;
+  const maxT = Math.max(...months.map(m => m.wins+m.losses+m.bes), 1);
+  const bW   = Math.max(Math.floor(cW/months.length) - 4, 6);
+  const baseY = pT + cH;
 
   // Legend
-  svg.innerHTML += `<rect x="0" y="2" width="7" height="7" fill="#00e5a0" rx="1"/>
-    <text x="10" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Win</text>
-    <rect x="38" y="2" width="7" height="7" fill="#ff3355" rx="1"/>
-    <text x="48" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">Loss</text>
-    <rect x="78" y="2" width="7" height="7" fill="#ffbb00" rx="1"/>
-    <text x="88" y="9" fill="#555577" font-size="7" font-family="JetBrains Mono">BE</text>`;
+  svg.innerHTML += `
+    <rect x="0" y="3" width="7" height="7" fill="#00e5a0" rx="1"/>
+    <text x="10" y="10" fill="#555577" font-size="6.5" font-family="JetBrains Mono">Win</text>
+    <rect x="34" y="3" width="7" height="7" fill="#ff3355" rx="1"/>
+    <text x="44" y="10" fill="#555577" font-size="6.5" font-family="JetBrains Mono">Loss</text>
+    <rect x="72" y="3" width="7" height="7" fill="#ffbb00" rx="1"/>
+    <text x="82" y="10" fill="#555577" font-size="6.5" font-family="JetBrains Mono">BE</text>`;
 
-  months.forEach((m,i) => {
+  // Base line
+  svg.innerHTML += `<line x1="${pL}" x2="${W-pR}" y1="${baseY}" y2="${baseY}" stroke="rgba(255,255,255,0.08)"/>`;
+
+  months.forEach((m, i) => {
     const x = pL + i*(cW/months.length) + 2;
-    const wH = (m.wins/maxT)*cH;
-    const lH = (m.losses/maxT)*cH;
-    const bH = (m.bes/maxT)*cH;
+    const wH = Math.max((m.wins   / maxT) * cH, m.wins   > 0 ? 2 : 0);
+    const lH = Math.max((m.losses / maxT) * cH, m.losses > 0 ? 2 : 0);
+    const bH = Math.max((m.bes    / maxT) * cH, m.bes    > 0 ? 2 : 0);
+
+    // Stack from base: losses first (bottom), then BE, then wins (top)
+    let curY = baseY;
+
+    if (lH > 0) {
+      curY -= lH;
+      svg.innerHTML += `<rect x="${x}" y="${curY}" width="${bW}" height="${lH}" fill="#ff3355" rx="1" opacity="0.85"/>`;
+    }
+    if (bH > 0) {
+      curY -= bH;
+      svg.innerHTML += `<rect x="${x}" y="${curY}" width="${bW}" height="${bH}" fill="#ffbb00" rx="1" opacity="0.85"/>`;
+    }
+    if (wH > 0) {
+      curY -= wH;
+      svg.innerHTML += `<rect x="${x}" y="${curY}" width="${bW}" height="${wH}" fill="#00e5a0" rx="1" opacity="0.85"/>`;
+    }
+
+    // Total count on top
     const total = m.wins+m.losses+m.bes;
+    if (total > 0) {
+      svg.innerHTML += `<text x="${x+bW/2}" y="${curY-3}" fill="#666688" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${total}</text>`;
+    }
 
-    // Draw stacked bars: losses at bottom, BE middle, wins top
-    const segments = [
-      {h: lH, color: '#ff3355'},
-      {h: bH, color: '#ffbb00'},
-      {h: wH, color: '#00e5a0'},
-    ];
-
-    let stackY = baseY;
-    segments.forEach(({h, color}) => {
-      if (h < 1) return;
-      const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
-      const finalY = stackY - h;
-      r.setAttribute('x', x);
-      r.setAttribute('y', baseY); // start from base
-      r.setAttribute('width', bW);
-      r.setAttribute('height', 0);
-      r.setAttribute('fill', color);
-      r.setAttribute('rx', '2');
-      r.setAttribute('opacity', '0.85');
-      svg.appendChild(r);
-      const capturedY = finalY;
-      const capturedH = h;
-      setTimeout(() => {
-        r.style.transition = 'height 0.8s ease, y 0.8s ease';
-        r.setAttribute('height', capturedH);
-        r.setAttribute('y', capturedY);
-      }, 300 + i * 80);
-      stackY = finalY;
-    });
-
-    // Month label
-    svg.innerHTML += `<text x="${x+bW/2}" y="${H-4}" fill="#333355" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${m.label.replace(' ','')}</text>`;
-    // Total count
-    const totalH = wH+lH+bH;
-    if(total > 0) svg.innerHTML += `<text x="${x+bW/2}" y="${baseY-totalH-3}" fill="#444466" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${total}</text>`;
+    // Month label at bottom
+    svg.innerHTML += `<text x="${x+bW/2}" y="${H-5}" fill="#334" font-size="6" font-family="JetBrains Mono" text-anchor="middle">${m.label.replace(' ','')}</text>`;
   });
 }
-
 // ============================================================
 // RENDER: SESSIONS
 // ============================================================
@@ -1452,9 +1453,10 @@ const MISTAKE_DEFS = [
       const c = (t.comment||'').toLowerCase();
       const conf = (t.confluences||[]).map(x=>x.toLowerCase());
       const noSMT = !conf.some(x=>x.includes('smt'));
-      const mentionsSMT = /smt|silver|dxy.*wrong|wrong.*dxy/i.test(c);
-      const isLoss = t.outcome === 'Lose';
-      return (mentionsSMT && isLoss) || (noSMT && isLoss && t.grade === 'C');
+      const isLoss = (t.outcome==='Lose'||t.outcome==='Loss');
+      // Match if: comment mentions SMT issue, OR trade lost AND no SMT in confluences
+      return /smt|silver bullet|dxy.*wrong|wrong.*dxy|divergence.*ignored|ignored.*divergence/i.test(c)
+          || (noSMT && isLoss);
     }
   },
   {
@@ -1463,7 +1465,8 @@ const MISTAKE_DEFS = [
     color: '#ff3355',
     match: (t) => {
       const c = (t.comment||'').toLowerCase();
-      return /fomo|revenge|gambl|chased|jumped in|couldn.t wait|bad idea|forced|shouldn.t have|emotional|after.*loss|recover/i.test(c);
+      return /fomo|revenge|gambl|chased|jumped in|couldn.t wait|bad idea|forced|shouldn.t have|emotional|after.*loss|recover|too eager|wanted.*trade|needed.*trade/i.test(c)
+          || ((t.outcome==='Lose'||t.outcome==='Loss') && t.grade==='C' && /ny|new york|off session/i.test(t.session||''));
     }
   },
   {
@@ -1483,7 +1486,8 @@ const MISTAKE_DEFS = [
       const c = (t.comment||'').toLowerCase();
       const conf = (t.confluences||[]).map(x=>x.toLowerCase());
       const noCISD = !conf.some(x=>x.includes('cisd')||x.includes('csid'));
-      return /premature|too early|before.*confirm|no.*cisd|without.*cisd|jumped|didn.t wait|early entry/i.test(c) || (noCISD && t.outcome==='Lose' && t.grade !== 'A+');
+      return /premature|too early|before.*confirm|no.*cisd|without.*cisd|jumped|didn.t wait|early entry/i.test(c)
+          || (noCISD && (t.outcome==='Lose'||t.outcome==='Loss') && t.grade !== 'A+');
     }
   },
   {
@@ -1512,7 +1516,8 @@ const MISTAKE_DEFS = [
       const c = (t.comment||'').toLowerCase();
       const conf = (t.confluences||[]).map(x=>x.toLowerCase());
       const noDisp = !conf.some(x=>x.includes('displacement')||x.includes('fvg'));
-      return /no displacement|lack.*displacement|no fvg|without displacement/i.test(c) || (noDisp && t.outcome==='Lose');
+      return /no displacement|lack.*displacement|no fvg|without displacement/i.test(c)
+          || (noDisp && (t.outcome==='Lose'||t.outcome==='Loss'));
     }
   },
   {
@@ -1833,6 +1838,12 @@ async function loadData() {
     await new Promise(r=>setTimeout(r,100));
 
     ALL_TRADES = pages.map(parseTrade);
+    // Debug: log what outcomes/pairs we got from Notion
+    const outcomeSample = [...new Set(ALL_TRADES.map(t=>t.outcome))].filter(Boolean);
+    const pairSample    = [...new Set(ALL_TRADES.map(t=>t.pair))].filter(Boolean).slice(0,5);
+    console.log('[Dashboard] Outcomes found:', outcomeSample);
+    console.log('[Dashboard] Sample pairs:', pairSample);
+    console.log('[Dashboard] Total trades:', ALL_TRADES.length, '| With date:', ALL_TRADES.filter(t=>t.date).length);
     const stats = analyze(ALL_TRADES);
 
     setLoader(85, 'Auto-grading setups...');
