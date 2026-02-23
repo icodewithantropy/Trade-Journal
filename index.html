@@ -724,27 +724,31 @@ function saveToken() {
 // FETCH
 // ============================================================
 async function fetchPage(cursor = null) {
-  const tok = localStorage.getItem('notion_token') || NOTION_TOKEN;
-  if (!tok || tok.trim() === '' || tok === 'null' || tok === 'undefined') {
+  let tok = localStorage.getItem('notion_token') || NOTION_TOKEN;
+  // Clean up bad stored values
+  if (!tok || tok.trim() === '' || tok === 'null' || tok === 'undefined' || tok === 'false') {
     localStorage.removeItem('notion_token');
     NOTION_TOKEN = '';
+    document.getElementById('loader').style.display = 'none';
     showTokenScreen();
-    throw new Error('No valid token found. Please enter your Notion token.');
+    throw new Error('SHOW_TOKEN_SCREEN');
   }
-  let url = `${WORKER_URL}?token=${encodeURIComponent(tok.trim())}`;
-  if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
+  tok = tok.trim();
+  let url = WORKER_URL + '?token=' + encodeURIComponent(tok);
+  if (cursor) url += '&cursor=' + encodeURIComponent(cursor);
   const res = await fetch(url, { method: 'GET' });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    if (res.status === 400 || res.status === 401) { 
-      localStorage.removeItem('notion_token'); 
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.error === 'Missing token in URL params') {
+    if (res.status === 400 || res.status === 401 || body.error) {
+      localStorage.removeItem('notion_token');
       NOTION_TOKEN = '';
+      document.getElementById('loader').style.display = 'none';
       showTokenScreen();
-      throw new Error('Token invalid or missing. Please re-enter your Notion token.'); 
+      throw new Error('SHOW_TOKEN_SCREEN');
     }
-    throw new Error(e.error || e.message || `HTTP ${res.status}`);
+    throw new Error(body.error || body.message || 'HTTP ' + res.status);
   }
-  return res.json();
+  return body;
 }
 
 async function fetchAll() {
@@ -1761,7 +1765,7 @@ function renderTradesPage() {
     const outCls   = t.outcome?.toLowerCase() === 'win' ? 'win' : t.outcome?.toLowerCase() === 'lose' ? 'lose' : 'be';
     const insight  = t.grade === 'A+' && t.outcome === 'Lose' ? '⚠️ A+ loss — process correct' :
                      t.grade === 'C'  && t.outcome === 'Lose' ? '🚨 C-grade — avoid' :
-                     t.grade === 'C'  && t.outcome === 'Win'  ? '⚡ C-grade win — don't repeat' :
+                     t.grade === 'C'  && t.outcome === 'Win'  ? '⚡ C-grade win — don\'t repeat' :
                      t.grade === 'A+' && t.outcome === 'Win'  ? '✅ Textbook' : '📊 Review';
     const rowNum = start + i + 1;
     return `<tr onclick="openTradeModal(window._allTrades.find(x=>x.id==='${t.id}'),window._allTrades)" style="cursor:pointer">
@@ -1869,6 +1873,7 @@ async function loadData() {
     showApp();
 
   } catch(err) {
+    if (err.message === 'SHOW_TOKEN_SCREEN') return; // handled by fetchPage
     console.error('Dashboard error:', err);
     console.error('Stack:', err.stack);
     showError(err.message + '\n\nCheck browser console (F12) for details.');
