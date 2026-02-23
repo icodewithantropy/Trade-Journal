@@ -1633,8 +1633,8 @@ function renderMonthlyR(sortedMonths) {
 
   months.forEach((m, i) => {
     const x = pL + i*(cW/months.length) + 2;
-    const ord = m.order;
-    const clr = ord < 202511 ? '#00e5a0' : ord === 202511 ? '#00e5a0' : ord === 202512 ? '#ff3355' : '#ffbb00';
+    // Color based on actual R value: positive=green, negative=red, zero=amber
+    const clr = m.r > 0 ? '#00e5a0' : m.r < 0 ? '#ff3355' : '#ffbb00';
     const halfH = cH / 2;
     const bH = Math.max((Math.abs(m.r) / maxAbs) * halfH, 2);
     const isPos = m.r >= 0;
@@ -2264,12 +2264,17 @@ async function loadNews() {
   if (!container) return;
   container.innerHTML = '<div style="font-size:.62rem;color:var(--muted);font-style:italic;padding:20px 0;text-align:center">⏳ Fetching ForexFactory calendar...</div>';
   try {
-    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) throw new Error('Feed unavailable');
-    _newsData = await res.json();
+    var newsUrl = WORKER_URL + '?action=news';
+    var res = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('Worker news failed: ' + res.status);
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    _newsData = Array.isArray(data) ? data : [];
+    if (_newsData.length === 0) throw new Error('Empty feed');
     renderNews();
+    console.log('[News] Loaded ' + _newsData.length + ' events from ForexFactory');
   } catch(err) {
+    console.warn('[News] Live feed failed:', err.message, '— using static fallback');
     _newsData = getStaticNews();
     renderNews(true);
   }
@@ -2650,32 +2655,56 @@ async function savePlaybookToNotion(data) {
   if (data['week-trades']) reviewParts.push('Trades: '            + data['week-trades']);
   var reviewText = reviewParts.join('\n\n');
 
-  // Smart property mapper — finds actual Notion names regardless of case/spacing
-  var actualProps = window._notionPlaybookProps || ['Week','Bias','Key Area','Notes','Review','Week Start'];
-  function findProp(candidates) {
-    for (var ci = 0; ci < candidates.length; ci++) {
-      var c = candidates[ci].toLowerCase();
-      for (var ai = 0; ai < actualProps.length; ai++) {
-        if (actualProps[ai].toLowerCase() === c) return actualProps[ai];
-      }
+  // Build properties using EXACT names from schema fetch
+  var schemaProps = window._notionPlaybookProps || [];
+  console.log('[Playbook] Building with schema props:', schemaProps);
+
+  // Helper: find exact prop name case-insensitively
+  function findExact(keyword) {
+    var kw = keyword.toLowerCase().replace(/[^a-z]/g,'');
+    for (var i = 0; i < schemaProps.length; i++) {
+      var clean = schemaProps[i].toLowerCase().replace(/[^a-z]/g,'');
+      if (clean === kw || clean.includes(kw) || kw.includes(clean)) return schemaProps[i];
     }
-    return candidates[0]; // fallback to first candidate
+    return null;
   }
 
-  var pWeek      = findProp(['Week', 'Name', 'Title', 'Week Name']);
-  var pBias      = findProp(['Bias', 'Bias & Context', 'Weekly Bias']);
-  var pKeyArea   = findProp(['Key Area', 'Key Levels', 'Key Areas', 'Levels']);
-  var pNotes     = findProp(['Notes', 'Note', 'Weekly Notes']);
-  var pReview    = findProp(['Review', 'Week Review', 'Reflection']);
-  var pWeekStart = findProp(['Week Start', 'Date', 'Start Date', 'Week Date']);
+  // Find the title property (always include it — it's the required one)
+  var titlePropName = null;
+  for (var si = 0; si < schemaProps.length; si++) {
+    // title type is usually the first prop or named 'Week'/'Name'
+    if (/^(week|name|title)$/i.test(schemaProps[si])) { titlePropName = schemaProps[si]; break; }
+  }
+  if (!titlePropName && schemaProps.length > 0) titlePropName = schemaProps[0];
+
+  var pBias      = findExact('bias')      || 'Bias';
+  var pKeyArea   = findExact('keyarea') || findExact('key')  || 'Key Area';
+  var pNotes     = findExact('notes')     || 'Notes';
+  var pReview    = findExact('review')    || 'Review';
+  var pWeekStart = findExact('weekstart') || findExact('date') || 'Week Start';
 
   var properties = {};
-  properties[pWeek]      = makeTitle(weekLabel);
+  if (titlePropName) properties[titlePropName] = makeTitle(weekLabel);
   properties[pBias]      = makeTxt(biasText);
   properties[pKeyArea]   = makeTxt(keyText);
   properties[pNotes]     = makeTxt(notesText);
   properties[pReview]    = makeTxt(reviewText);
-  if (pWeekStart && pWeekStart !== pWeek) properties[pWeekStart] = makeDate(mondayStr);
+  // Only add date if prop type is 'date' (not text/title)
+  var propTypes = window._notionPlaybookPropTypes || {};
+  if (pWeekStart && pWeekStart !== titlePropName && propTypes[pWeekStart] === 'date') {
+    properties[pWeekStart] = makeDate(mondayStr);
+  }
+  // Remove any properties whose type doesn't match what we're sending
+  // (e.g. don't send rich_text to a title field or vice versa)
+  Object.keys(properties).forEach(function(k) {
+    var t = propTypes[k];
+    if (t && t !== 'title' && t !== 'rich_text' && t !== 'date') {
+      console.log('[Playbook] Skipping unsupported prop type:', k, t);
+      delete properties[k];
+    }
+  });
+
+  console.log('[Playbook] Sending properties:', Object.keys(properties));
 
   // Step 1 — fetch DB schema to get EXACT property names
   setStatus('Reading Notion schema...');
@@ -2684,11 +2713,15 @@ async function savePlaybookToNotion(data) {
                 + '&action=schema';
   var schRes  = await fetch(schemaUrl);
   var schData = await schRes.json();
-  var actualProps = [];
+  if (schData.object === 'error') throw new Error('Schema error: ' + schData.message);
   if (schData.properties) {
-    actualProps = Object.keys(schData.properties);
-    console.log('[Playbook] Notion props:', actualProps);
-    window._notionPlaybookProps = actualProps;
+    window._notionPlaybookProps     = Object.keys(schData.properties);
+    window._notionPlaybookPropTypes = {};
+    Object.entries(schData.properties).forEach(function(kv) {
+      window._notionPlaybookPropTypes[kv[0]] = kv[1].type;
+    });
+    console.log('[Playbook] Notion props:', window._notionPlaybookProps);
+    console.log('[Playbook] Prop types:', window._notionPlaybookPropTypes);
   }
 
   // Step 2 — query for existing week entry
@@ -2783,57 +2816,31 @@ function parseAlertLevels() {
 
 // ── PRICE ENGINE — open.er-api.com (free, no key, CORS ok) ──
 async function fetchPrices() {
-  // Try CDN-hosted currency data — no CORS, no API key, always available
-  const URLS = [
-    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
-    'https://latest.currency-api.pages.dev/v1/currencies/usd.json',
-  ];
+  try {
+    var url = WORKER_URL + '?action=prices';
+    var res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('Worker price fetch failed: ' + res.status);
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
 
-  for (var i = 0; i < URLS.length; i++) {
-    try {
-      var res = await fetch(URLS[i], { signal: AbortSignal.timeout(6000) });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      var data = await res.json();
-      var r = data.usd || {};
-      if (!r.eur) throw new Error('No EUR rate');
+    var prev;
+    if (data.EURUSD) { prev = _prices.EURUSD ? _prices.EURUSD.price : null; _prices.EURUSD = { price: data.EURUSD, change: data.EURUSD - (prev||data.EURUSD), changePct: 0, prev: prev, time: Date.now() }; }
+    if (data.GBPUSD) { prev = _prices.GBPUSD ? _prices.GBPUSD.price : null; _prices.GBPUSD = { price: data.GBPUSD, change: data.GBPUSD - (prev||data.GBPUSD), changePct: 0, prev: prev, time: Date.now() }; }
+    if (data.DXY)    { prev = _prices.DXY    ? _prices.DXY.price    : null; _prices.DXY    = { price: data.DXY,    change: data.DXY    - (prev||data.DXY),    changePct: 0, prev: prev, time: Date.now() }; }
+    if (data.XAUUSD) { prev = _prices.XAUUSD ? _prices.XAUUSD.price : null; _prices.XAUUSD = { price: data.XAUUSD, change: data.XAUUSD - (prev||data.XAUUSD), changePct: 0, prev: prev, time: Date.now() }; }
 
-      if (r.eur) setPriceData('EURUSD', round(1/r.eur, 5), 0);
-      if (r.gbp) setPriceData('GBPUSD', round(1/r.gbp, 5), 0);
-      if (r.xau) setPriceData('XAUUSD', round(1/r.xau, 2), 0);
+    updateTickerUI();
+    checkAlerts();
 
-      // DXY basket: EUR^-0.576 * JPY^0.136 * GBP^-0.119 * CAD^0.091 * SEK^0.042 * CHF^-0.036 * 100.34
-      if (r.eur && r.jpy && r.gbp && r.cad && r.sek && r.chf) {
-        var dxy = round(
-          Math.pow(r.eur, -0.576) *
-          Math.pow(r.jpy,  0.136) *
-          Math.pow(r.gbp, -0.119) *
-          Math.pow(r.cad,  0.091) *
-          Math.pow(r.sek,  0.042) *
-          Math.pow(r.chf, -0.036) * 100.34,
-          3
-        );
-        setPriceData('DXY', dxy, 0);
-      }
+    document.getElementById('ticker-dot').className = 'ticker-dot';
+    document.getElementById('ticker-status-text').textContent =
+      'Live · ' + new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
-      priceSuccess();
-      return; // success — stop trying
-    } catch(e) {
-      console.log('[Prices] CDN ' + i + ' failed: ' + e.message);
-    }
+  } catch(e) {
+    console.warn('[Prices] Failed:', e.message);
+    document.getElementById('ticker-dot').className = 'ticker-dot stale';
+    document.getElementById('ticker-status-text').textContent = 'Prices paused · Retrying...';
   }
-
-  // All failed — keep last prices or show fallback
-  if (Object.keys(_prices).length === 0) {
-    setPriceData('EURUSD', 1.0850, 0);
-    setPriceData('GBPUSD', 1.2650, 0);
-    setPriceData('DXY',    104.20, 0);
-    setPriceData('XAUUSD', 2650.0, 0);
-  }
-  priceStale();
-}
-
-function round(n, dec) {
-  return Math.round(n * Math.pow(10, dec)) / Math.pow(10, dec);
 }
 
 function setPriceData(sym, price, change) {
@@ -3075,11 +3082,10 @@ async function loadMacroData() {
   }
 
   try {
-    var proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
-    var res   = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) throw new Error('Feed ' + res.status);
-    var wrapper = await res.json();
-    var events  = JSON.parse(wrapper.contents || '[]');
+    var macroNewsUrl = WORKER_URL + '?action=news';
+    var res   = await fetch(macroNewsUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('Worker news ' + res.status);
+    var events = await res.json();
     if (!Array.isArray(events)) throw new Error('Bad format');
 
     // Extract high-impact events and update MACRO object
