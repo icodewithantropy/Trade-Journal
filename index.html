@@ -251,6 +251,8 @@ header{display:flex;justify-content:space-between;align-items:flex-start;margin-
 .me-label{font-size:.54rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .me-value{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:6px}
 .me-impact{font-size:.58rem;color:#6666aa;line-height:1.65}
+.meb-item{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid rgba(255,51,85,.1);font-size:.6rem}
+.meb-item:last-child{border-bottom:none}
 .me-trade-tip{background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.15);border-radius:8px;padding:14px;font-size:.62rem;color:#8888aa;line-height:1.8}
 @media(max-width:900px){.me-grid{grid-template-columns:1fr 1fr}.macro-impact-card+.macro-impact-card{margin-top:8px}}
 @media(max-width:600px){.me-grid{grid-template-columns:1fr}}
@@ -737,7 +739,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
       <div>
         <div class="card-title">Macro Economic Dashboard</div>
-        <div class="card-sub">How global data impacts your currencies · Updated from public sources</div>
+        <div class="card-sub">How global data impacts your currencies · <span id="macro-last-update" style="color:var(--green)">Loading...</span></div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button onclick="setMacroTab('overview')" class="macro-tab active" id="mt-overview">📊 Overview</button>
@@ -788,6 +790,30 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);displ
           <div class="regime-pill" style="background:rgba(68,136,255,.1);border-color:rgba(68,136,255,.25);color:var(--blue)">📊 Markets Pricing 1–2 Cuts in 2025</div>
           <div class="regime-pill" style="background:rgba(153,102,255,.1);border-color:rgba(153,102,255,.25);color:var(--purple)" id="macro-ff-events">⏳ Loading calendar events...</div>
         </div>
+      </div>
+
+      <!-- Extra KPIs row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+        <div class="macro-kpi">
+          <div class="macro-kpi-lbl">ECB Rate</div>
+          <div class="macro-kpi-val" id="live-ecb-rate" style="color:var(--blue)">3.15%</div>
+          <div class="macro-kpi-sub">Eurozone</div>
+        </div>
+        <div class="macro-kpi">
+          <div class="macro-kpi-lbl">BoE Rate</div>
+          <div class="macro-kpi-val" id="live-boe-rate" style="color:var(--purple)">4.75%</div>
+          <div class="macro-kpi-sub">UK</div>
+        </div>
+        <div class="macro-kpi">
+          <div class="macro-kpi-lbl">US GDP</div>
+          <div class="macro-kpi-val" id="live-gdp" style="color:var(--green)">+3.1%</div>
+          <div class="macro-kpi-sub">QoQ Annualised</div>
+        </div>
+      </div>
+
+      <!-- Upcoming High-Impact Events Banner -->
+      <div id="macro-events-banner" style="display:none;background:rgba(255,51,85,.05);border:1px solid rgba(255,51,85,.2);border-radius:8px;padding:12px;margin-bottom:14px">
+        <div style="font-size:.54rem;color:var(--red);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">🚨 Upcoming High-Impact Events This Week</div>
       </div>
 
       <!-- Impact on your pairs -->
@@ -2651,25 +2677,28 @@ async function savePlaybookToNotion(data) {
   properties[pReview]    = makeTxt(reviewText);
   if (pWeekStart && pWeekStart !== pWeek) properties[pWeekStart] = makeDate(mondayStr);
 
-  // Step 1 — query to find existing entry
-  setStatus('Checking Notion...');
+  // Step 1 — fetch DB schema to get EXACT property names
+  setStatus('Reading Notion schema...');
+  var schemaUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
+                + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
+                + '&action=schema';
+  var schRes  = await fetch(schemaUrl);
+  var schData = await schRes.json();
+  var actualProps = [];
+  if (schData.properties) {
+    actualProps = Object.keys(schData.properties);
+    console.log('[Playbook] Notion props:', actualProps);
+    window._notionPlaybookProps = actualProps;
+  }
+
+  // Step 2 — query for existing week entry
+  setStatus('Checking for existing entry...');
   var qUrl = WORKER_URL + '?token=' + encodeURIComponent(tok)
            + '&db=' + encodeURIComponent(PLAYBOOK_DB_ID)
            + '&action=query';
-
   var qRes  = await fetch(qUrl);
   var qData = await qRes.json();
-  if (qData.object === 'error') throw new Error(qData.message || 'Notion query error: ' + JSON.stringify(qData));
-
-  // Diagnose: log actual property names from Notion
-  if (qData.results && qData.results.length > 0) {
-    var actualProps = Object.keys(qData.results[0].properties);
-    console.log('[Playbook] Notion property names:', actualProps);
-    window._notionPlaybookProps = actualProps;
-  } else {
-    // No pages yet — log DB structure from a different call
-    console.log('[Playbook] No existing pages found — will create new entry');
-  }
+  if (qData.object === 'error') throw new Error(qData.message || 'Notion error');
 
   var pages    = qData.results || [];
   var existing = null;
@@ -3016,62 +3045,142 @@ function pbNav(dir) {
 // ============================================================
 // ── MACRO DATA LOADER — ForexFactory + current 2025 values ──
 async function loadMacroData() {
-  // Update KPI cards with current Feb 2025 data
-  var kpiData = {
-    'live-fed-rate':     '4.25–4.50%',
-    'live-fed-rate-sub': 'On hold — Jan 2025',
-    'live-cpi':          '2.9%',
-    'live-cpi-sub':      'Jan 2025 · Target: 2.0%',
-    'live-nfp':          '+143K',
-    'live-nfp-sub':      'Jan 2025 · Below est. 170K',
-    'macro-fed-rate':    '4.25–4.50%',
-    'macro-fed-sub':     'On hold since Dec 2024',
-    'macro-cpi-val':     '2.9%',
-    'macro-cpi-sub':     'Jan 2025 · Above 2% target',
-    'macro-nfp-val':     '+143K',
-    'macro-nfp-sub':     'Jan 2025 · Prev: +307K revised',
-  };
-  Object.keys(kpiData).forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = kpiData[id];
-  });
+  // Load from localStorage first (instant display)
+  var cached = {};
+  try { cached = JSON.parse(localStorage.getItem('macro_cache') || '{}'); } catch(e) {}
 
-  // Try to enrich from ForexFactory calendar
+  var MACRO = {
+    fedRate:    cached.fedRate    || '4.25–4.50%',
+    fedRateSub: cached.fedRateSub || 'Dec 2024 cut · Watch FOMC',
+    cpi:        cached.cpi        || '2.9%',
+    cpiSub:     cached.cpiSub     || 'Jan 2025 · Target: 2.0%',
+    nfp:        cached.nfp        || '+256K',
+    nfpSub:     cached.nfpSub     || 'Jan 2025 · Strong jobs',
+    gdp:        cached.gdp        || '+3.1%',
+    ecbRate:    cached.ecbRate    || '3.15%',
+    boeRate:    cached.boeRate    || '4.75%',
+    usCpi:      cached.usCpi      || '2.9%',
+    lastUpdate: cached.lastUpdate || 'Using latest known data',
+    events:     cached.events     || [],
+  };
+
+  applyMacroData(MACRO);
+
+  // Try live ForexFactory feed (with 24hr cache)
+  var now = Date.now();
+  var cacheAge = now - (cached.fetchTime || 0);
+  if (cacheAge < 3600000) { // 1 hour cache
+    console.log('[Macro] Using cached data (age: ' + Math.round(cacheAge/60000) + 'min)');
+    return;
+  }
+
   try {
-    var proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
-    var res   = await fetch(proxy, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) throw new Error('FF failed');
-    var events = await res.json();
-    // Get high-impact USD events this week
-    var highUSD = events.filter(function(e) {
-      return e.country === 'USD' && (e.impact === 'High' || e.impact === 'high');
-    });
-    var pillEl = document.getElementById('macro-ff-events');
-    if (pillEl && highUSD.length > 0) {
-      pillEl.textContent = '📅 ' + highUSD.length + ' High-Impact USD events this week';
-      // Show next event
-      var now    = Date.now();
-      var next   = highUSD.filter(function(e){ return new Date(e.date).getTime() > now; })[0];
-      if (next) {
-        var d = new Date(next.date);
-        var timeStr = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-        pillEl.textContent = '📅 Next: ' + next.title + ' · ' + timeStr;
+    var proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+    var res   = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('Feed ' + res.status);
+    var wrapper = await res.json();
+    var events  = JSON.parse(wrapper.contents || '[]');
+    if (!Array.isArray(events)) throw new Error('Bad format');
+
+    // Extract high-impact events and update MACRO object
+    events.filter(function(e){ return e.impact === 'High'; }).forEach(function(e) {
+      var t = (e.title || '').toLowerCase();
+      var prev = e.previous || '';
+      var act  = e.actual   || '';
+      if (/non-farm payrolls/i.test(t) && e.country === 'USD') {
+        MACRO.nfp    = act || prev || MACRO.nfp;
+        MACRO.nfpSub = formatFFDate(e.date) + ' · NFP';
       }
-    }
-    // Update EURUSD bias based on upcoming events
-    updateMacroImpactCards(highUSD);
-  } catch(e) {
-    var pillEl = document.getElementById('macro-ff-events');
-    if (pillEl) pillEl.textContent = '📅 ' + (new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'})) + ' — Check ForexFactory for live calendar';
+      if (/cpi.*year|consumer price index.*year/i.test(t) && e.country === 'USD') {
+        MACRO.cpi    = act || prev || MACRO.cpi;
+        MACRO.cpiSub = formatFFDate(e.date) + ' · US CPI YoY';
+      }
+      if (/interest rate decision|fed funds/i.test(t) && e.country === 'USD') {
+        MACRO.fedRate    = act || prev || MACRO.fedRate;
+        MACRO.fedRateSub = formatFFDate(e.date) + ' · FOMC Decision';
+      }
+      if (/interest rate decision/i.test(t) && e.country === 'EUR') {
+        MACRO.ecbRate = act || prev || MACRO.ecbRate;
+      }
+      if (/interest rate decision/i.test(t) && e.country === 'GBP') {
+        MACRO.boeRate = act || prev || MACRO.boeRate;
+      }
+      if (/gdp.*quarter|gross domestic.*quarter/i.test(t) && e.country === 'USD') {
+        MACRO.gdp = act || prev || MACRO.gdp;
+      }
+    });
+
+    MACRO.events     = events.filter(function(e){ return e.impact === 'High'; }).slice(0, 20);
+    MACRO.lastUpdate = 'Updated ' + new Date().toLocaleTimeString();
+    MACRO.fetchTime  = now;
+
+    // Persist to localStorage
+    localStorage.setItem('macro_cache', JSON.stringify(MACRO));
+    applyMacroData(MACRO);
+    console.log('[Macro] Live data loaded: ' + events.length + ' events');
+
+  } catch(err) {
+    console.log('[Macro] Live feed unavailable (' + err.message + ') — using latest known values');
   }
 }
 
-function updateMacroImpactCards(events) {
-  // Show upcoming high-impact events in macro overview
-  if (!events || !events.length) return;
-  var names = events.slice(0,3).map(function(e){ return e.title; }).join(' · ');
-  // Could add a "this week events" strip here in future
+function formatFFDate(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+  } catch(e) { return dateStr || ''; }
 }
+
+function applyMacroData(M) {
+  function setEl(id, val, color) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val;
+    if (color) el.style.color = color;
+  }
+  function setSubEl(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  // KPI cards
+  setEl('live-fed-rate',     M.fedRate,  'var(--amber)');
+  setSubEl('live-fed-rate-sub', M.fedRateSub);
+  setEl('live-cpi',          M.cpi,      parseFloat(M.cpi) > 3 ? 'var(--red)' : 'var(--amber)');
+  setSubEl('live-cpi-sub',      M.cpiSub);
+  setEl('live-nfp',          M.nfp,      'var(--green)');
+  setSubEl('live-nfp-sub',      M.nfpSub);
+  setEl('live-ecb-rate',     M.ecbRate,  'var(--blue)');
+  setEl('live-boe-rate',     M.boeRate,  'var(--purple)');
+  setEl('live-gdp',          M.gdp,      parseFloat(M.gdp) > 2 ? 'var(--green)' : 'var(--amber)');
+
+  // Update macro last-updated label
+  var luEl = document.getElementById('macro-last-update');
+  if (luEl) luEl.textContent = M.lastUpdate;
+
+  // Render upcoming high-impact events banner
+  var bannerEl = document.getElementById('macro-events-banner');
+  if (bannerEl && M.events && M.events.length) {
+    var upcoming = M.events.filter(function(e) {
+      return new Date(e.date) > new Date();
+    }).slice(0, 5);
+    if (upcoming.length) {
+      bannerEl.innerHTML = upcoming.map(function(e) {
+        var d   = new Date(e.date);
+        var day = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+        var tm  = d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        return '<div class="meb-item">'
+          + '<span style="color:var(--red);font-weight:700">' + (e.country||'') + '</span>'
+          + '<span style="color:var(--text)">' + (e.title||'') + '</span>'
+          + '<span style="color:var(--muted2)">' + day + ' ' + tm + '</span>'
+          + (e.forecast ? '<span style="color:var(--green)">F: ' + e.forecast + '</span>' : '')
+          + '</div>';
+      }).join('');
+      bannerEl.style.display = 'block';
+    }
+  }
+}
+
+
 
 function setMacroTab(name) {
   ['overview','usd','eur','gbp','gold'].forEach(t => {
