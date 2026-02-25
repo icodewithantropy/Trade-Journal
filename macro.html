@@ -210,8 +210,7 @@ svg{display:block;width:100%;overflow:visible}
 function esc(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;').replace(/\//g,'&#x2F;')}
 function escUrl(u){if(!u)return '';const s=String(u).trim();return /^(javascript|data|vbscript):/i.test(s)?'':s}
 const TokenStore={_s:'to_tok',_l:'to_tok_p',get(){return sessionStorage.getItem(this._s)||localStorage.getItem(this._l)||''},set(t,p){if(!this.ok(t))return false;sessionStorage.setItem(this._s,t);p?localStorage.setItem(this._l,t):localStorage.removeItem(this._l);return true},clear(){sessionStorage.removeItem(this._s);localStorage.removeItem(this._l)},ok(t){return typeof t==='string'&&(t.startsWith('ntn_')||t.startsWith('secret_'))}};
-const ApiKeyStore={_s:'to_ak',get(){try{return JSON.parse(sessionStorage.getItem(this._s)||'{}')}catch{return{}}},set(k){sessionStorage.setItem(this._s,JSON.stringify(k))},td(){return this.get().td||''},fred(){return this.get().fred||''}};
-
+const ApiKeyStore={_s:'to_ak',get(){return{td:'5db5f72e03dc40b4ae453edf8a437232',fred:'Y5d8f2796ad376f6a4336bdceb8818960'}},set(k){},td(){return'5db5f72e03dc40b4ae453edf8a437232'},fred(){return'5d8f2796ad376f6a4336bdceb8818960'}};
 const WORKER='https://notion-proxy.churan756.workers.dev/';
 const CURRENT_PAGE='macro';
 const PAGES=[{id:'analytics',label:'Analytics',file:'index.html'},{id:'macro',label:'Macro',file:'macro.html'},{id:'playbook',label:'Playbook',file:'playbook.html'},{id:'news',label:'News',file:'news.html'},{id:'simulator',label:'Simulator',file:'simulator.html'}];
