@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeOS · Playbook</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.amazonaws.com https://*.notion.so; connect-src 'self' https://notion-proxy.churan756.workers.dev; frame-ancestors 'none';">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#04060a;--s1:#07090f;--s2:#0a0e17;--s3:#0e141f;--border:#182030;--b2:#1d2838;--b3:#243344;--text:#d2d8e6;--t2:#9aaabb;--muted:#374a60;--m2:#546880;--green:#00d47a;--red:#ff2d55;--amber:#f5a623;--blue:#3d8eff;--purple:#9b6bff;--cyan:#00c4f5;--nav-h:46px;--strip-h:32px;--ff:'JetBrains Mono',monospace;--fd:'Syne',sans-serif}
+html{font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);min-height:100vh;overflow-x:hidden;padding-top:var(--nav-h);padding-bottom:var(--strip-h);opacity:0;transition:opacity 220ms ease;background-image:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px)}
+#nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:rgba(4,6,10,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;z-index:1000}
+.nav-brand{font-family:var(--fd);font-size:.68rem;font-weight:800;letter-spacing:3px;color:var(--text);white-space:nowrap;margin-right:24px;flex-shrink:0}.nav-brand span{color:var(--green)}
+.nav-links{display:flex;gap:2px;flex:1}
+.nav-link{display:flex;align-items:center;padding:5px 12px;font-size:.5rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--m2);border-radius:3px;border:1px solid transparent;cursor:pointer;transition:all .12s;user-select:none;white-space:nowrap}
+.nav-link:hover{color:var(--t2);background:rgba(255,255,255,.03);border-color:var(--border)}.nav-link.active{color:var(--text);background:rgba(255,255,255,.04);border-color:var(--b2);position:relative}.nav-link.active::after{content:'';position:absolute;bottom:-1px;left:25%;right:25%;height:1px;background:var(--green)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.nav-px{font-size:.46rem;color:var(--m2);background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:3px 7px;transition:color .4s;white-space:nowrap}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s,box-shadow .3s}.nav-dot.on{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2.5s infinite}.nav-dot.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.6)}}
+#price-strip{position:fixed;bottom:0;left:0;right:0;height:var(--strip-h);background:rgba(4,6,10,.97);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:0;z-index:900}
+.ps-pair{display:flex;align-items:center;gap:7px;padding:0 14px;border-right:1px solid var(--border);height:100%}.ps-pair:first-child{padding-left:0}
+.ps-sym{font-size:.44rem;color:var(--m2);letter-spacing:1px}.ps-price{font-size:.6rem;font-weight:700;color:var(--text)}.ps-chg{font-size:.46rem}
+.strip-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.strip-ts{font-size:.42rem;color:var(--muted)}.strip-src{font-size:.42rem;color:var(--green);letter-spacing:1px}
+
+/* Token screen */
+#token-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:9000;align-items:center;justify-content:center;flex-direction:column;gap:28px;padding:40px}
+#token-screen.show{display:flex}
+.ts-logo{font-family:var(--fd);font-size:1.3rem;font-weight:800;letter-spacing:3px}.ts-logo span{color:var(--green)}
+.ts-box{background:var(--s1);border:1px solid var(--b2);border-radius:10px;padding:26px 30px;width:100%;max-width:400px}
+.ts-box h2{font-family:var(--fd);font-size:.85rem;font-weight:700;margin-bottom:8px}
+.ts-box p{font-size:.52rem;color:var(--t2);line-height:1.7;margin-bottom:16px}.ts-box p strong{color:var(--green)}
+.ts-inp{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--text);font-family:var(--ff);font-size:.62rem;padding:9px 12px;outline:none;transition:border-color .15s}.ts-inp:focus{border-color:var(--blue)}.ts-inp::placeholder{color:var(--muted)}
+.ts-remember{display:flex;align-items:center;gap:7px;margin:10px 0 14px;font-size:.48rem;color:var(--m2);cursor:pointer}.ts-remember input{accent-color:var(--green)}
+.ts-btn{width:100%;padding:11px;background:rgba(0,212,122,.08);border:1px solid rgba(0,212,122,.3);border-radius:4px;color:var(--green);font-family:var(--fd);font-size:.68rem;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .15s}.ts-btn:hover{background:rgba(0,212,122,.14)}
+.ts-note{font-size:.44rem;color:var(--muted);text-align:center;margin-top:10px;line-height:1.6;border-top:1px solid var(--border);padding-top:10px}
+
+.wrap{max-width:1140px;margin:0 auto;padding:22px 20px}
+.shdr{display:flex;align-items:baseline;gap:10px;margin-bottom:16px}
+.shdr-title{font-family:var(--fd);font-size:.8rem;font-weight:700}
+.shdr-sub{font-size:.48rem;color:var(--m2);letter-spacing:2px;text-transform:uppercase}
+.shdr-line{flex:1;height:1px;background:var(--border)}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:15px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
+.card.g::before{background:linear-gradient(90deg,transparent,var(--green),transparent)}
+.card.b::before{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
+.card.a::before{background:linear-gradient(90deg,transparent,var(--amber),transparent)}
+
+/* Week nav */
+.week-nav{display:flex;align-items:center;gap:12px;margin-bottom:20px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px 16px}
+.wn-btn{background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--t2);font-family:var(--ff);font-size:.7rem;padding:6px 14px;cursor:pointer;transition:all .12s}.wn-btn:hover{border-color:var(--b3);color:var(--text)}
+.wn-label{font-family:var(--fd);font-size:.75rem;font-weight:700;flex:1;text-align:center}
+.wn-status{font-size:.48rem;color:var(--m2);letter-spacing:1px}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.tab{padding:8px 16px;font-size:.5rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--m2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s,border-color .12s;font-family:var(--ff)}
+.tab:hover{color:var(--t2)}.tab.on{color:var(--text);border-bottom-color:var(--green)}
+.tab-panel{display:none}.tab-panel.show{display:block}
+
+/* Form fields */
+.field{margin-bottom:14px}
+.field-label{display:block;font-size:.46rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--m2);margin-bottom:5px}
+.field-inp{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--text);font-family:var(--ff);font-size:.6rem;padding:9px 12px;outline:none;transition:border-color .15s}
+.field-inp:focus{border-color:var(--blue)}.field-inp::placeholder{color:var(--muted)}
+textarea.field-inp{resize:vertical;min-height:70px;line-height:1.6}
+
+/* Grid layouts */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* Checklist */
+.checklist{display:flex;flex-direction:column;gap:6px}
+.check-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color .12s}
+.check-item:hover{border-color:var(--b3)}
+.check-item input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.check-item label{font-size:.58rem;color:var(--t2);cursor:pointer;flex:1;line-height:1.4}
+.check-item.checked label{color:var(--green);text-decoration:line-through;opacity:.6}
+
+/* Save bar */
+.save-bar{display:flex;gap:8px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:4px;font-family:var(--ff);font-size:.54rem;letter-spacing:1px;text-transform:uppercase;border:1px solid;cursor:pointer;transition:all .15s;background:transparent}
+.btn:active{transform:scale(.98)}.btn:disabled{opacity:.4;cursor:default}
+.btn-green{border-color:var(--green);color:var(--green)}.btn-green:hover{background:rgba(0,212,122,.1)}
+.btn-red{border-color:var(--red);color:var(--red)}.btn-red:hover{background:rgba(255,45,85,.1)}
+.btn-ghost{border-color:var(--b2);color:var(--m2)}.btn-ghost:hover{border-color:var(--b3);color:var(--t2)}
+.save-msg{font-size:.52rem;margin-left:auto}
+.save-msg.ok{color:var(--green)}.save-msg.err{color:var(--red)}
+
+/* Charts grid */
+.charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(max-width:640px){.charts-grid{grid-template-columns:1fr}}
+.chart-thumb{border-radius:8px;overflow:hidden;border:1px solid var(--b2);cursor:pointer;transition:border-color .12s}
+.chart-thumb:hover{border-color:var(--b3)}
+.chart-thumb img{width:100%;display:block}
+.chart-thumb-label{font-size:.48rem;color:var(--m2);padding:5px 8px;background:var(--s2)}
+
+/* Empty state */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:.6rem;line-height:2}
+.empty strong{color:var(--t2);display:block;font-size:.75rem;margin-bottom:6px}
+
+/* Delete confirm modal */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);z-index:2000;align-items:center;justify-content:center;padding:16px}
+.modal-ov.open{display:flex}
+.modal-box{background:var(--s1);border:1px solid var(--b2);border-radius:12px;width:100%;max-width:400px;padding:24px;animation:su .18s ease}
+@keyframes su{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{font-family:var(--fd);font-size:.85rem;font-weight:700;margin-bottom:8px}
+.modal-body{font-size:.6rem;color:var(--t2);line-height:1.7;margin-bottom:18px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-brand">TRADE<span>OS</span></div>
+  <div class="nav-links" id="nav-links"></div>
+  <div class="nav-right">
+    <div class="nav-px" id="np-eur">EUR —</div>
+    <div class="nav-px" id="np-xau">XAU —</div>
+    <div class="nav-px" id="np-dxy">DXY —</div>
+    <div class="nav-dot" id="nav-dot"></div>
+  </div>
+</nav>
+
+<div id="token-screen">
+  <div class="ts-logo">TRADE<span>OS</span></div>
+  <div class="ts-box">
+    <h2>Connect Notion</h2>
+    <p>Enter your Notion integration token to load your playbook.<br>Get it at <strong>notion.so/my-integrations</strong></p>
+    <input class="ts-inp" id="ts-inp" type="password" placeholder="ntn_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')saveToken()">
+    <label class="ts-remember"><input type="checkbox" id="ts-remember"> Remember on this device</label>
+    <button class="ts-btn" onclick="saveToken()">CONNECT →</button>
+    <div class="ts-note">Token validated · Clears on tab close unless remembered · Never sent to third parties</div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="modal-ov" id="del-modal">
+  <div class="modal-box">
+    <div class="modal-hdr">Delete this week's playbook?</div>
+    <div class="modal-body">This will archive the page in Notion. The data won't be permanently deleted from Notion, but it will be hidden from TradeOS. This cannot be undone from here.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeDelModal()">Cancel</button>
+      <button class="btn btn-red" id="del-confirm-btn" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="shdr" style="margin-bottom:18px">
+    <div class="shdr-title">Weekly Playbook</div>
+    <div class="shdr-line"></div>
+    <div class="shdr-sub" id="sync-status">Connecting…</div>
+  </div>
+
+  <!-- Week nav -->
+  <div class="week-nav">
+    <button class="wn-btn" onclick="weekNav(-1)">‹ Prev</button>
+    <div class="wn-label" id="week-label">—</div>
+    <div class="wn-status" id="week-status"></div>
+    <button class="wn-btn" onclick="weekNav(1)" id="wn-next">Next ›</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab on" onclick="setTab('plan',this)">Plan</button>
+    <button class="tab" onclick="setTab('review',this)">Review</button>
+    <button class="tab" onclick="setTab('charts',this)">Charts</button>
+  </div>
+
+  <!-- PLAN TAB -->
+  <div class="tab-panel show" id="tab-plan">
+    <div class="grid2" style="margin-bottom:10px">
+      <div class="field">
+        <label class="field-label">Weekly Bias</label>
+        <select class="field-inp" id="f-bias">
+          <option value="">Select…</option>
+          <option>Bullish</option><option>Bearish</option><option>Neutral</option><option>Cautious</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">DXY Outlook</label>
+        <select class="field-inp" id="f-dxy">
+          <option value="">Select…</option>
+          <option>DXY Bullish</option><option>DXY Bearish</option><option>DXY Neutral</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid3" style="margin-bottom:10px">
+      <div class="field">
+        <label class="field-label">EUR/USD Key Levels</label>
+        <input class="field-inp" id="f-eur" placeholder="1.0820, 1.0750…">
+      </div>
+      <div class="field">
+        <label class="field-label">GBP/USD Key Levels</label>
+        <input class="field-inp" id="f-gbp" placeholder="1.2680, 1.2600…">
+      </div>
+      <div class="field">
+        <label class="field-label">XAU/USD Key Levels</label>
+        <input class="field-inp" id="f-xau" placeholder="2320, 2290…">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Weekly Narrative</label>
+      <textarea class="field-inp" id="f-narrative" rows="4" placeholder="Key themes, central bank events, risk catalysts…"></textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Pairs to Watch</label>
+      <input class="field-inp" id="f-pairs" placeholder="EUR/USD, XAU/USD…">
+    </div>
+
+    <div class="shdr" style="margin-top:6px;margin-bottom:10px"><div class="shdr-title" style="font-size:.65rem">Pre-Week Checklist</div><div class="shdr-line"></div></div>
+    <div class="checklist" id="checklist">
+      <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox" onclick="event.stopPropagation()"><label>Reviewed higher timeframe structure (D1, W1)</label></div>
+      <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox" onclick="event.stopPropagation()"><label>Identified key weekly levels & POIs</label></div>
+      <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox" onclick="event.stopPropagation()"><label>Checked economic calendar for high-impact events</label></div>
+      <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox" onclick="event.stopPropagation()"><label>Reviewed last week's trades & mistakes</label></div>
+      <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox" onclick="event.stopPropagation()"><label>DXY analysis complete</label></div>
+      <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox" onclick="event.stopPropagation()"><label>Set price alerts for key levels</label></div>
+    </div>
+
+    <div class="save-bar">
+      <button class="btn btn-green" onclick="savePlan()" id="save-btn">Save to Notion</button>
+      <button class="btn btn-red" onclick="openDelModal()" id="del-btn">Delete Week</button>
+      <span class="save-msg" id="save-msg"></span>
+    </div>
+  </div>
+
+  <!-- REVIEW TAB -->
+  <div class="tab-panel" id="tab-review">
+    <div class="field">
+      <label class="field-label">Week Grade</label>
+      <select class="field-inp" id="r-grade">
+        <option value="">Select…</option>
+        <option>A — Executed the plan</option>
+        <option>B — Minor deviations</option>
+        <option>C — Struggled with discipline</option>
+        <option>D — Off plan entirely</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label">What worked</label>
+      <textarea class="field-inp" id="r-worked" rows="3" placeholder="Setups, sessions, execution…"></textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">What didn't work / mistakes</label>
+      <textarea class="field-inp" id="r-mistakes" rows="3" placeholder="FOMO entries, moving SL, off-session…"></textarea>
+    </div>
+    <div class="field">
+      <label class="field-label">Key lesson for next week</label>
+      <textarea class="field-inp" id="r-lesson" rows="2" placeholder="One thing to focus on…"></textarea>
+    </div>
+    <div class="save-bar">
+      <button class="btn btn-green" onclick="saveReview()" id="save-review-btn">Save Review</button>
+      <span class="save-msg" id="save-review-msg"></span>
+    </div>
+  </div>
+
+  <!-- CHARTS TAB -->
+  <div class="tab-panel" id="tab-charts">
+    <div id="charts-area">
+      <div class="empty"><strong>No charts yet</strong>Attach chart screenshots to this week's Notion page<br>to see them here.</div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<div id="price-strip">
+  <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-dxy"><span class="ps-sym">DXY</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-xau"><span class="ps-sym">XAU/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="strip-right">
+    <span class="strip-ts" id="strip-ts"></span>
+    <span class="strip-src" id="strip-src">○ Loading</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+function esc(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;').replace(/\//g,'&#x2F;')}
+function escUrl(u){if(!u)return '';const s=String(u).trim();return /^(javascript|data|vbscript):/i.test(s)?'':s}
+const TokenStore={_s:'to_tok',_l:'to_tok_p',get(){return sessionStorage.getItem(this._s)||localStorage.getItem(this._l)||''},set(t,p){if(!this.ok(t))return false;sessionStorage.setItem(this._s,t);p?localStorage.setItem(this._l,t):localStorage.removeItem(this._l);return true},clear(){sessionStorage.removeItem(this._s);localStorage.removeItem(this._l)},ok(t){return typeof t==='string'&&(t.startsWith('ntn_')||t.startsWith('secret_'))}};
+const ApiKeyStore={_s:'to_ak',get(){try{return JSON.parse(sessionStorage.getItem(this._s)||'{}')}catch{return{}}},td(){return this.get().td||''},fred(){return this.get().fred||''}};
+
+const WORKER='https://notion-proxy.churan756.workers.dev/';
+const DB_PB='30fc2f0e0158808a9ce1cb7ff70ce3aa';
+const CURRENT_PAGE='playbook';
+const PAGES=[{id:'analytics',label:'Analytics',file:'index.html'},{id:'macro',label:'Macro',file:'macro.html'},{id:'playbook',label:'Playbook',file:'playbook.html'},{id:'news',label:'News',file:'news.html'},{id:'simulator',label:'Simulator',file:'simulator.html'}];
+
+function initNav(){
+  document.getElementById('nav-links').innerHTML=PAGES.map(p=>{
+    const active=p.id===CURRENT_PAGE?' active':'';
+    const click=p.id!==CURRENT_PAGE?`onclick="navGo('${esc(p.file)}')"` :'';
+    return `<div class="nav-link${active}" ${click}>${esc(p.label)}</div>`;
+  }).join('');
+  document.body.style.opacity='1';
+}
+function navGo(f){document.body.style.transition='opacity 130ms ease';document.body.style.opacity='0';setTimeout(()=>{window.location.href=f},140)}
+
+async function wFetch(action,params={},body=null){
+  const u=new URL(WORKER);u.searchParams.set('action',action);
+  for(const[k,v]of Object.entries(params))u.searchParams.set(k,v);
+  const keys=ApiKeyStore.get();const hdrs={'Content-Type':'application/json'};
+  if(keys.td||keys.fred)hdrs['X-Api-Keys']=JSON.stringify({td:keys.td,fred:keys.fred});
+  const opts={method:body?'POST':'GET',headers:hdrs,signal:AbortSignal.timeout(14000)};
+  if(body)opts.body=JSON.stringify(body);
+  const res=await fetch(u.toString(),opts);const data=await res.json();
+  if(!res.ok||data.error)throw new Error(data.error||`HTTP ${res.status}`);
+  return data;
+}
+async function nFetch(action,params={},body=null){
+  const tok=TokenStore.get();
+  if(!TokenStore.ok(tok)){showTokenScreen();throw new Error('NO_TOKEN')}
+  return wFetch(action,{...params,token:tok},body);
+}
+
+// Price engine
+let _prices={};
+async function fetchPrices(){
+  try{
+    const data=await wFetch('prices',{source:'exchangerate'});
+    ['EURUSD','GBPUSD','DXY','XAUUSD'].forEach(sym=>{
+      if(!data[sym])return;const prev=_prices[sym]?.price??null;const price=parseFloat(data[sym]);
+      if(isNaN(price))return;_prices[sym]={price,prev,change:prev!==null?+(price-prev).toFixed(6):0};
+    });
+    updatePriceUI(data.source);
+  }catch(e){}
+}
+function updatePriceUI(source){
+  [{elId:'ps-eur',sym:'EURUSD',dec:5},{elId:'ps-gbp',sym:'GBPUSD',dec:5},{elId:'ps-dxy',sym:'DXY',dec:3},{elId:'ps-xau',sym:'XAUUSD',dec:2}].forEach(({elId,sym,dec})=>{
+    const d=_prices[sym];if(!d)return;const el=document.getElementById(elId);if(!el)return;
+    const up=d.change>=0;const clr=up?'var(--green)':'var(--red)';
+    el.querySelector('.ps-price').textContent=d.price.toFixed(dec);
+    el.querySelector('.ps-chg').textContent=(up?'▲':'▼')+' '+Math.abs(d.change).toFixed(dec);
+    el.querySelector('.ps-chg').style.color=clr;
+  });
+  const np=_prices;
+  if(np.EURUSD){const el=document.getElementById('np-eur');el.textContent=`EUR ${np.EURUSD.price.toFixed(5)}`;el.style.color=np.EURUSD.change>=0?'var(--green)':'var(--red)'}
+  if(np.XAUUSD){const el=document.getElementById('np-xau');el.textContent=`XAU $${np.XAUUSD.price.toFixed(0)}`;el.style.color=np.XAUUSD.change>=0?'var(--green)':'var(--red)'}
+  if(np.DXY){document.getElementById('np-dxy').textContent=`DXY ${np.DXY.price.toFixed(3)}`}
+  document.getElementById('strip-ts').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('strip-src').textContent=source==='twelvedata'?'● Live':'● Hourly';
+  document.getElementById('strip-src').style.color='var(--green)';
+}
+
+// Token screen
+function showTokenScreen(){document.getElementById('token-screen').classList.add('show');setTimeout(()=>document.getElementById('ts-inp').focus(),200)}
+function saveToken(){
+  const val=document.getElementById('ts-inp').value.trim();
+  const persist=document.getElementById('ts-remember').checked;
+  if(!TokenStore.ok(val)){document.getElementById('ts-inp').style.borderColor='var(--red)';setTimeout(()=>document.getElementById('ts-inp').style.borderColor='',1400);return}
+  TokenStore.set(val,persist);
+  document.getElementById('token-screen').classList.remove('show');
+  document.getElementById('ts-inp').value='';
+  loadPlaybook();
+}
+
+// ── WEEK LOGIC ────────────────────────────────────────────
+let _weekOffset = 0;
+let _allPages = [];
+let _currentPageId = null;
+
+function getWeekDates(offset = 0){
+  const now = new Date();
+  const dow  = now.getDay();
+  const mon  = new Date(now); mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
+  const sun  = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return { mon, sun,
+    key: mon.toISOString().slice(0,10),
+    label: `${mon.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${sun.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` };
+}
+
+function weekNav(dir){
+  if(dir === 1 && _weekOffset >= 0) return; // can't go to future
+  _weekOffset += dir;
+  document.getElementById('wn-next').disabled = _weekOffset >= 0;
+  loadPlaybook();
+}
+
+// ── NOTION PLAYBOOK ───────────────────────────────────────
+async function loadPlaybook(){
+  const tok = TokenStore.get();
+  if(!TokenStore.ok(tok)){ showTokenScreen(); return; }
+
+  const {key, label} = getWeekDates(_weekOffset);
+  document.getElementById('week-label').textContent = label;
+  document.getElementById('week-status').textContent = 'Loading…';
+  document.getElementById('sync-status').textContent = 'Syncing…';
+
+  try{
+    let all = [], cursor = null;
+    do{
+      const p = {db: DB_PB};
+      if(cursor) p.cursor = cursor;
+      const data = await nFetch('query', p);
+      all = all.concat(data.results || []);
+      cursor = data.next_cursor || null;
+    } while(cursor);
+
+    _allPages = all;
+
+    // Find page matching this week
+    const match = all.find(pg => {
+      const tp = pg.properties;
+      const dateKey = Object.keys(tp).find(k => k.toLowerCase().includes('date') || k.toLowerCase().includes('week'));
+      if(!dateKey) return false;
+      const d = tp[dateKey]?.date?.start || tp[dateKey]?.rich_text?.[0]?.plain_text || '';
+      return d.startsWith(key);
+    });
+
+    if(match){
+      _currentPageId = match.id;
+      populateForm(match.properties);
+      loadCharts(match.id);
+      document.getElementById('week-status').textContent = '● Synced';
+      document.getElementById('sync-status').textContent = 'Notion · Synced';
+    } else {
+      _currentPageId = null;
+      clearForm();
+      document.getElementById('week-status').textContent = '○ New week — not yet saved';
+      document.getElementById('sync-status').textContent = 'Notion · Connected';
+    }
+    document.getElementById('nav-dot').className = 'nav-dot on';
+  } catch(e){
+    if(e.message === 'NO_TOKEN') return;
+    document.getElementById('week-status').textContent = '✕ Error: ' + e.message.slice(0,40);
+    document.getElementById('sync-status').textContent = 'Error';
+    document.getElementById('nav-dot').className = 'nav-dot err';
+  }
+}
+
+function getPropValue(props, query, type){
+  const k = Object.keys(props).find(k => k.toLowerCase().includes(query.toLowerCase()));
+  if(!k) return '';
+  const p = props[k];
+  if(type === 'select') return p.select?.name || '';
+  if(type === 'rich_text') return (p.rich_text||[]).map(r => r.plain_text).join('');
+  if(type === 'title') return (p.title||[]).map(r => r.plain_text).join('');
+  return '';
+}
+
+function populateForm(props){
+  const g = (id, q, t) => { const v = getPropValue(props,q,t); if(v) document.getElementById(id).value = v; };
+  g('f-bias','bias','select'); g('f-dxy','dxy','select');
+  g('f-eur','eur','rich_text'); g('f-gbp','gbp','rich_text'); g('f-xau','xau','rich_text');
+  g('f-narrative','narrative','rich_text'); g('f-pairs','pairs','rich_text');
+  g('r-grade','grade','select'); g('r-worked','worked','rich_text');
+  g('r-mistakes','mistake','rich_text'); g('r-lesson','lesson','rich_text');
+}
+
+function clearForm(){
+  ['f-bias','f-dxy','f-eur','f-gbp','f-xau','f-narrative','f-pairs','r-grade','r-worked','r-mistakes','r-lesson']
+    .forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('.check-item').forEach(el => {
+    el.classList.remove('checked'); el.querySelector('input').checked = false;
+  });
+}
+
+// ── SAVE ─────────────────────────────────────────────────
+function buildProperties(fields){
+  const props = {};
+  const addText = (name, val) => { if(val) props[name] = {rich_text: [{text:{content: val.slice(0,2000)}}]}; };
+  const addSel  = (name, val) => { if(val) props[name] = {select: {name: val}}; };
+
+  // Week date as title
+  const {key, label} = getWeekDates(_weekOffset);
+  props['Week'] = {title: [{text:{content: label}}]};
+  props['Date'] = {date: {start: key}};
+
+  if(fields.plan){
+    addSel('Bias', document.getElementById('f-bias').value);
+    addSel('DXY', document.getElementById('f-dxy').value);
+    addText('EUR/USD Levels', document.getElementById('f-eur').value);
+    addText('GBP/USD Levels', document.getElementById('f-gbp').value);
+    addText('XAU/USD Levels', document.getElementById('f-xau').value);
+    addText('Narrative', document.getElementById('f-narrative').value);
+    addText('Pairs', document.getElementById('f-pairs').value);
+    // Checklist as text
+    const checked = [...document.querySelectorAll('.check-item.checked label')].map(l => '✓ '+l.textContent).join('\n');
+    if(checked) addText('Checklist', checked);
+  }
+  if(fields.review){
+    addSel('Review Grade', document.getElementById('r-grade').value);
+    addText('What Worked', document.getElementById('r-worked').value);
+    addText('Mistakes', document.getElementById('r-mistakes').value);
+    addText('Lesson', document.getElementById('r-lesson').value);
+  }
+  return props;
+}
+
+async function savePlan(){
+  const btn = document.getElementById('save-btn');
+  const msg = document.getElementById('save-msg');
+  btn.disabled = true; msg.className='save-msg'; msg.textContent='Saving…';
+  try{
+    const props = buildProperties({plan:true});
+    if(_currentPageId){
+      // Validate pageId before sending — security check
+      if(!/^[a-f0-9-]{32,36}$/.test(_currentPageId)) throw new Error('Invalid page ID');
+      await nFetch('update',{pageId:_currentPageId},{properties:props});
+    } else {
+      const res = await nFetch('create',{db:DB_PB},{properties:props});
+      _currentPageId = res.id || null;
+    }
+    msg.className='save-msg ok'; msg.textContent='✓ Saved to Notion';
+    document.getElementById('week-status').textContent = '● Synced';
+  } catch(e){
+    msg.className='save-msg err'; msg.textContent='✕ '+e.message.slice(0,50);
+  }
+  btn.disabled = false;
+  setTimeout(()=>msg.textContent='', 3000);
+}
+
+async function saveReview(){
+  const btn=document.getElementById('save-review-btn');
+  const msg=document.getElementById('save-review-msg');
+  btn.disabled=true; msg.className='save-msg'; msg.textContent='Saving…';
+  try{
+    const props = buildProperties({review:true});
+    if(_currentPageId){
+      if(!/^[a-f0-9-]{32,36}$/.test(_currentPageId)) throw new Error('Invalid page ID');
+      await nFetch('update',{pageId:_currentPageId},{properties:props});
+    } else {
+      const res = await nFetch('create',{db:DB_PB},{properties:props});
+      _currentPageId = res.id || null;
+    }
+    msg.className='save-msg ok'; msg.textContent='✓ Review saved';
+  } catch(e){
+    msg.className='save-msg err'; msg.textContent='✕ '+e.message.slice(0,50);
+  }
+  btn.disabled=false;
+  setTimeout(()=>msg.textContent='',3000);
+}
+
+// ── DELETE ────────────────────────────────────────────────
+function openDelModal(){ if(!_currentPageId) return; document.getElementById('del-modal').classList.add('open'); }
+function closeDelModal(){ document.getElementById('del-modal').classList.remove('open'); }
+async function confirmDelete(){
+  if(!_currentPageId) return;
+  if(!/^[a-f0-9-]{32,36}$/.test(_currentPageId)){ closeDelModal(); return; }
+  const btn = document.getElementById('del-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try{
+    await nFetch('delete',{pageId:_currentPageId});
+    _currentPageId = null;
+    clearForm();
+    document.getElementById('week-status').textContent = '○ Deleted — not yet saved';
+    closeDelModal();
+  } catch(e){
+    btn.textContent='Error — '+e.message.slice(0,30);
+  }
+  btn.disabled=false; btn.textContent='Delete';
+  setTimeout(closeDelModal,1500);
+}
+
+// ── CHARTS ───────────────────────────────────────────────
+async function loadCharts(pageId){
+  if(!pageId || !/^[a-f0-9-]{32,36}$/.test(pageId)) return;
+  try{
+    const data = await nFetch('schema',{db:DB_PB});
+    // Get files from properties
+    const props = _allPages.find(p => p.id===pageId)?.properties || {};
+    const fileKeys = Object.keys(props).filter(k => props[k].type === 'files');
+    let imgs = [];
+    fileKeys.forEach(k => {
+      (props[k].files||[]).forEach(f => {
+        const url = f.file?.url || f.external?.url || '';
+        if(url) imgs.push({name: esc(f.name || k), url: escUrl(url)});
+      });
+    });
+    const area = document.getElementById('charts-area');
+    if(imgs.length){
+      area.innerHTML = `<div class="charts-grid">${imgs.map(img =>
+        img.url ? `<div class="chart-thumb" onclick="window.open('${img.url}','_blank','noopener,noreferrer')">
+          <img src="${img.url}" alt="${img.name}" loading="lazy" onerror="this.parentElement.style.display='none'">
+          <div class="chart-thumb-label">${img.name}</div>
+        </div>` : ''
+      ).join('')}</div>`;
+    } else {
+      area.innerHTML = '<div class="empty"><strong>No charts</strong>Attach screenshots to this Notion page to see them here.</div>';
+    }
+  } catch(e){ /* silent — charts are optional */ }
+}
+
+// ── CHECKLIST ─────────────────────────────────────────────
+function toggleCheck(el){
+  const cb = el.querySelector('input');
+  cb.checked = !cb.checked;
+  el.classList.toggle('checked', cb.checked);
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function setTab(id, btn){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('show'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('show');
+  btn.classList.add('on');
+}
+
+// ── BOOT ─────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initNav();
+  document.getElementById('wn-next').disabled = true; // start at current week
+  fetchPrices();
+  setInterval(fetchPrices,300_000);
+  if(!TokenStore.ok(TokenStore.get())){ showTokenScreen(); } else { loadPlaybook(); }
+});
+</script>
+</body>
+</html>
