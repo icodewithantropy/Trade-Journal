@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeOS · Simulator</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://notion-proxy.churan756.workers.dev; frame-ancestors 'none';">
+<link rel="stylesheet" href="core/style.css">
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-brand">TRADE<span>OS</span></div>
+  <div class="nav-links" id="nav-links"></div>
+  <div class="nav-right">
+    <div class="nav-px" id="np-eur">EUR —</div>
+    <div class="nav-px" id="np-xau">XAU —</div>
+    <div class="nav-px" id="np-dxy">DXY —</div>
+    <div class="nav-dot" id="nav-dot"></div>
+  </div>
+</nav>
+<div id="alert-bar"></div>
+
+<div class="wrap">
+
+  <div class="shdr" style="margin-bottom:22px">
+    <div class="shdr-title">Trade Simulator</div>
+    <div class="shdr-line"></div>
+    <div class="shdr-sub">Risk · R-Multiple · Monte Carlo</div>
+  </div>
+
+  <!-- TOP LAYOUT: inputs left, position calc right -->
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:12px;margin-bottom:12px" class="sim-top">
+
+    <!-- LEFT: inputs -->
+    <div>
+      <!-- Account -->
+      <div class="card g" style="margin-bottom:10px">
+        <div style="font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Account</div>
+        <div class="field">
+          <label class="inp-label">Balance ($)</label>
+          <input class="inp" id="s-balance" type="number" value="10000" min="100" oninput="recalc()">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label class="inp-label">Risk per trade: <span id="s-risk-lbl" style="color:var(--green)">1.0%</span></label>
+          <input type="range" id="s-risk" min="0.1" max="5" step="0.1" value="1"
+            oninput="document.getElementById('s-risk-lbl').textContent=parseFloat(this.value).toFixed(1)+'%';recalc()"
+            style="width:100%;accent-color:var(--green);cursor:pointer;margin-top:6px">
+          <div style="display:flex;justify-content:space-between;font-size:.44rem;color:var(--muted);margin-top:2px">
+            <span>0.1%</span><span>1%</span><span>2%</span><span>5%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trade params -->
+      <div class="card b" style="margin-bottom:10px">
+        <div style="font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Trade Setup</div>
+        <div class="row2" style="margin-bottom:8px">
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">Entry</label>
+            <input class="inp" id="s-entry" type="number" placeholder="1.08500" step="0.00001" oninput="recalc()">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">Stop Loss</label>
+            <input class="inp" id="s-sl" type="number" placeholder="1.08200" step="0.00001" oninput="recalc()">
+          </div>
+        </div>
+        <div class="row2" style="margin-bottom:8px">
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">TP1</label>
+            <input class="inp" id="s-tp1" type="number" placeholder="1.09000" step="0.00001" oninput="recalc()">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">TP2</label>
+            <input class="inp" id="s-tp2" type="number" placeholder="1.09500" step="0.00001" oninput="recalc()">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label class="inp-label">Pip Value ($ per pip, standard lot)</label>
+          <select class="inp" id="s-pip" oninput="recalc()">
+            <option value="10">EUR/USD · $10</option>
+            <option value="10">GBP/USD · $10</option>
+            <option value="10">AUD/USD · $10</option>
+            <option value="10">NZD/USD · $10</option>
+            <option value="0.073">USD/JPY · $0.073</option>
+            <option value="10">XAU/USD · $10</option>
+            <option value="5">Custom · $5</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Monte Carlo params -->
+      <div class="card a">
+        <div style="font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Monte Carlo Parameters</div>
+        <div class="row2" style="margin-bottom:8px">
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">Win Rate (%)</label>
+            <input class="inp" id="mc-wr" type="number" value="55" min="1" max="99" oninput="runMC()">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">Trades</label>
+            <input class="inp" id="mc-trades" type="number" value="100" min="10" max="500" oninput="runMC()">
+          </div>
+        </div>
+        <div class="row2" style="margin-bottom:0">
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">Avg Win (R)</label>
+            <input class="inp" id="mc-win" type="number" value="2.0" step="0.1" min="0.1" oninput="runMC()">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label class="inp-label">Avg Loss (R)</label>
+            <input class="inp" id="mc-loss" type="number" value="1.0" step="0.1" min="0.1" oninput="runMC()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div>
+      <!-- Position size output -->
+      <div class="card g" style="margin-bottom:10px">
+        <div style="font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Position Size</div>
+        <div class="row4" style="margin-bottom:10px">
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">$ Risk</div>
+            <div class="kpi-v" id="r-risk" style="color:var(--red)">—</div>
+          </div>
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">Lot Size</div>
+            <div class="kpi-v" id="r-lots" style="color:var(--green)">—</div>
+          </div>
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">SL Pips</div>
+            <div class="kpi-v" id="r-slpips" style="color:var(--amber)">—</div>
+          </div>
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">Profit TP1</div>
+            <div class="kpi-v" id="r-profit" style="color:var(--green)">—</div>
+          </div>
+        </div>
+        <div class="row2" style="margin-bottom:10px">
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">R:R Ratio TP1</div>
+            <div class="kpi-v" id="r-rr1" style="color:var(--blue)">—</div>
+          </div>
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">R:R Ratio TP2</div>
+            <div class="kpi-v" id="r-rr2" style="color:var(--purple)">—</div>
+          </div>
+        </div>
+        <!-- Verdict -->
+        <div id="r-verdict" style="padding:10px 14px;background:var(--s2);border:1px solid var(--b2);border-radius:6px;font-size:.56rem;color:var(--t2);line-height:1.75">
+          Enter entry and stop loss to calculate position size.
+        </div>
+      </div>
+
+      <!-- Monte Carlo output -->
+      <div class="card p">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Monte Carlo Projection</div>
+          <div id="mc-meta" style="font-size:.44rem;color:var(--muted)">500 runs</div>
+        </div>
+        <svg id="mc-svg" viewBox="0 0 600 180" height="180" style="margin-bottom:10px"></svg>
+        <div class="row4" style="margin-bottom:0">
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">Median (P50)</div>
+            <div class="kpi-v" id="mc-p50" style="font-size:1rem">—</div>
+          </div>
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">Best 10% (P90)</div>
+            <div class="kpi-v" id="mc-p90" style="color:var(--green);font-size:1rem">—</div>
+          </div>
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">Worst 10% (P10)</div>
+            <div class="kpi-v" id="mc-p10" style="color:var(--red);font-size:1rem">—</div>
+          </div>
+          <div class="kpi" style="text-align:center">
+            <div class="kpi-l">Ruin %</div>
+            <div class="kpi-v" id="mc-ruin" style="color:var(--red);font-size:1rem">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A+ / B / C Grade Expected Value -->
+  <div class="shdr"><div class="shdr-title" style="font-size:.72rem">Setup Grade Expected Value</div><div class="shdr-line"></div></div>
+  <div class="row3" style="margin-bottom:18px">
+    <div id="gc-aplus" class="card g"></div>
+    <div id="gc-b"     class="card b"></div>
+    <div id="gc-c"     class="card a"></div>
+  </div>
+
+  <!-- Account growth projection table -->
+  <div class="shdr"><div class="shdr-title" style="font-size:.72rem">Account Growth Projection</div><div class="shdr-line"></div></div>
+  <div class="card" style="padding:0;overflow:auto;margin-bottom:24px">
+    <table class="tbl">
+      <thead><tr>
+        <th>Trades</th>
+        <th>Conservative (P10)</th>
+        <th>Expected (EV × N)</th>
+        <th>Optimistic (P90)</th>
+        <th>Balance Expected</th>
+      </tr></thead>
+      <tbody id="proj-tbody">
+        <tr><td colspan="5" class="empty" style="padding:20px">Set parameters to see projection</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Journal-based stats if loaded -->
+  <div id="journal-sim" style="display:none">
+    <div class="shdr"><div class="shdr-title" style="font-size:.72rem">Your Actual Stats (from Journal)</div><div class="shdr-line"></div></div>
+    <div class="row4" style="margin-bottom:22px">
+      <div class="kpi g"><div class="kpi-l">Win Rate</div><div class="kpi-v" id="js-wr" style="color:var(--green)">—</div></div>
+      <div class="kpi b"><div class="kpi-l">Avg Win</div><div class="kpi-v" id="js-aw" style="color:var(--blue)">—</div></div>
+      <div class="kpi r"><div class="kpi-l">Avg Loss</div><div class="kpi-v" id="js-al" style="color:var(--red)">—</div></div>
+      <div class="kpi p"><div class="kpi-l">EV / Trade</div><div class="kpi-v" id="js-ev" style="color:var(--purple)">—</div></div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<div id="price-strip">
+  <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-dxy"><span class="ps-sym">DXY</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-xau"><span class="ps-sym">XAU/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="strip-right">
+    <span class="strip-ts" id="strip-ts"></span>
+    <span class="strip-src" id="strip-src">○ Loading</span>
+  </div>
+</div>
+
+<script src="core/security.js"></script>
+<script src="core/config.js"></script>
+<script src="core/state.js"></script>
+<script src="core/api.js"></script>
+<script src="core/engines.js"></script>
+<script>
+'use strict';
+
+// ── Position size calculator ──────────────────────────────
+function recalc() {
+  const balance  = parseFloat(document.getElementById('s-balance').value) || 10000;
+  const riskPct  = parseFloat(document.getElementById('s-risk').value)    || 1;
+  const entry    = parseFloat(document.getElementById('s-entry').value);
+  const sl       = parseFloat(document.getElementById('s-sl').value);
+  const tp1      = parseFloat(document.getElementById('s-tp1').value);
+  const tp2      = parseFloat(document.getElementById('s-tp2').value);
+  const pipVal   = parseFloat(document.getElementById('s-pip').value)     || 10;
+
+  const dollarRisk = balance * riskPct / 100;
+  document.getElementById('r-risk').textContent = '$' + dollarRisk.toFixed(2);
+
+  if (!entry || !sl) {
+    document.getElementById('r-verdict').textContent = 'Enter entry and stop loss to calculate.';
+    return;
+  }
+
+  const slPips = Math.abs(entry - sl) * 10000;
+  document.getElementById('r-slpips').textContent = slPips.toFixed(1);
+
+  const lots = dollarRisk / (slPips * pipVal);
+  document.getElementById('r-lots').textContent = lots.toFixed(2);
+
+  if (tp1) {
+    const tp1Pips = Math.abs(tp1 - entry) * 10000;
+    const rr1     = tp1Pips / slPips;
+    document.getElementById('r-rr1').textContent    = '1:' + rr1.toFixed(2);
+    document.getElementById('r-profit').textContent = '$' + (tp1Pips * pipVal * lots).toFixed(2);
+
+    // Verdict
+    let v = '';
+    if      (rr1 >= 3)   v = '🟢 Excellent R:R — A+ setups only. Minimum confluence: displacement + sweep + CISD.';
+    else if (rr1 >= 2)   v = '🟡 Acceptable R:R — minimum for B-grade setup. Ensure 3+ confluences.';
+    else if (rr1 >= 1.5) v = '🟠 Low R:R — only viable if A+ confluences are exceptional. Consider widening TP.';
+    else if (rr1 >= 1)   v = '🔴 Marginal R:R — avoid unless near-perfect setup. High chance of statistical ruin over time.';
+    else                  v = '🔴 Do not take — R:R below 1:1 destroys edge regardless of win rate.';
+    document.getElementById('r-verdict').textContent = v;
+  }
+  if (tp2) {
+    const tp2Pips = Math.abs(tp2 - entry) * 10000;
+    document.getElementById('r-rr2').textContent = '1:' + (tp2Pips / slPips).toFixed(2);
+  }
+}
+
+// ── Monte Carlo ───────────────────────────────────────────
+function runMC() {
+  const wr     = parseFloat(document.getElementById('mc-wr').value)     || 55;
+  const trades = Math.min(parseInt(document.getElementById('mc-trades').value) || 100, 500);
+  const avgWin = parseFloat(document.getElementById('mc-win').value)    || 2;
+  const avgLoss= parseFloat(document.getElementById('mc-loss').value)   || 1;
+
+  const result = MonteCarloEngine.run({ winRate: wr, avgWin, avgLoss, trades, runs: 500 });
+  const mc     = State.get('monteCarlo');
+
+  const fmt = r => (r >= 0 ? '+' : '') + r.toFixed(1) + 'R';
+  document.getElementById('mc-p50').textContent  = fmt(mc.p50);
+  document.getElementById('mc-p50').style.color  = mc.p50 >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('mc-p90').textContent  = fmt(mc.p90);
+  document.getElementById('mc-p10').textContent  = fmt(mc.p10);
+  document.getElementById('mc-p10').style.color  = mc.p10 >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('mc-ruin').textContent = mc.ruinPct + '%';
+  document.getElementById('mc-ruin').style.color = mc.ruinPct > 5 ? 'var(--red)' : 'var(--green)';
+  document.getElementById('mc-meta').textContent = `500 runs · ${trades} trades each · EV ${(mc.ev >= 0 ? '+' : '') + mc.ev.toFixed(3)}R`;
+
+  Charts.monteCarlo('mc-svg', mc);
+  renderProjectionTable(mc, wr);
+}
+
+function renderProjectionTable(mc, wr) {
+  const balance  = parseFloat(document.getElementById('s-balance').value) || 10000;
+  const riskPct  = parseFloat(document.getElementById('s-risk').value)    || 1;
+  const riskAmt  = balance * riskPct / 100;
+  const avgWin   = parseFloat(document.getElementById('mc-win').value)    || 2;
+  const avgLoss  = parseFloat(document.getElementById('mc-loss').value)   || 1;
+  const trades   = Math.min(parseInt(document.getElementById('mc-trades').value) || 100, 500);
+
+  const milestones = [25, 50, 100, 200, 500].filter(n => n <= trades * 5);
+  const ev = mc.ev;
+
+  document.getElementById('proj-tbody').innerHTML = milestones.map(n => {
+    const std  = Math.sqrt(n) * (wr/100) * (1 - wr/100) * (avgWin + avgLoss);
+    const exp  = ev * n;
+    const cons = exp - std;
+    const opt  = exp + std;
+    const acc  = balance + exp * riskAmt;
+    const clr  = exp >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<tr>
+      <td style="color:var(--t2);font-weight:600">${n}</td>
+      <td style="color:var(--red)">${cons >= 0 ? '+' : ''}${cons.toFixed(1)}R</td>
+      <td style="color:${clr};font-weight:700">${exp >= 0 ? '+' : ''}${exp.toFixed(1)}R</td>
+      <td style="color:var(--green)">${opt >= 0 ? '+' : ''}${opt.toFixed(1)}R</td>
+      <td style="color:var(--t2)">$${acc.toLocaleString('en-US',{maximumFractionDigits:0})}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Grade comparison ──────────────────────────────────────
+function renderGradeCards() {
+  const profiles = [
+    { id: 'gc-aplus', grade: 'A+', color: 'var(--green)', wr: 65, avgWin: 2.5, avgLoss: 1 },
+    { id: 'gc-b',     grade: 'B',  color: 'var(--blue)',  wr: 55, avgWin: 2.0, avgLoss: 1 },
+    { id: 'gc-c',     grade: 'C',  color: 'var(--amber)', wr: 45, avgWin: 1.5, avgLoss: 1 },
+  ];
+  profiles.forEach(p => {
+    const ev     = p.wr/100 * p.avgWin - (1 - p.wr/100) * p.avgLoss;
+    const ev100  = ev * 100;
+    const evClr  = ev >= 0 ? 'var(--green)' : 'var(--red)';
+    document.getElementById(p.id).innerHTML = `
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-family:var(--fd);font-size:1.8rem;font-weight:800;color:${p.color}">${esc(p.grade)}</div>
+        <div style="font-size:.48rem;color:var(--m2)">Typical setup profile</div>
+      </div>
+      ${[
+        ['Win Rate',   p.wr + '%',                    p.color],
+        ['Avg Win',    p.avgWin + 'R',                'var(--text)'],
+        ['Avg Loss',   p.avgLoss + 'R',               'var(--text)'],
+        ['EV / Trade', (ev>=0?'+':'')+ev.toFixed(3)+'R', evClr],
+        ['100 trades', (ev100>=0?'+':'')+ev100.toFixed(1)+'R', evClr],
+      ].map(([l,v,c]) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.52rem">
+          <span style="color:var(--muted)">${esc(l)}</span>
+          <span style="font-weight:700;color:${c}">${esc(v)}</span>
+        </div>`).join('')}`;
+  });
+}
+
+// ── Populate from journal if available ────────────────────
+function tryLoadJournalStats() {
+  const stats = State.get('journalStats');
+  if (!stats || !stats.valid?.length) return;
+  document.getElementById('journal-sim').style.display = 'block';
+  document.getElementById('js-wr').textContent = stats.winRate + '%';
+  document.getElementById('js-aw').textContent = '+' + stats.avgWin + 'R';
+  document.getElementById('js-al').textContent = '−' + stats.avgLoss + 'R';
+  document.getElementById('js-ev').textContent = (stats.ev >= 0 ? '+' : '') + stats.ev + 'R';
+  // Auto-populate MC params from actual journal stats
+  document.getElementById('mc-wr').value  = stats.winRate;
+  document.getElementById('mc-win').value = stats.avgWin;
+  document.getElementById('mc-loss').value= stats.avgLoss;
+  runMC();
+}
+
+// ── Responsive layout ─────────────────────────────────────
+function fixLayout() {
+  const top = document.querySelector('.sim-top');
+  if (!top) return;
+  if (window.innerWidth < 900) top.style.gridTemplateColumns = '1fr';
+}
+
+// ── BOOT ─────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  NavEngine.init('simulator');
+  PriceEngine.start();
+  recalc();
+  runMC();
+  renderGradeCards();
+  fixLayout();
+  window.addEventListener('resize', fixLayout);
+
+  // If journal was already loaded by another page (shared state)
+  State.on('journalStats', tryLoadJournalStats);
+  tryLoadJournalStats();
+});
+</script>
+</body>
+</html>
