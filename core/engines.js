@@ -231,6 +231,8 @@ const TradeEngine = {
     const trades = allResults.map(this._parse).filter(t=>t.date);
     // Sort newest first
     trades.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    // Auto-grade every trade based on confluences + comment
+    GradingEngine.gradeAll(trades);
     const stats = this._analyze(trades);
     State.set('trades', trades);
     State.set('journalStats', stats);
@@ -541,8 +543,98 @@ const Charts = {
 
 
 /* ═══════════════════════════════════════
-   NAV ENGINE
+   AUTO GRADING ENGINE
+   Grades trades based on confluences + comment
+   No manual input needed. Runs locally, no API calls.
+
+   A+ = 3+ strong confluences OR comment shows elite execution
+   B  = 2 confluences OR decent setup described in comment
+   C  = 1 confluence OR comment shows hesitation/forced trade
 ═══════════════════════════════════════ */
+const GradingEngine = {
+
+  // High-value confluence keywords → strong setups
+  STRONG: [
+    'displacement','fvg','fair value gap','order block','ob',
+    'sweep','liquidity','bos','break of structure','choch','change of character',
+    'cisd','imbalance','inducement','pdh','pdl','previous day','htf',
+    'higher time frame','weekly','daily','institutional','smt','divergence',
+    'breaker','mitigation','wick','rejection','pin bar','engulf',
+  ],
+
+  // Comment keywords that suggest quality
+  QUALITY_COMMENT: [
+    'perfect','clean','textbook','waited','patient','confluences',
+    'confirmed','structure','aligned','htf','planned','as expected',
+    'no doubt','clear','obvious','high probability','thesis',
+  ],
+
+  // Comment keywords that suggest poor setup
+  WEAK_COMMENT: [
+    'fomo','rushed','forced','revenge','gut','feeling','random','lucky',
+    'shouldnt','should not','mistake','impulsive','emotional','early',
+    'late entry','chased','over','doubt','not sure','unclear','gambling',
+    'bored','scared','hesitat',
+  ],
+
+  grade(trade) {
+    // If Notion already has a grade set, respect it
+    const notionGrade = (trade.grade||'').trim();
+    if (notionGrade && ['A+','A','B','C','D','F'].includes(notionGrade)) {
+      return notionGrade;
+    }
+
+    const confluences = (trade.confluences||[]).map(c=>c.toLowerCase());
+    const comment = (trade.comment||'').toLowerCase();
+    const allText = [...confluences, comment].join(' ');
+
+    // Count strong confluences
+    const strongCount = this.STRONG.filter(kw => allText.includes(kw)).length;
+
+    // Quality signals from comment
+    const qualitySignals = this.QUALITY_COMMENT.filter(kw => comment.includes(kw)).length;
+    const weakSignals    = this.WEAK_COMMENT.filter(kw => comment.includes(kw)).length;
+
+    // Total confluence count (any tag counts)
+    const totalConfs = confluences.length;
+
+    // Grading logic
+    if (weakSignals >= 2) return 'C'; // clearly poor trade
+    if (strongCount >= 3 || (strongCount >= 2 && qualitySignals >= 1)) return 'A+';
+    if (strongCount >= 2 || (totalConfs >= 3 && qualitySignals >= 1)) return 'A+';
+    if (strongCount >= 1 && totalConfs >= 2) return 'B';
+    if (totalConfs >= 2 && weakSignals === 0) return 'B';
+    if (totalConfs >= 1 || qualitySignals >= 1) return 'C';
+    if (comment.length > 20 && weakSignals === 0) return 'C'; // has notes, not FOMO
+    return 'C'; // default — untagged trade
+  },
+
+  // Run on all trades — mutates grade in place
+  gradeAll(trades) {
+    trades.forEach(t => { t.grade = GradingEngine.grade(t); });
+    return trades;
+  },
+
+  // Get explanation of why a trade got its grade
+  explain(trade) {
+    const confluences = (trade.confluences||[]);
+    const comment = (trade.comment||'').toLowerCase();
+    const allText = [...confluences.map(c=>c.toLowerCase()), comment].join(' ');
+    const matched = this.STRONG.filter(kw => allText.includes(kw));
+    const weak    = this.WEAK_COMMENT.filter(kw => comment.includes(kw));
+    const quality = this.QUALITY_COMMENT.filter(kw => comment.includes(kw));
+
+    const lines = [];
+    if (matched.length)  lines.push(`Strong confluences: ${matched.join(', ')}`);
+    if (quality.length)  lines.push(`Quality signals: ${quality.join(', ')}`);
+    if (weak.length)     lines.push(`⚠ Weakness: ${weak.join(', ')}`);
+    if (!confluences.length && !comment) lines.push('No confluences or comment — auto-graded C');
+    return lines.join(' · ') || `Grade: ${trade.grade}`;
+  }
+};
+
+window.GradingEngine = GradingEngine;
+
 const NavEngine = {
   init(pageId) {
     State.merge('ui',{currentPage:pageId});
