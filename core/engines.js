@@ -228,7 +228,17 @@ const AIEngine = {
     return await API.ai(prompt);
   }
 };
-// expose engines globally
+// Minimal NavEngine
+const NavEngine = {
+  init(pageId) {
+    State.merge('ui', { currentPage: pageId });
+    document.body.style.opacity = "1";
+  }
+};
+
+window.NavEngine = NavEngine;
+
+// Export engines globally
 window.PriceEngine = PriceEngine;
 window.MacroEngine = MacroEngine;
 window.TradeEngine = TradeEngine;
