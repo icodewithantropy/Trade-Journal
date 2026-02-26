@@ -56,3 +56,6 @@ const ApiKeyStore = {
   fred()    { return this.get().fred || ''; },
   clear()   { sessionStorage.removeItem(this._s); },
 };
+window.TokenStore = TokenStore;
+window.esc = esc;
+window.escUrl = escUrl;
