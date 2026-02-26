@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TradeOS · Analytics</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.amazonaws.com https://*.notion.so; connect-src 'self' https://notion-proxy.churan756.workers.dev https://api.anthropic.com; frame-ancestors 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.amazonaws.com https://*.notion.so; connect-src 'self' https://notion-proxy.churan756.workers.dev ; frame-ancestors 'none';">
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="core/style.css">
 <style>
 .eq-ranges{display:flex;gap:4px;align-items:center}
@@ -548,7 +549,7 @@ function openTradeModal(id) {
 window.addEventListener('DOMContentLoaded', () => {
   NavEngine.init(PAGE_ID);
   PriceEngine.start();
-  PriceEngine.requestNotifications();
+  
   State.on('trades', () => render());
   if(!TokenStore.ok(TokenStore.get())) {
     document.getElementById('token-screen').classList.add('show');
