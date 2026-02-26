@@ -343,11 +343,23 @@ function renderSessions(s) {
 
 function renderGrades(s) {
   const el = document.getElementById('grade-grid'); if(!el) return;
+  // Fuzzy match — handles A+, a+, aplus, A Plus etc from Notion
+  const matchGrade = (trades, pattern) => {
+    const re = new RegExp(pattern, 'i');
+    const matched = trades.filter(t => re.test(t.grade||''));
+    const wins = matched.filter(t => /win/i.test(t.outcome)).length;
+    return { total: matched.length, wins };
+  };
   const items = [
-    {g:'A+',color:'#00d47a'},{g:'B',color:'#3d8eff'},{g:'C',color:'#f5a623'}
+    { g:'A+', color:'#00d47a', pattern:'a\\+|aplus|a plus|a\\+' },
+    { g:'B',  color:'#3d8eff', pattern:'^b$|^b |grade b' },
+    { g:'C',  color:'#f5a623', pattern:'^c$|^c |grade c' },
   ];
-  el.innerHTML = items.map(({g,color}) => {
-    const d = s.grades[g] || {wins:0,total:0};
+  el.innerHTML = items.map(({g,color,pattern}) => {
+    // First try exact match from analyzed grades object
+    let d = s.grades[g];
+    // If not found, try fuzzy match directly on trades
+    if (!d || d.total === 0) d = matchGrade(s.valid, pattern);
     const wr = d.total ? Math.round(d.wins/d.total*100) : 0;
     return `<div class="grade-c">
       <div class="grade-lbl" style="color:${color}">${esc(g)}</div>
@@ -355,6 +367,15 @@ function renderGrades(s) {
       <div class="grade-stat">${d.total} trades</div>
     </div>`;
   }).join('');
+  // Also show any other grades found in data (beyond A+/B/C)
+  const known = ['A+','B','C'];
+  const others = Object.entries(s.grades).filter(([g]) => !known.includes(g) && g !== 'Unknown' && g !== '—');
+  if (others.length) {
+    el.innerHTML += others.map(([g,d]) => {
+      const wr = d.total ? Math.round(d.wins/d.total*100) : 0;
+      return `<div class="grade-c"><div class="grade-lbl" style="color:#9aaabb">${esc(g)}</div><div class="grade-wr">${wr}%</div><div class="grade-stat">${d.total} trades</div></div>`;
+    }).join('');
+  }
 }
 
 function renderTFs(s) {
@@ -472,7 +493,8 @@ function setGradeFilter(v, btn) {
 function applyFilters() {
   const s = State.get('journalStats'); if(!s) return;
   const q = (document.getElementById('search')?.value||'').toLowerCase();
-  let filtered = s.valid;
+  // Already sorted newest-first from TradeEngine, just filter
+  let filtered = [...s.valid];
   if(_outcomeFilter !== 'all') filtered = filtered.filter(t=>t.outcome===_outcomeFilter);
   if(_gradeFilter   !== 'all') filtered = filtered.filter(t=>t.grade===_gradeFilter);
   if(q) filtered = filtered.filter(t =>
@@ -480,11 +502,13 @@ function applyFilters() {
     (t.comment||'').toLowerCase().includes(q) ||
     (t.session||'').toLowerCase().includes(q)
   );
+  // Sort newest first (date descending)
+  filtered.sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const total = filtered.length;
   document.getElementById('trades-count').textContent = `${total} trades`;
   const pages = Math.max(1,Math.ceil(total/PER_PAGE));
   _page = Math.min(_page, pages);
-  const slice = filtered.slice((_page-1)*PER_PAGE, _page*PER_PAGE).reverse();
+  const slice = filtered.slice((_page-1)*PER_PAGE, _page*PER_PAGE); // NO .reverse()
   renderTradesTable(slice);
   renderPagination(pages);
 }
@@ -493,19 +517,22 @@ function renderTradesTable(trades) {
   const tbody = document.getElementById('trades-tbody');
   if(!trades.length){ tbody.innerHTML='<tr><td colspan="9" class="empty">No trades match filters</td></tr>'; return; }
   tbody.innerHTML = trades.map(t => {
-    const rClr = (t.rMultiple||0)>=0?'var(--green)':'var(--red)';
+    const rClr = (t.rMultiple||0)>=0?'#00d47a':'#ff2d55';
+    const dirClr = t.direction==='Long'?'#00d47a':'#ff2d55';
     const imgHtml = (t.images||[]).slice(0,2).map(url => {
       const safe = escUrl(url);
-      return safe ? `<img class="trade-img" src="${safe}" onclick="openTradeModal('${esc(t.id)}')" loading="lazy">` : '';
+      return safe ? `<img class="trade-img" src="${safe}" onclick="event.stopPropagation();openTradeModal('${esc(t.id)}')" loading="lazy">` : '';
     }).join('');
     const conf = (t.confluences||[]).slice(0,3).map(c=>`<span class="badge bp" style="font-size:.38rem">${esc(c)}</span>`).join(' ');
+    const gradeColor = t.grade==='A+'?'#00d47a':t.grade==='B'?'#3d8eff':'#f5a623';
+    const gradeTitle = window.GradingEngine ? GradingEngine.explain(t) : (t.grade||'C');
     return `<tr onclick="openTradeModal('${esc(t.id)}')" style="cursor:pointer">
       <td style="color:var(--t2);white-space:nowrap">${esc(t.date?.slice(0,10)||'—')}</td>
       <td class="trade-pair">${esc(t.pair||'—')}</td>
-      <td style="color:${t.direction==='Long'?'var(--green)':'var(--red)'}">${esc(t.direction||'—')}</td>
+      <td style="color:${dirClr}">${esc(t.direction||'—')}</td>
       <td class="outcome-${(t.outcome||'').toLowerCase()}">${esc(t.outcome||'—')}</td>
       <td style="color:${rClr};font-weight:700">${t.rMultiple!=null?(t.rMultiple>=0?'+':'')+t.rMultiple.toFixed(2)+'R':'—'}</td>
-      <td class="grade-${(t.grade||'').toLowerCase().replace('+','aplus')}">${esc(t.grade||'—')}</td>
+      <td><span style="color:${gradeColor};font-weight:700;cursor:help" title="${esc(gradeTitle)}">${esc(t.grade||'C')}</span></td>
       <td style="color:var(--m2);font-size:.48rem">${esc(t.session||'—')}</td>
       <td>${conf}</td>
       <td>${imgHtml}</td>
