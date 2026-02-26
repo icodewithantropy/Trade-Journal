@@ -228,3 +228,8 @@ const AIEngine = {
     return await API.ai(prompt);
   }
 };
+// expose engines globally
+window.PriceEngine = PriceEngine;
+window.MacroEngine = MacroEngine;
+window.TradeEngine = TradeEngine;
+window.AIEngine = AIEngine;
