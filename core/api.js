@@ -1,17 +1,25 @@
 // core/api.js
+// Clean Worker-Only API Layer
+
 const WORKER_URL = "https://notion-proxy.churan756.workers.dev";
 
+// ─────────────────────────────────────────────
+// Internal Fetch Helper
+// ─────────────────────────────────────────────
+
 async function _fetch(action, options = {}) {
+
   const url = new URL(WORKER_URL);
   url.searchParams.set("action", action);
 
+  // Add query params
   if (options.params) {
-    Object.entries(options.params).forEach(([k, v]) =>
-      url.searchParams.set(k, v)
-    );
+    Object.entries(options.params).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
   }
 
-  const res = await fetch(url.toString(), {
+  const response = await fetch(url.toString(), {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
@@ -20,30 +28,34 @@ async function _fetch(action, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined
   });
 
-  const data = await res.json();
+  const data = await response.json().catch(() => ({}));
 
-  if (!res.ok) {
-    throw new Error(data.error || "API error");
+  if (!response.ok) {
+    throw new Error(data.error || "API request failed");
   }
 
   return data;
 }
 
-export const API = {
+// ─────────────────────────────────────────────
+// Public API Object
+// ─────────────────────────────────────────────
 
-  // Prices
+const API = {
+
+  // ───── Prices (TwelveData via Worker) ─────
   async prices() {
     return _fetch("prices");
   },
 
-  // FRED
-  async fred(series) {
+  // ───── FRED Macro Data ─────
+  async fred(seriesId) {
     return _fetch("fred", {
-      params: { series }
+      params: { series: seriesId }
     });
   },
 
-  // AI
+  // ───── AI (Mistral via Worker) ─────
   async ai(prompt) {
     return _fetch("ai", {
       method: "POST",
@@ -51,17 +63,18 @@ export const API = {
     });
   },
 
-  // Notion
-  async query(db, token) {
+  // ───── Notion Query ─────
+  async query(dbId, token) {
     return _fetch("query", {
       method: "POST",
-      params: { db },
+      params: { db: dbId },
       headers: {
         "X-Notion-Token": token
       }
     });
   },
 
+  // ───── Notion Create ─────
   async create(body, token) {
     return _fetch("create", {
       method: "POST",
@@ -72,10 +85,11 @@ export const API = {
     });
   },
 
-  async update(id, body, token) {
+  // ───── Notion Update ─────
+  async update(pageId, body, token) {
     return _fetch("update", {
       method: "PATCH",
-      params: { id },
+      params: { id: pageId },
       headers: {
         "X-Notion-Token": token
       },
@@ -83,10 +97,11 @@ export const API = {
     });
   },
 
-  async remove(id, token) {
+  // ───── Notion Delete (Archive) ─────
+  async remove(pageId, token) {
     return _fetch("delete", {
       method: "PATCH",
-      params: { id },
+      params: { id: pageId },
       headers: {
         "X-Notion-Token": token
       }
@@ -94,3 +109,6 @@ export const API = {
   }
 
 };
+
+// Make globally accessible (important)
+window.API = API;
