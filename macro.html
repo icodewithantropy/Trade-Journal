@@ -5,106 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TradeOS · Macro</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://notion-proxy.churan756.workers.dev https://api.anthropic.com; frame-ancestors 'none';">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/style.css">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#04060a;--s1:#07090f;--s2:#0a0e17;--s3:#0e141f;--s4:#121a26;
-  --border:#182030;--b2:#1d2838;--b3:#243344;
-  --text:#d2d8e6;--t2:#9aaabb;--muted:#374a60;--m2:#546880;
-  --green:#00d47a;--red:#ff2d55;--amber:#f5a623;--blue:#3d8eff;--purple:#9b6bff;--cyan:#00c4f5;
-  --nav-h:46px;--strip-h:32px;--ff:'JetBrains Mono',monospace;--fd:'Syne',sans-serif;
-}
-html{font-size:16px}
-body{background:var(--bg);color:var(--text);font-family:var(--ff);min-height:100vh;overflow-x:hidden;padding-top:var(--nav-h);padding-bottom:var(--strip-h);opacity:0;transition:opacity 220ms ease;background-image:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px)}
-#nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:rgba(4,6,10,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:0;z-index:1000}
-.nav-brand{font-family:var(--fd);font-size:.68rem;font-weight:800;letter-spacing:3px;color:var(--text);white-space:nowrap;margin-right:24px;flex-shrink:0}
-.nav-brand span{color:var(--green)}
-.nav-links{display:flex;gap:2px;flex:1}
-.nav-link{display:flex;align-items:center;gap:5px;padding:5px 12px;font-size:.5rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--m2);border-radius:3px;border:1px solid transparent;cursor:pointer;transition:all .12s;user-select:none;white-space:nowrap}
-.nav-link:hover{color:var(--t2);background:rgba(255,255,255,.03);border-color:var(--border)}
-.nav-link.active{color:var(--text);background:rgba(255,255,255,.04);border-color:var(--b2);position:relative}
-.nav-link.active::after{content:'';position:absolute;bottom:-1px;left:25%;right:25%;height:1px;background:var(--green)}
-.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
-.nav-px{font-size:.46rem;color:var(--m2);background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:3px 7px;transition:color .4s;white-space:nowrap}
-.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:background .3s,box-shadow .3s;flex-shrink:0}
-.nav-dot.on{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2.5s infinite}
-.nav-dot.err{background:var(--red)}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.6)}}
-#price-strip{position:fixed;bottom:0;left:0;right:0;height:var(--strip-h);background:rgba(4,6,10,.97);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:0;z-index:900}
-.ps-pair{display:flex;align-items:center;gap:7px;padding:0 14px;border-right:1px solid var(--border);height:100%}
-.ps-pair:first-child{padding-left:0}
-.ps-sym{font-size:.44rem;color:var(--m2);letter-spacing:1px}
-.ps-price{font-size:.6rem;font-weight:700;color:var(--text);letter-spacing:.5px}
-.ps-chg{font-size:.46rem}
-.strip-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.strip-ts{font-size:.42rem;color:var(--muted)}
-.strip-src{font-size:.42rem;color:var(--green);letter-spacing:1px}
-.wrap{max-width:1140px;margin:0 auto;padding:22px 20px}
-.shdr{display:flex;align-items:baseline;gap:10px;margin-bottom:16px}
-.shdr-title{font-family:var(--fd);font-size:.8rem;font-weight:700}
-.shdr-sub{font-size:.48rem;color:var(--m2);letter-spacing:2px;text-transform:uppercase}
-.shdr-line{flex:1;height:1px;background:var(--border)}
-.card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:15px;position:relative;overflow:hidden}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
-.card.g::before{background:linear-gradient(90deg,transparent,var(--green),transparent)}
-.card.b::before{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
-.card.a::before{background:linear-gradient(90deg,transparent,var(--amber),transparent)}
-.card.p::before{background:linear-gradient(90deg,transparent,var(--purple),transparent)}
-.card.c::before{background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
-
-/* Macro KPI grid */
-.macro-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
-@media(max-width:900px){.macro-grid{grid-template-columns:repeat(2,1fr)}}
-.mkpi{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px;position:relative;overflow:hidden;cursor:default}
-.mkpi::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
-.mkpi-l{font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-.mkpi-v{font-family:var(--fd);font-size:1.4rem;font-weight:800;line-height:1;margin-bottom:3px}
-.mkpi-s{font-size:.46rem;color:var(--m2)}
-.mkpi-chg{font-size:.48rem;font-weight:600}
-
-/* Sparklines row */
-.spark-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.macro-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+@media(max-width:900px){.macro-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.cb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+@media(max-width:640px){.cb-grid{grid-template-columns:1fr}}
+.cb-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;position:relative;overflow:hidden}
+.cb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
+.cb-fed::before{background:linear-gradient(90deg,transparent,var(--amber),transparent)}
+.cb-ecb::before{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
+.cb-boe::before{background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
+.cb-name{font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.cb-rate{font-family:var(--fd);font-size:1.6rem;font-weight:800;margin-bottom:3px}
+.cb-date{font-size:.44rem;color:var(--m2);margin-bottom:6px}
+.cb-bias{font-size:.46rem;display:inline-block;padding:2px 9px;border-radius:10px}
+.spark-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 @media(max-width:760px){.spark-row{grid-template-columns:1fr 1fr}}
 .spark-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px}
-.spark-lbl{font-size:.44rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between}
-.spark-val{font-family:var(--fd);font-size:.9rem;font-weight:700;margin-bottom:6px}
-
-/* AI panel */
-.ai-panel{background:rgba(155,107,255,.05);border:1px solid rgba(155,107,255,.18);border-radius:10px;padding:18px}
-.ai-hdr{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:.5rem;color:var(--purple);letter-spacing:2px;text-transform:uppercase}
-.ai-response{font-size:.6rem;color:var(--t2);line-height:1.9;white-space:pre-wrap;word-break:break-word;min-height:60px}
-.ai-response.loading{color:var(--m2);font-style:italic}
-.ai-question-row{display:flex;gap:8px;margin-top:14px}
-.ai-inp{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--text);font-family:var(--ff);font-size:.58rem;padding:9px 12px;outline:none;transition:border-color .15s}
-.ai-inp:focus{border-color:var(--purple)}
-.ai-inp::placeholder{color:var(--muted)}
-.ai-btn{padding:9px 16px;border-radius:4px;font-family:var(--ff);font-size:.52rem;letter-spacing:1px;text-transform:uppercase;border:1px solid rgba(155,107,255,.4);color:var(--purple);background:rgba(155,107,255,.08);cursor:pointer;transition:all .15s;white-space:nowrap}
-.ai-btn:hover{background:rgba(155,107,255,.15)}
-.ai-btn:disabled{opacity:.4;cursor:default}
-.ai-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.ai-chip{font-size:.48rem;padding:4px 10px;border:1px solid rgba(155,107,255,.2);border-radius:20px;color:var(--m2);cursor:pointer;transition:all .12s;background:transparent}
-.ai-chip:hover{color:var(--purple);border-color:rgba(155,107,255,.4);background:rgba(155,107,255,.06)}
-
-/* Central bank rates */
-.cb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
-@media(max-width:760px){.cb-grid{grid-template-columns:1fr 1fr}}
-.cb-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
-.cb-name{font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.cb-rate{font-family:var(--fd);font-size:1.5rem;font-weight:800;margin-bottom:2px}
-.cb-date{font-size:.44rem;color:var(--m2)}
-.cb-bias{font-size:.48rem;margin-top:5px;padding:2px 8px;border-radius:10px;display:inline-block}
-
-/* History table */
-.tbl{width:100%;border-collapse:collapse;font-size:.54rem}
-.tbl th{text-align:left;font-size:.42rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:7px 9px;border-bottom:1px solid var(--border);font-weight:400}
-.tbl td{padding:8px 9px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--t2)}
-.tbl tr:last-child td{border-bottom:none}
-
-/* Loading spinner */
-.spin{display:inline-block;width:12px;height:12px;border:1.5px solid rgba(155,107,255,.3);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
-@keyframes spin{to{transform:rotate(360deg)}}
-svg{display:block;width:100%;overflow:visible}
+.hist-tbl-wrap{overflow:auto;margin-bottom:24px}
+.nokey-msg{background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.18);border-radius:8px;padding:18px;font-size:.6rem;color:var(--t2);line-height:1.8;margin-bottom:18px}
+.nokey-msg strong{color:var(--amber)}
 </style>
 </head>
 <body>
@@ -119,45 +40,65 @@ svg{display:block;width:100%;overflow:visible}
     <div class="nav-dot" id="nav-dot"></div>
   </div>
 </nav>
+<div id="alert-bar"></div>
 
 <div class="wrap">
 
-  <!-- Page header -->
   <div class="shdr" style="margin-bottom:20px">
     <div class="shdr-title">Macro Intelligence</div>
     <div class="shdr-line"></div>
-    <div class="shdr-sub" id="macro-last-update">Loading…</div>
+    <div class="shdr-sub" id="macro-status">Loading…</div>
   </div>
 
-  <!-- Central bank rates -->
+  <!-- Central Banks -->
   <div class="shdr"><div class="shdr-title" style="font-size:.65rem">Central Banks</div><div class="shdr-line"></div></div>
-  <div class="cb-grid" style="margin-bottom:18px">
-    <div class="cb-card"><div class="cb-name">Fed Funds Rate</div><div class="cb-rate" id="cb-fed" style="color:var(--amber)">—</div><div class="cb-date" id="cb-fed-d">—</div><div class="cb-bias" id="cb-fed-b">—</div></div>
-    <div class="cb-card"><div class="cb-name">ECB Rate</div><div class="cb-rate" id="cb-ecb" style="color:var(--blue)">—</div><div class="cb-date" id="cb-ecb-d">—</div><div class="cb-bias" id="cb-ecb-b">—</div></div>
-    <div class="cb-card"><div class="cb-name">BoE Base Rate</div><div class="cb-rate" id="cb-boe" style="color:var(--cyan)">—</div><div class="cb-date" id="cb-boe-d">—</div><div class="cb-bias" id="cb-boe-b">—</div></div>
+  <div class="cb-grid">
+    <div class="cb-card cb-fed">
+      <div class="cb-name">Fed Funds Rate</div>
+      <div class="cb-rate" id="cb-fed" style="color:var(--amber)">—</div>
+      <div class="cb-date" id="cb-fed-d">—</div>
+      <div class="cb-bias" id="cb-fed-b">—</div>
+    </div>
+    <div class="cb-card cb-ecb">
+      <div class="cb-name">ECB Rate</div>
+      <div class="cb-rate" id="cb-ecb" style="color:var(--blue)">—</div>
+      <div class="cb-date" id="cb-ecb-d">—</div>
+      <div class="cb-bias" id="cb-ecb-b">—</div>
+    </div>
+    <div class="cb-card cb-boe">
+      <div class="cb-name">BoE Base Rate</div>
+      <div class="cb-rate" id="cb-boe" style="color:var(--cyan)">—</div>
+      <div class="cb-date" id="cb-boe-d">—</div>
+      <div class="cb-bias" id="cb-boe-b">—</div>
+    </div>
   </div>
 
-  <!-- US Macro KPIs — fixed CPI YoY, NFP MoM -->
-  <div class="shdr"><div class="shdr-title" style="font-size:.65rem">US Macro</div><div class="shdr-line"></div><div class="shdr-sub" id="fred-status">FRED API</div></div>
-  <div class="macro-grid" style="margin-bottom:18px">
-    <div class="mkpi g"><div class="mkpi-l">CPI YoY%</div><div class="mkpi-v" id="m-cpi">—</div><div class="mkpi-s">Core: <span id="m-core">—</span></div><div class="mkpi-chg" id="m-cpi-chg"></div></div>
-    <div class="mkpi a"><div class="mkpi-l">NFP MoM (K)</div><div class="mkpi-v" id="m-nfp">—</div><div class="mkpi-s" id="m-nfp-s">Non-farm payrolls</div><div class="mkpi-chg" id="m-nfp-chg"></div></div>
-    <div class="mkpi b"><div class="mkpi-l">Unemployment</div><div class="mkpi-v" id="m-unemp">—</div><div class="mkpi-s" id="m-unemp-s">U3 Rate</div><div class="mkpi-chg" id="m-unemp-chg"></div></div>
-    <div class="mkpi p"><div class="mkpi-l">GDP QoQ%</div><div class="mkpi-v" id="m-gdp">—</div><div class="mkpi-s" id="m-gdp-s">Real growth</div><div class="mkpi-chg" id="m-gdp-chg"></div></div>
+  <!-- US Macro KPIs -->
+  <div class="shdr"><div class="shdr-title" style="font-size:.65rem">US Macro</div><div class="shdr-line"></div><div class="shdr-sub" id="fred-status">FRED</div></div>
+  <div id="nokey-msg" class="nokey-msg" style="display:none">
+    <strong>FRED API key not set.</strong> Add your free key to see live macro data.<br>
+    Get one free at <strong>api.stlouisfed.org/api/requestAPIKey.html</strong><br>
+    Then open your browser console and run: <code style="color:var(--green);font-family:monospace">ApiKeyStore.set({fred:'YOUR_KEY_HERE'})</code>
+  </div>
+  <div class="macro-kpi-grid" style="margin-bottom:14px">
+    <div class="kpi g"><div class="kpi-l">CPI YoY %</div><div class="kpi-v" id="m-cpi">—</div><div class="kpi-s">Core: <span id="m-core">—</span></div></div>
+    <div class="kpi a"><div class="kpi-l">NFP MoM</div><div class="kpi-v" id="m-nfp">—</div><div class="kpi-s" id="m-nfp-s">Non-farm payrolls</div></div>
+    <div class="kpi b"><div class="kpi-l">Unemployment</div><div class="kpi-v" id="m-unemp">—</div><div class="kpi-s" id="m-unemp-s">U3 Rate</div></div>
+    <div class="kpi p"><div class="kpi-l">GDP QoQ %</div><div class="kpi-v" id="m-gdp">—</div><div class="kpi-s" id="m-gdp-s">Real growth</div></div>
   </div>
 
   <!-- Sparklines -->
-  <div class="spark-row" style="margin-bottom:18px">
+  <div class="spark-row">
     <div class="spark-card">
-      <div class="spark-lbl"><span>CPI 24-MONTH TREND</span><span id="sp-cpi-v" style="color:var(--text)"></span></div>
+      <div class="chart-lbl">CPI YoY Trend <span id="sp-cpi-v" style="color:var(--text)"></span></div>
       <svg id="sp-cpi" viewBox="0 0 300 60" height="60"></svg>
     </div>
     <div class="spark-card">
-      <div class="spark-lbl"><span>NFP 12-MONTH TREND</span><span id="sp-nfp-v" style="color:var(--text)"></span></div>
+      <div class="chart-lbl">NFP MoM Trend <span id="sp-nfp-v" style="color:var(--text)"></span></div>
       <svg id="sp-nfp" viewBox="0 0 300 60" height="60"></svg>
     </div>
     <div class="spark-card">
-      <div class="spark-lbl"><span>UNEMPLOYMENT TREND</span><span id="sp-u-v" style="color:var(--text)"></span></div>
+      <div class="chart-lbl">Unemployment <span id="sp-u-v" style="color:var(--text)"></span></div>
       <svg id="sp-unemp" viewBox="0 0 300 60" height="60"></svg>
     </div>
   </div>
@@ -165,33 +106,33 @@ svg{display:block;width:100%;overflow:visible}
   <!-- AI Macro Explainer -->
   <div class="shdr"><div class="shdr-title" style="font-size:.65rem">AI Macro Explainer</div><div class="shdr-line"></div></div>
   <div class="ai-panel" style="margin-bottom:18px">
-    <div class="ai-hdr">◈ Claude Sonnet · Macro Analysis</div>
+    <div class="ai-hdr">◈ Claude Sonnet · Macro Analyst</div>
     <div class="ai-chips">
-      <span class="ai-chip" onclick="askAI('What is the current macro regime and what does it mean for EUR/USD?')">Regime → EUR/USD</span>
-      <span class="ai-chip" onclick="askAI('Is the current CPI environment bullish or bearish for gold?')">CPI → Gold</span>
-      <span class="ai-chip" onclick="askAI('What are the key macro risks for the next 4 weeks?')">Key risks</span>
-      <span class="ai-chip" onclick="askAI('Should I be risk-on or risk-off this week based on the macro data?')">Risk-on / Risk-off</span>
-      <span class="ai-chip" onclick="askMacroSummary()">Full summary</span>
+      <span class="ai-chip" onclick="askMacro('What is the current macro regime and what does it mean for EUR/USD?')">Regime → EUR/USD</span>
+      <span class="ai-chip" onclick="askMacro('Is the current CPI environment bullish or bearish for gold?')">CPI → Gold</span>
+      <span class="ai-chip" onclick="askMacro('What are the key macro risks for the next 4 weeks?')">Key risks</span>
+      <span class="ai-chip" onclick="askMacro('Should I be risk-on or risk-off this week based on the macro data?')">Risk-on / off</span>
+      <span class="ai-chip" onclick="fullSummary()">Full summary ↗</span>
     </div>
-    <div class="ai-response loading" id="ai-response">Tap a question above or type your own below to get a macro analysis from Claude.</div>
-    <div class="ai-question-row">
+    <div class="ai-response loading" id="ai-response">Tap a question above or type your own below.</div>
+    <div class="ai-row">
       <input class="ai-inp" id="ai-inp" placeholder="Ask anything about the macro data…" onkeydown="if(event.key==='Enter')sendAI()">
-      <button class="ai-btn" id="ai-send-btn" onclick="sendAI()">Ask →</button>
+      <button class="ai-send" id="ai-send-btn" onclick="sendAI()">Ask →</button>
     </div>
   </div>
 
   <!-- History Table -->
   <div class="shdr"><div class="shdr-title" style="font-size:.65rem">Historical Data</div><div class="shdr-line"></div><div class="shdr-sub">24 Months</div></div>
-  <div class="card" style="padding:0;margin-bottom:24px;overflow:auto">
+  <div class="card hist-tbl-wrap" style="padding:0">
     <table class="tbl">
       <thead><tr>
-        <th>Month</th><th>CPI YoY%</th><th>Core CPI%</th><th>NFP (K)</th><th>Unemployment</th><th>Fed Rate</th>
+        <th>Month</th><th>CPI YoY%</th><th>Core CPI%</th><th>NFP MoM</th><th>Unemployment</th><th>Fed Rate</th>
       </tr></thead>
-      <tbody id="hist-tbody"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Loading FRED data…</td></tr></tbody>
+      <tbody id="hist-tbody"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Loading…</td></tr></tbody>
     </table>
   </div>
 
-</div><!-- /wrap -->
+</div>
 
 <div id="price-strip">
   <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
@@ -204,405 +145,121 @@ svg{display:block;width:100%;overflow:visible}
   </div>
 </div>
 
+<script src="core/security.js"></script>
+<script src="core/state.js"></script>
+<script src="core/config.js"></script>
+<script src="core/api.js"></script>
+<script src="core/engines.js"></script>
 <script>
 'use strict';
-// ── Security + shared ─────────────────────────────────────
-function esc(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;').replace(/\//g,'&#x2F;')}
-function escUrl(u){if(!u)return '';const s=String(u).trim();return /^(javascript|data|vbscript):/i.test(s)?'':s}
-const TokenStore={_s:'to_tok',_l:'to_tok_p',get(){return sessionStorage.getItem(this._s)||localStorage.getItem(this._l)||''},set(t,p){if(!this.ok(t))return false;sessionStorage.setItem(this._s,t);p?localStorage.setItem(this._l,t):localStorage.removeItem(this._l);return true},clear(){sessionStorage.removeItem(this._s);localStorage.removeItem(this._l)},ok(t){return typeof t==='string'&&(t.startsWith('ntn_')||t.startsWith('secret_'))}};
-const ApiKeyStore={_s:'to_ak',get(){return{td:'5db5f72e03dc40b4ae453edf8a437232',fred:'Y5d8f2796ad376f6a4336bdceb8818960'}},set(k){},td(){return'5db5f72e03dc40b4ae453edf8a437232'},fred(){return'5d8f2796ad376f6a4336bdceb8818960'}};
-const WORKER='https://notion-proxy.churan756.workers.dev/';
-const CURRENT_PAGE='macro';
-const PAGES=[{id:'analytics',label:'Analytics',file:'index.html'},{id:'macro',label:'Macro',file:'macro.html'},{id:'playbook',label:'Playbook',file:'playbook.html'},{id:'news',label:'News',file:'news.html'},{id:'simulator',label:'Simulator',file:'simulator.html'}];
+const PAGE_ID = 'macro';
 
-function initNav(){
-  document.getElementById('nav-links').innerHTML=PAGES.map(p=>{
-    const active=p.id===CURRENT_PAGE?' active':'';
-    const click=p.id!==CURRENT_PAGE?`onclick="navGo('${esc(p.file)}')"` :'';
-    return `<div class="nav-link${active}" ${click}>${esc(p.label)}</div>`;
-  }).join('');
-  document.body.style.opacity='1';
-}
-function navGo(f){document.body.style.transition='opacity 130ms ease';document.body.style.opacity='0';setTimeout(()=>{window.location.href=f},140)}
-
-async function wFetch(action,params={},body=null){
-  const u=new URL(WORKER);u.searchParams.set('action',action);
-  for(const[k,v]of Object.entries(params))u.searchParams.set(k,v);
-  const keys=ApiKeyStore.get();
-  const hdrs={'Content-Type':'application/json'};
-  if(keys.td||keys.fred)hdrs['X-Api-Keys']=JSON.stringify({td:keys.td,fred:keys.fred});
-  const opts={method:body?'POST':'GET',headers:hdrs,signal:AbortSignal.timeout(14000)};
-  if(body)opts.body=JSON.stringify(body);
-  const res=await fetch(u.toString(),opts);
-  const data=await res.json();
-  if(!res.ok||data.error)throw new Error(data.error||`HTTP ${res.status}`);
-  return data;
-}
-
-// ── Price engine (shared) ──────────────────────────────────
-let _prices={};
-async function fetchPrices(){
-  try{
-    const hasTD=!!ApiKeyStore.td();
-    const data=await wFetch('prices',{source:hasTD?'twelvedata':'exchangerate'});
-    ['EURUSD','GBPUSD','DXY','XAUUSD'].forEach(sym=>{
-      if(!data[sym])return;
-      const prev=_prices[sym]?.price??null;
-      const price=parseFloat(data[sym]);
-      if(isNaN(price))return;
-      _prices[sym]={price,prev,change:prev!==null?+(price-prev).toFixed(6):0};
-    });
-    updatePriceUI(data.source);
-  }catch(e){document.getElementById('strip-src').textContent='○ Paused';document.getElementById('strip-src').style.color='var(--muted)'}
-}
-function updatePriceUI(source){
-  [{elId:'ps-eur',sym:'EURUSD',dec:5},{elId:'ps-gbp',sym:'GBPUSD',dec:5},{elId:'ps-dxy',sym:'DXY',dec:3},{elId:'ps-xau',sym:'XAUUSD',dec:2}].forEach(({elId,sym,dec})=>{
-    const d=_prices[sym];if(!d)return;
-    const el=document.getElementById(elId);if(!el)return;
-    const up=d.change>=0;const clr=up?'var(--green)':'var(--red)';
-    el.querySelector('.ps-price').textContent=d.price.toFixed(dec);
-    el.querySelector('.ps-chg').textContent=(up?'▲':'▼')+' '+Math.abs(d.change).toFixed(dec);
-    el.querySelector('.ps-chg').style.color=clr;
-  });
-  const np=_prices;
-  if(np.EURUSD){const el=document.getElementById('np-eur');el.textContent=`EUR ${np.EURUSD.price.toFixed(5)}`;el.style.color=np.EURUSD.change>=0?'var(--green)':'var(--red)'}
-  if(np.XAUUSD){const el=document.getElementById('np-xau');el.textContent=`XAU $${np.XAUUSD.price.toFixed(0)}`;el.style.color=np.XAUUSD.change>=0?'var(--green)':'var(--red)'}
-  if(np.DXY){const el=document.getElementById('np-dxy');el.textContent=`DXY ${np.DXY.price.toFixed(3)}`;el.style.color='var(--t2)'}
-  document.getElementById('strip-ts').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  document.getElementById('strip-src').textContent=source==='twelvedata'?'● Live':'● Hourly';
-  document.getElementById('strip-src').style.color='var(--green)';
-}
-
-// ── FRED DATA — YoY/MoM computed server-side by worker ─────
-let _macroData = {};
-
-async function loadFRED(){
-  const fredKey = ApiKeyStore.fred();
-  if(!fredKey){
-    document.getElementById('fred-status').textContent = 'No FRED key — add in settings';
-    document.getElementById('hist-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);font-size:.54rem">Add your free FRED API key to see live data · api.stlouisfed.org/api/requestAPIKey.html</td></tr>';
-    return;
+// ── Subscribe to state changes ────────────────────────────
+State.on('macro', macro => {
+  if (macro._noKey) { document.getElementById('nokey-msg').style.display='block'; document.getElementById('fred-status').textContent='No key'; return; }
+  if (macro._error) { document.getElementById('fred-status').textContent='Error'; return; }
+  renderMacroKPIs(macro);
+  renderSparklines(macro);
+  renderHistTable(macro);
+  document.getElementById('fred-status').textContent = 'FRED · Live · ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('nav-dot').className='nav-dot on';
+  // Also update Fed in central banks
+  const fed = macro.FEDFUNDS;
+  if (fed?.length) {
+    const l = fed[fed.length-1];
+    document.getElementById('cb-fed').textContent = l.value.toFixed(2)+'%';
+    document.getElementById('cb-fed-d').textContent = new Date(l.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    const bias = l.value>4.5?'Restrictive':l.value>2?'Neutral':'Accommodative';
+    const el = document.getElementById('cb-fed-b');
+    el.textContent = bias; el.style.cssText='background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.2)';
   }
+});
 
-  document.getElementById('fred-status').textContent = 'Loading…';
+function renderMacroKPIs(macro) {
+  const last = arr => arr?.length ? arr[arr.length-1] : null;
+  const lc=last(macro.CPIAUCSL), lcore=last(macro.CPILFESL), lu=last(macro.UNRATE), ln=last(macro.PAYEMS), lg=last(macro.A191RL1Q225SBEA);
 
-  // Worker now computes YoY/MoM server-side — CPI 236% bug is gone
-  const series = ['CPIAUCSL','CPILFESL','PAYEMS','UNRATE','A191RL1Q225SBEA','FEDFUNDS'];
-  const results = await Promise.allSettled(series.map(s =>
-    wFetch('fred', {series: s}, null).then(d => ({series: s, obs: d.observations || []}))
-  ));
-
-  results.forEach(r => {
-    if(r.status === 'fulfilled'){
-      const {series: s, obs} = r.value;
-      _macroData[s] = obs;
-    }
-  });
-
-  renderMacroKPIs();
-  renderSparklines();
-  renderHistTable();
-  document.getElementById('fred-status').textContent = 'FRED · Live';
-  document.getElementById('macro-last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-}
-
-function renderMacroKPIs(){
-  const setKPI = (id, val, sub, chgId, chgVal, positive) => {
-    const el = document.getElementById(id); if(el) el.textContent = val;
-    const se = document.getElementById(sub); if(se) se.textContent = '';
-    if(chgId){
-      const ce = document.getElementById(chgId); if(!ce) return;
-      if(chgVal !== null){
-        const up = chgVal >= 0;
-        ce.textContent = (up ? '▲ +' : '▼ ') + chgVal.toFixed(2) + ' vs prev';
-        ce.style.color = (positive ? up : !up) ? 'var(--green)' : 'var(--red)';
-      }
-    }
-  };
-
-  // CPI YoY — worker returns yoyPct field (computed correctly)
-  const cpi = _macroData['CPIAUCSL'];
-  if(cpi && cpi.length){
-    const last = cpi[cpi.length-1];
-    if(last.yoyPct !== null){
-      document.getElementById('m-cpi').textContent = last.yoyPct.toFixed(1) + '%';
-      const up = last.yoyPct > (cpi[cpi.length-2]?.yoyPct ?? last.yoyPct);
-      document.getElementById('m-cpi-chg').textContent = (up?'▲ Rising':'▼ Falling') + ' · ' + new Date(last.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
-      document.getElementById('m-cpi-chg').style.color = up ? 'var(--red)' : 'var(--green)'; // High CPI = bad
-    }
+  if (lc?.yoyPct!=null) {
+    document.getElementById('m-cpi').textContent = lc.yoyPct.toFixed(1)+'%';
+    const up = lc.yoyPct > (macro.CPIAUCSL[macro.CPIAUCSL.length-2]?.yoyPct??lc.yoyPct);
+    document.getElementById('m-cpi').style.color = up?'var(--red)':'var(--green)'; // rising CPI = bad
   }
-
-  // Core CPI
-  const core = _macroData['CPILFESL'];
-  if(core && core.length){
-    const last = core[core.length-1];
-    if(last.yoyPct !== null) document.getElementById('m-core').textContent = last.yoyPct.toFixed(1) + '%';
+  if (lcore?.yoyPct!=null) document.getElementById('m-core').textContent = lcore.yoyPct.toFixed(1)+'%';
+  if (ln?.mom!=null) {
+    const k=Math.round(ln.mom);
+    document.getElementById('m-nfp').textContent = (k>=0?'+':'')+k+'K';
+    document.getElementById('m-nfp').style.color = k>=0?'var(--green)':'var(--red)';
+    document.getElementById('m-nfp-s').textContent = new Date(ln.date).toLocaleDateString('en-US',{month:'long',year:'numeric'});
   }
-
-  // NFP MoM — worker returns momPct on PAYEMS (total employed delta)
-  const nfp = _macroData['PAYEMS'];
-  if(nfp && nfp.length){
-    const last = nfp[nfp.length-1];
-    if(last.mom !== null){
-      const momK = Math.round(last.mom); // PAYEMS is in thousands
-      document.getElementById('m-nfp').textContent = (momK >= 0 ? '+' : '') + momK + 'K';
-      const up = momK >= 0;
-      document.getElementById('m-nfp-chg').textContent = up ? '▲ Growth' : '▼ Contraction';
-      document.getElementById('m-nfp-chg').style.color = up ? 'var(--green)' : 'var(--red)';
-      document.getElementById('m-nfp-s').textContent = new Date(last.date).toLocaleDateString('en-US',{month:'long',year:'numeric'});
-    }
+  if (lu) {
+    document.getElementById('m-unemp').textContent = lu.value.toFixed(1)+'%';
+    document.getElementById('m-unemp-s').textContent = new Date(lu.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
   }
-
-  // Unemployment
-  const unemp = _macroData['UNRATE'];
-  if(unemp && unemp.length){
-    const last = unemp[unemp.length-1];
-    document.getElementById('m-unemp').textContent = last.value.toFixed(1) + '%';
-    if(last.mom !== null){
-      const up = last.mom > 0;
-      document.getElementById('m-unemp-chg').textContent = (up?'▲ +':'▼ ')+last.mom.toFixed(1)+'pp vs prev';
-      document.getElementById('m-unemp-chg').style.color = up ? 'var(--red)' : 'var(--green)';
-    }
-  }
-
-  // GDP
-  const gdp = _macroData['A191RL1Q225SBEA'];
-  if(gdp && gdp.length){
-    const last = gdp[gdp.length-1];
-    document.getElementById('m-gdp').textContent = (last.value >= 0 ? '+' : '') + last.value.toFixed(1) + '%';
-    document.getElementById('m-gdp-s').textContent = new Date(last.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
-    document.getElementById('m-gdp-chg').textContent = last.value >= 2 ? '▲ Expansion' : last.value >= 0 ? '→ Slow growth' : '▼ Contraction';
-    document.getElementById('m-gdp-chg').style.color = last.value >= 2 ? 'var(--green)' : last.value >= 0 ? 'var(--amber)' : 'var(--red)';
+  if (lg) {
+    document.getElementById('m-gdp').textContent = (lg.value>=0?'+':'')+lg.value.toFixed(1)+'%';
+    document.getElementById('m-gdp').style.color = lg.value>=2?'var(--green)':lg.value>=0?'var(--amber)':'var(--red)';
+    document.getElementById('m-gdp-s').textContent = new Date(lg.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
   }
 }
 
-function drawSparkline(svgId, data, color, mode='line'){
-  const svg = document.getElementById(svgId); if(!svg || !data.length) return;
-  const W=300,H=60,pL=2,pR=2,pT=4,pB=4;
-  const vals = data.map(d => d.value);
-  const min = Math.min(...vals), max = Math.max(...vals);
-  const rng = max - min || 0.001;
-  const n = vals.length;
-  const px = i => pL + (i/(n-1||1))*(W-pL-pR);
-  const py = v => pT + (H-pT-pB) - ((v-min)/rng)*(H-pT-pB);
-
-  if(mode === 'bar'){
-    const bw = (W-pL-pR)/n - 1;
-    const zY = H-pB;
-    svg.innerHTML = data.map((d,i) => {
-      const bh = Math.max(((d.mom||d.value)/Math.max(...data.map(x=>Math.abs(x.mom||x.value))||1))*(H-pT-pB)*0.8, 2);
-      const pos = (d.mom??d.value) >= 0;
-      return `<rect x="${px(i)}" y="${pos?zY-bh:zY}" width="${bw}" height="${bh}" fill="${pos?'var(--green)':'var(--red)'}" opacity=".7" rx="1"/>`;
-    }).join('');
-    return;
+function renderSparklines(macro) {
+  const cpi=macro.CPIAUCSL||[], nfp=macro.PAYEMS||[], unemp=macro.UNRATE||[];
+  if (cpi.length) {
+    document.getElementById('sp-cpi-v').textContent = cpi[cpi.length-1].yoyPct?.toFixed(1)+'%'||'';
+    Charts.sparkline('sp-cpi', cpi.slice(-24), 'var(--green)', 'yoyPct');
   }
-
-  const path = data.map((d,i) => `${i===0?'M':'L'}${px(i).toFixed(1)},${py(d.yoyPct??d.value).toFixed(1)}`).join(' ');
-  const area = `${path} L${px(n-1).toFixed(1)},${H-pB} L${pL},${H-pB} Z`;
-  svg.innerHTML = `
-    <defs><linearGradient id="sg-${svgId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".25"/><stop offset="100%" stop-color="${color}" stop-opacity=".02"/></linearGradient></defs>
-    <path d="${area}" fill="url(#sg-${svgId})"/>
-    <path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>`;
-}
-
-function renderSparklines(){
-  const cpi  = _macroData['CPIAUCSL']  || [];
-  const nfp  = _macroData['PAYEMS']    || [];
-  const unemp= _macroData['UNRATE']    || [];
-
-  if(cpi.length){
-    const last = cpi[cpi.length-1];
-    document.getElementById('sp-cpi-v').textContent = last.yoyPct !== null ? last.yoyPct.toFixed(1)+'%' : '';
-    drawSparkline('sp-cpi', cpi.slice(-24), 'var(--green)');
+  if (nfp.length) {
+    document.getElementById('sp-nfp-v').textContent = nfp[nfp.length-1].mom!=null ? (nfp[nfp.length-1].mom>=0?'+':'')+Math.round(nfp[nfp.length-1].mom)+'K' : '';
+    Charts.sparkline('sp-nfp', nfp.slice(-12), 'var(--amber)', 'mom');
   }
-  if(nfp.length){
-    const last = nfp[nfp.length-1];
-    document.getElementById('sp-nfp-v').textContent = last.mom !== null ? (last.mom>=0?'+':'')+Math.round(last.mom)+'K' : '';
-    drawSparkline('sp-nfp', nfp.slice(-12), 'var(--amber)', 'bar');
-  }
-  if(unemp.length){
-    const last = unemp[unemp.length-1];
-    document.getElementById('sp-u-v').textContent = last.value.toFixed(1)+'%';
-    drawSparkline('sp-unemp', unemp.slice(-24), 'var(--blue)');
+  if (unemp.length) {
+    document.getElementById('sp-u-v').textContent = unemp[unemp.length-1].value.toFixed(1)+'%';
+    Charts.sparkline('sp-unemp', unemp.slice(-24), 'var(--blue)', 'value');
   }
 }
 
-function renderHistTable(){
-  const cpi   = _macroData['CPIAUCSL']         || [];
-  const core  = _macroData['CPILFESL']         || [];
-  const nfp   = _macroData['PAYEMS']           || [];
-  const unemp = _macroData['UNRATE']           || [];
-  const fed   = _macroData['FEDFUNDS']         || [];
-
-  // Build by month key
-  const byMonth = {};
-  const addSeries = (arr, key, getter) => arr.slice(-24).forEach(d => {
-    const mk = d.date.slice(0,7);
-    if(!byMonth[mk]) byMonth[mk] = {month: mk};
-    byMonth[mk][key] = getter(d);
-  });
-
-  addSeries(cpi,   'cpi',   d => d.yoyPct !== null ? d.yoyPct.toFixed(1)+'%' : '—');
-  addSeries(core,  'core',  d => d.yoyPct !== null ? d.yoyPct.toFixed(1)+'%' : '—');
-  addSeries(nfp,   'nfp',   d => d.mom    !== null ? (d.mom>=0?'+':'')+Math.round(d.mom)+'K' : '—');
-  addSeries(unemp, 'unemp', d => d.value.toFixed(1)+'%');
-  addSeries(fed,   'fed',   d => d.value.toFixed(2)+'%');
-
-  const months = Object.values(byMonth).sort((a,b) => b.month.localeCompare(a.month)).slice(0,24);
-
-  document.getElementById('hist-tbody').innerHTML = months.map(m => {
-    const d = new Date(m.month+'-01');
-    const lbl = d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
-    return `<tr>
-      <td style="color:var(--text)">${esc(lbl)}</td>
-      <td>${esc(m.cpi||'—')}</td>
-      <td>${esc(m.core||'—')}</td>
-      <td>${esc(m.nfp||'—')}</td>
-      <td>${esc(m.unemp||'—')}</td>
-      <td style="color:var(--amber)">${esc(m.fed||'—')}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">No data</td></tr>';
+function renderHistTable(macro) {
+  const cpi=macro.CPIAUCSL||[], core=macro.CPILFESL||[], nfp=macro.PAYEMS||[], unemp=macro.UNRATE||[], fed=macro.FEDFUNDS||[];
+  const byMonth={};
+  const add=(arr,key,fn)=>arr.slice(-24).forEach(d=>{const mk=d.date.slice(0,7);if(!byMonth[mk])byMonth[mk]={month:mk};byMonth[mk][key]=fn(d);});
+  add(cpi,  'cpi',   d=>d.yoyPct!=null?d.yoyPct.toFixed(1)+'%':'—');
+  add(core, 'core',  d=>d.yoyPct!=null?d.yoyPct.toFixed(1)+'%':'—');
+  add(nfp,  'nfp',   d=>d.mom!=null?(d.mom>=0?'+':'')+Math.round(d.mom)+'K':'—');
+  add(unemp,'unemp', d=>d.value.toFixed(1)+'%');
+  add(fed,  'fed',   d=>d.value.toFixed(2)+'%');
+  const months=Object.values(byMonth).sort((a,b)=>b.month.localeCompare(a.month)).slice(0,24);
+  document.getElementById('hist-tbody').innerHTML = months.map(m=>{
+    const lbl=new Date(m.month+'-01').toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    return `<tr><td style="color:var(--text)">${esc(lbl)}</td><td>${esc(m.cpi||'—')}</td><td>${esc(m.core||'—')}</td><td>${esc(m.nfp||'—')}</td><td>${esc(m.unemp||'—')}</td><td style="color:var(--amber)">${esc(m.fed||'—')}</td></tr>`;
+  }).join('')||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">No data</td></tr>';
 }
 
-// World Bank central bank rates
-async function loadCentralBanks(){
-  const proxyUrl = (url) => {
-    const u = new URL(WORKER);
-    u.searchParams.set('action','proxy');
-    u.searchParams.set('url', url);
-    return u.toString();
-  };
-
-  // Fed from FRED is already loaded
-  const fed = _macroData['FEDFUNDS'];
-  if(fed && fed.length){
-    const last = fed[fed.length-1];
-    document.getElementById('cb-fed').textContent = last.value.toFixed(2) + '%';
-    document.getElementById('cb-fed-d').textContent = new Date(last.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
-    const bias = last.value > 4.5 ? 'Restrictive' : last.value > 2 ? 'Neutral' : 'Accommodative';
-    const biasEl = document.getElementById('cb-fed-b');
-    biasEl.textContent = bias;
-    biasEl.style.cssText = `background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.2)`;
+// ── AI ────────────────────────────────────────────────────
+async function askMacro(question) {
+  const el  = document.getElementById('ai-response');
+  const btn = document.getElementById('ai-send-btn');
+  el.className = 'ai-response loading'; el.textContent = 'Analysing…'; btn.disabled = true;
+  try {
+    const answer = await AIEngine.ask(question, 'analyst');
+    el.className = 'ai-response';
+    el.textContent = '';
+    let i = 0;
+    const iv = setInterval(() => { el.textContent += answer[i++]||''; if(i>=answer.length) clearInterval(iv); }, 8);
+  } catch(e) {
+    el.className='ai-response'; el.textContent='Error: '+e.message;
   }
-
-  // ECB + BoE from World Bank
-  for(const {key, url, cbId, dateId, biasId, color} of [
-    {key:'ecb', url:'https://api.worldbank.org/v2/country/XC/indicator/FR.INR.RINR?format=json&mrv=2', cbId:'cb-ecb', dateId:'cb-ecb-d', biasId:'cb-ecb-b', color:'var(--blue)'},
-    {key:'boe', url:'https://api.worldbank.org/v2/country/GB/indicator/FR.INR.RINR?format=json&mrv=2', cbId:'cb-boe', dateId:'cb-boe-d', biasId:'cb-boe-b', color:'var(--cyan)'},
-  ]){
-    try{
-      const res = await fetch(proxyUrl(url), {signal: AbortSignal.timeout(8000)});
-      const data = await res.json();
-      const entries = data?.[1] || [];
-      const latest = entries.find(e => e.value !== null);
-      if(latest){
-        document.getElementById(cbId).textContent = (+latest.value).toFixed(2) + '%';
-        document.getElementById(dateId).textContent = latest.date;
-        const biasEl = document.getElementById(biasId);
-        biasEl.textContent = latest.value > 3 ? 'Restrictive' : 'Neutral';
-        biasEl.style.cssText = `background:rgba(61,142,255,.1);color:${color};border:1px solid rgba(61,142,255,.2)`;
-      }
-    } catch(e){ document.getElementById(cbId).textContent = 'N/A'; }
-  }
+  btn.disabled=false;
+  document.getElementById('ai-inp').value='';
 }
+function sendAI()    { askMacro(document.getElementById('ai-inp').value.trim()); }
+function fullSummary(){ askMacro('Give me a complete macro summary: current regime, inflation trajectory, labor market, growth outlook, and what it all means for EUR/USD, GBP/USD, XAU/USD and DXY this week.'); }
 
-// ── AI Macro Explainer ─────────────────────────────────────
-let _aiHistory = [];
-
-function buildMacroContext(){
-  const cpi   = _macroData['CPIAUCSL'];
-  const unemp = _macroData['UNRATE'];
-  const nfp   = _macroData['PAYEMS'];
-  const gdp   = _macroData['A191RL1Q225SBEA'];
-  const fed   = _macroData['FEDFUNDS'];
-  const core  = _macroData['CPILFESL'];
-
-  const last = arr => arr && arr.length ? arr[arr.length-1] : null;
-  const lc = last(cpi), lu = last(unemp), ln = last(nfp), lg = last(gdp), lf = last(fed), lcore = last(core);
-
-  return `Current macro data as of ${new Date().toLocaleDateString()}:
-- Fed Funds Rate: ${lf ? lf.value.toFixed(2)+'%' : 'unknown'}
-- CPI YoY: ${lc?.yoyPct != null ? lc.yoyPct.toFixed(1)+'%' : 'unknown'}
-- Core CPI YoY: ${lcore?.yoyPct != null ? lcore.yoyPct.toFixed(1)+'%' : 'unknown'}
-- NFP MoM: ${ln?.mom != null ? Math.round(ln.mom)+'K jobs' : 'unknown'}
-- Unemployment: ${lu ? lu.value.toFixed(1)+'%' : 'unknown'}
-- GDP QoQ: ${lg ? lg.value.toFixed(1)+'%' : 'unknown'}`;
-}
-
-async function askAI(question){
-  if(!question) question = document.getElementById('ai-inp').value.trim();
-  if(!question) return;
-
-  const responseEl = document.getElementById('ai-response');
-  const sendBtn    = document.getElementById('ai-send-btn');
-  responseEl.className = 'ai-response loading';
-  responseEl.textContent = '';
-  sendBtn.disabled = true;
-
-  // Animate dots
-  let dots = 0;
-  const anim = setInterval(() => {
-    responseEl.textContent = ['Analysing', 'Analysing.', 'Analysing..', 'Analysing...'][dots++ % 4];
-  }, 350);
-
-  const context = buildMacroContext();
-  const systemPrompt = `You are a professional forex macro analyst. You have access to live economic data. Be concise, direct, and actionable. Format your response in 2-3 short paragraphs. Always relate back to what it means for EUR/USD, GBP/USD, XAU/USD, or DXY where relevant.`;
-
-  _aiHistory.push({ role: 'user', content: `${context}\n\nQuestion: ${question}` });
-
-  try{
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        system: systemPrompt,
-        messages: _aiHistory.slice(-6), // keep last 3 exchanges
-      })
-    });
-    const data = await res.json();
-    clearInterval(anim);
-
-    if(data.content && data.content[0]?.text){
-      const answer = data.content[0].text;
-      _aiHistory.push({ role: 'assistant', content: answer });
-      responseEl.className = 'ai-response';
-      // Typewriter effect
-      responseEl.textContent = '';
-      let i = 0;
-      const type = setInterval(() => {
-        responseEl.textContent += answer[i++];
-        if(i >= answer.length) clearInterval(type);
-      }, 8);
-    } else {
-      responseEl.className = 'ai-response';
-      responseEl.textContent = data.error?.message || 'No response received. Check your connection.';
-    }
-  } catch(e){
-    clearInterval(anim);
-    responseEl.className = 'ai-response';
-    responseEl.textContent = 'Error: ' + esc(e.message);
-  }
-
-  sendBtn.disabled = false;
-  document.getElementById('ai-inp').value = '';
-}
-
-function sendAI(){ askAI(document.getElementById('ai-inp').value.trim()); }
-
-function askMacroSummary(){
-  askAI('Give me a complete macro summary: current regime, inflation trajectory, labor market, growth, and what it means for my forex pairs EUR/USD, GBP/USD, XAU/USD this week.');
-}
-
-// ── BOOT ──────────────────────────────────────────────────
-window.addEventListener('load', async () => {
-  initNav();
-  fetchPrices();
-  setInterval(fetchPrices, 300_000);
-  await loadFRED();
-  await loadCentralBanks();
-  document.getElementById('nav-dot').className = 'nav-dot on';
+// ── Boot ──────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  NavEngine.init(PAGE_ID);
+  PriceEngine.start();
+  MacroEngine.start();
+  document.getElementById('macro-status').textContent = 'Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 });
 </script>
 </body>
