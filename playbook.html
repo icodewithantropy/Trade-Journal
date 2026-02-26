@@ -34,6 +34,7 @@
     <div class="nav-px" id="np-eur">EUR —</div>
     <div class="nav-px" id="np-xau">XAU —</div>
     <div class="nav-px" id="np-dxy">DXY —</div>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">☀</button>
     <div class="nav-dot" id="nav-dot"></div>
   </div>
 </nav>
@@ -408,6 +409,24 @@ window.addEventListener('DOMContentLoaded', () => {
   if(!TokenStore.ok(TokenStore.get())){ document.getElementById('token-screen').classList.add('show'); }
   else { loadPlaybook(); }
 });
+</script>
+<script>
+// ── Theme toggle ──────────────────────────────────────────
+(function() {
+  const saved = localStorage.getItem('tradeos-theme');
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('theme-toggle') && (document.getElementById('theme-toggle').textContent = '☾');
+  }
+})();
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('tradeos-theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = isLight ? '☾' : '☀';
+  // Redraw any Chart.js charts after theme change
+  setTimeout(() => { if (window.render) render(); }, 50);
+}
 </script>
 </body>
 </html>
