@@ -33,6 +33,48 @@
   --fd: 'Syne', sans-serif;
 }
 
+/* ── Light mode overrides ────────────────────────────────── */
+body.light {
+  --bg:    #f0f2f5;
+  --s1:    #ffffff;
+  --s2:    #f5f7fa;
+  --s3:    #edf0f4;
+  --s4:    #e4e8ee;
+  --border:#d0d7e2;
+  --b2:    #c4ccd8;
+  --b3:    #b0bac8;
+  --text:  #0d1420;
+  --t2:    #3a4a60;
+  --muted: #8090a8;
+  --m2:    #607088;
+
+  --green: #00a85e;
+  --red:   #e0193a;
+  --amber: #c47a00;
+  --blue:  #1a6ae0;
+  --cyan:  #007ab8;
+  --purple:#6b3de0;
+}
+
+/* ── Theme toggle button ─────────────────────────────────── */
+.theme-toggle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--s2);
+  color: var(--t2);
+  font-size: .75rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  border-color: var(--b3);
+  color: var(--text);
+  background: var(--s3);
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { font-size: 16px; -webkit-text-size-adjust: 100%; }
