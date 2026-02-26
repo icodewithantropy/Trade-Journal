@@ -293,11 +293,11 @@ function render() {
   renderKPIs(stats);
   Charts.equity('equity-svg', stats, _eq);
   const months = stats.sortedMonths.slice(-12);
-  Charts.barChart('monthly-svg', months.map(m => ({value:m.r,label:m.label})), (d,v)=>v>=0?'var(--green)':'var(--red)');
+  Charts.barChart('monthly-svg', months.map(m => ({value:m.r,label:m.label})));
   Charts.donut('donut-svg',[
-    {label:'Win', value:stats.wins.length, color:'var(--green)'},
-    {label:'Loss',value:stats.losses.length,color:'var(--red)'},
-    {label:'BE',  value:stats.bes.length,  color:'var(--amber)'},
+    {label:'Win', value:stats.wins.length, color:'#00d47a'},
+    {label:'Loss',value:stats.losses.length,color:'#ff2d55'},
+    {label:'BE',  value:stats.bes.length,  color:'#f5a623'},
   ]);
   renderSessions(stats);
   renderGrades(stats);
@@ -328,7 +328,7 @@ function renderKPIs(s) {
 
 function renderSessions(s) {
   const el = document.getElementById('sessions-bar'); if(!el) return;
-  const colors = ['var(--green)','var(--blue)','var(--amber)','var(--cyan)','var(--purple)'];
+  const colors = ['#00d47a','#3d8eff','#f5a623','#00d2d2','#9b59b6'];
   const entries = Object.entries(s.sessions).sort((a,b)=>b[1].total-a[1].total);
   el.innerHTML = entries.map(([name,d],i) => {
     const wr = d.total ? Math.round(d.wins/d.total*100) : 0;
@@ -344,7 +344,7 @@ function renderSessions(s) {
 function renderGrades(s) {
   const el = document.getElementById('grade-grid'); if(!el) return;
   const items = [
-    {g:'A+',color:'var(--green)'},{g:'B',color:'var(--blue)'},{g:'C',color:'var(--amber)'}
+    {g:'A+',color:'#00d47a'},{g:'B',color:'#3d8eff'},{g:'C',color:'#f5a623'}
   ];
   el.innerHTML = items.map(({g,color}) => {
     const d = s.grades[g] || {wins:0,total:0};

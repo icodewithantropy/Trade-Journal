@@ -163,19 +163,46 @@ State.on('macro', macro => {
   renderMacroKPIs(macro);
   renderSparklines(macro);
   renderHistTable(macro);
+  renderCentralBanks(macro);
   document.getElementById('fred-status').textContent = 'FRED · Live · ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('nav-dot').className='nav-dot on';
-  // Also update Fed in central banks
+});
+
+function renderCentralBanks(macro) {
+  // Fed — from FRED FEDFUNDS series
   const fed = macro.FEDFUNDS;
   if (fed?.length) {
     const l = fed[fed.length-1];
     document.getElementById('cb-fed').textContent = l.value.toFixed(2)+'%';
     document.getElementById('cb-fed-d').textContent = new Date(l.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
-    const bias = l.value>4.5?'Restrictive':l.value>2?'Neutral':'Accommodative';
+    const bias = l.value>4.5?'Restrictive':l.value>3?'Neutral':'Accommodative';
     const el = document.getElementById('cb-fed-b');
-    el.textContent = bias; el.style.cssText='background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.2)';
+    el.textContent = bias;
+    el.style.cssText = 'background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.2);padding:2px 9px;border-radius:10px;font-size:.46rem;display:inline-block';
   }
-});
+
+  // ECB — hardcoded current rate (ECB not on FRED, update manually when changes)
+  // Current ECB deposit facility rate as of Feb 2026: 2.75%
+  const ecbRate = 2.75;
+  const ecbDate = 'Jan 2026';
+  document.getElementById('cb-ecb').textContent = ecbRate.toFixed(2)+'%';
+  document.getElementById('cb-ecb-d').textContent = ecbDate;
+  const ecbBias = ecbRate>3?'Restrictive':ecbRate>1.5?'Easing':'Accommodative';
+  const ecbEl = document.getElementById('cb-ecb-b');
+  ecbEl.textContent = ecbBias;
+  ecbEl.style.cssText = 'background:rgba(61,142,255,.1);color:var(--blue);border:1px solid rgba(61,142,255,.2);padding:2px 9px;border-radius:10px;font-size:.46rem;display:inline-block';
+
+  // BoE — hardcoded current rate (BoE not on FRED, update manually when changes)
+  // Current BoE base rate as of Feb 2026: 4.50%
+  const boeRate = 4.50;
+  const boeDate = 'Feb 2026';
+  document.getElementById('cb-boe').textContent = boeRate.toFixed(2)+'%';
+  document.getElementById('cb-boe-d').textContent = boeDate;
+  const boeBias = boeRate>4?'Restrictive':boeRate>2?'Neutral':'Accommodative';
+  const boeEl = document.getElementById('cb-boe-b');
+  boeEl.textContent = boeBias;
+  boeEl.style.cssText = 'background:rgba(0,210,210,.1);color:var(--cyan);border:1px solid rgba(0,210,210,.2);padding:2px 9px;border-radius:10px;font-size:.46rem;display:inline-block';
+}
 
 function renderMacroKPIs(macro) {
   const last = arr => arr?.length ? arr[arr.length-1] : null;
@@ -208,18 +235,17 @@ function renderSparklines(macro) {
   const cpi=macro.CPIAUCSL||[], nfp=macro.PAYEMS||[], unemp=macro.UNRATE||[];
   if (cpi.length) {
     document.getElementById('sp-cpi-v').textContent = cpi[cpi.length-1].yoyPct?.toFixed(1)+'%'||'';
-    Charts.sparkline('sp-cpi', cpi.slice(-24), 'var(--green)', 'yoyPct');
+    Charts.sparkline('sp-cpi', cpi.slice(-24), '#00d47a', 'yoyPct');
   }
   if (nfp.length) {
     document.getElementById('sp-nfp-v').textContent = nfp[nfp.length-1].mom!=null ? (nfp[nfp.length-1].mom>=0?'+':'')+Math.round(nfp[nfp.length-1].mom)+'K' : '';
-    Charts.sparkline('sp-nfp', nfp.slice(-12), 'var(--amber)', 'mom');
+    Charts.sparkline('sp-nfp', nfp.slice(-12), '#f5a623', 'mom');
   }
   if (unemp.length) {
     document.getElementById('sp-u-v').textContent = unemp[unemp.length-1].value.toFixed(1)+'%';
-    Charts.sparkline('sp-unemp', unemp.slice(-24), 'var(--blue)', 'value');
+    Charts.sparkline('sp-unemp', unemp.slice(-24), '#3d8eff', 'value');
   }
 }
-
 function renderHistTable(macro) {
   const cpi=macro.CPIAUCSL||[], core=macro.CPILFESL||[], nfp=macro.PAYEMS||[], unemp=macro.UNRATE||[], fed=macro.FEDFUNDS||[];
   const byMonth={};
@@ -255,6 +281,19 @@ async function askMacro(question) {
 }
 function sendAI()    { askMacro(document.getElementById('ai-inp').value.trim()); }
 function fullSummary(){ askMacro('Give me a complete macro summary: current regime, inflation trajectory, labor market, growth outlook, and what it all means for EUR/USD, GBP/USD, XAU/USD and DXY this week.'); }
+
+// ── Mistral test — run in console: testMistral() ─────────
+window.testMistral = async () => {
+  console.log('[Mistral Test] Sending test prompt...');
+  try {
+    const res = await API.ai('Say "Mistral AI is connected and working." in exactly those words.');
+    console.log('[Mistral Test] Response:', res);
+    if (res.error) console.error('[Mistral Test] ERROR:', res.error);
+    else console.log('[Mistral Test] ✅ SUCCESS:', res.reply);
+  } catch(e) {
+    console.error('[Mistral Test] FAILED:', e.message);
+  }
+};
 
 // ── Boot ──────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
