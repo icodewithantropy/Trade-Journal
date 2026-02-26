@@ -59,3 +59,10 @@ const ApiKeyStore = {
 window.TokenStore = TokenStore;
 window.esc = esc;
 window.escUrl = escUrl;
+
+// ── Global exports ──────────────────────────────────────────
+window.TokenStore   = TokenStore;
+window.ApiKeyStore  = ApiKeyStore;
+window.esc          = esc;
+window.escUrl       = escUrl;
+window.isValidNotionId = isValidNotionId;

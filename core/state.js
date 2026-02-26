@@ -71,3 +71,6 @@ const State = (() => {
 })();
 
 window.State = State;
+
+// ── Global export ──────────────────────────────────────────
+window.State = State;

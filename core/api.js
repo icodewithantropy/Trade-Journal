@@ -1,114 +1,98 @@
-// core/api.js
-// Clean Worker-Only API Layer
+/**
+ * TradeOS · core/api.js
+ * Clean Worker-Only API Layer
+ */
 
-const WORKER_URL = "https://notion-proxy.churan756.workers.dev";
+const WORKER_URL = 'https://notion-proxy.churan756.workers.dev';
 
 // ─────────────────────────────────────────────
 // Internal Fetch Helper
 // ─────────────────────────────────────────────
-
 async function _fetch(action, options = {}) {
-
   const url = new URL(WORKER_URL);
-  url.searchParams.set("action", action);
+  url.searchParams.set('action', action);
 
-  // Add query params
   if (options.params) {
-    Object.entries(options.params).forEach(([key, value]) => {
-      url.searchParams.set(key, value);
-    });
+    Object.entries(options.params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
 
-  const response = await fetch(url.toString(), {
-    method: options.method || "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined
+  const res = await fetch(url.toString(), {
+    method:  options.method || 'GET',
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    body:    options.body ? JSON.stringify(options.body) : undefined,
+    signal:  AbortSignal.timeout(15000),
   });
 
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.error || "API request failed");
-  }
-
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
 
 // ─────────────────────────────────────────────
 // Public API Object
 // ─────────────────────────────────────────────
-
 const API = {
 
-  // ───── Prices (TwelveData via Worker) ─────
   async prices() {
-    return _fetch("prices");
+    return _fetch('prices');
   },
 
-  // ───── FRED Macro Data ─────
   async fred(seriesId) {
-    return _fetch("fred", {
-      params: { series: seriesId }
-    });
+    return _fetch('fred', { params: { series: seriesId } });
   },
 
-  // ───── AI (Mistral via Worker) ─────
-  async ai(prompt) {
-    return _fetch("ai", {
-      method: "POST",
-      body: { prompt }
-    });
+  async ai(prompt, system) {
+    return _fetch('ai', { method: 'POST', body: { prompt, system } });
   },
 
-  // ───── Notion Query ─────
-  async query(dbId, token) {
-    return _fetch("query", {
-      method: "POST",
+  async query(dbId, token, body = {}) {
+    return _fetch('query', {
+      method: 'POST',
       params: { db: dbId },
-      headers: {
-        "X-Notion-Token": token
-      }
+      headers: { 'X-Notion-Token': token },
+      body,
     });
   },
 
-  // ───── Notion Create ─────
-  async create(body, token) {
-    return _fetch("create", {
-      method: "POST",
-      headers: {
-        "X-Notion-Token": token
-      },
-      body
+  async queryPlaybook() {
+    const token = typeof TokenStore !== 'undefined' ? TokenStore.get() : '';
+    if (!token) throw new Error('No token');
+    return _fetch('query', {
+      method: 'POST',
+      params: { db: typeof Config !== 'undefined' ? Config.DB.PLAYBOOK : '' },
+      headers: { 'X-Notion-Token': token },
+      body: { sorts: [{ property: 'Date', direction: 'descending' }] },
+    }).then(d => d.results || []);
+  },
+
+  async createPage(dbId, properties) {
+    const token = typeof TokenStore !== 'undefined' ? TokenStore.get() : '';
+    return _fetch('create', {
+      method: 'POST',
+      headers: { 'X-Notion-Token': token },
+      body: { parent: { database_id: dbId }, properties },
     });
   },
 
-  // ───── Notion Update ─────
-  async update(pageId, body, token) {
-    return _fetch("update", {
-      method: "PATCH",
+  async updatePage(pageId, properties) {
+    const token = typeof TokenStore !== 'undefined' ? TokenStore.get() : '';
+    return _fetch('update', {
+      method: 'PATCH',
       params: { id: pageId },
-      headers: {
-        "X-Notion-Token": token
-      },
-      body
+      headers: { 'X-Notion-Token': token },
+      body: { properties },
     });
   },
 
-  // ───── Notion Delete (Archive) ─────
-  async remove(pageId, token) {
-    return _fetch("delete", {
-      method: "PATCH",
+  async deletePage(pageId) {
+    const token = typeof TokenStore !== 'undefined' ? TokenStore.get() : '';
+    return _fetch('delete', {
+      method: 'PATCH',
       params: { id: pageId },
-      headers: {
-        "X-Notion-Token": token
-      }
+      headers: { 'X-Notion-Token': token },
     });
-  }
-
+  },
 };
 
-// Make globally accessible (important)
+// Global export
 window.API = API;
