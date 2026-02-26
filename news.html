@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeOS · News</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://notion-proxy.churan756.workers.dev; frame-ancestors 'none';">
+<link rel="stylesheet" href="core/style.css">
+<style>
+.countdown{background:rgba(0,212,122,.06);border:1px solid rgba(0,212,122,.15);border-radius:8px;padding:14px 18px;margin-bottom:16px;display:none}
+.countdown.show{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cd-label{font-size:.44rem;color:var(--m2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
+.cd-event{font-family:var(--fd);font-size:.78rem;font-weight:700;color:var(--text)}
+.cd-timer{font-family:var(--fd);font-size:1.6rem;font-weight:800;color:var(--green);margin-left:auto;flex-shrink:0}
+.cd-sub{font-size:.48rem;color:var(--m2)}
+.week-toggle{display:flex;gap:6px;margin-bottom:16px}
+.wtb{padding:6px 14px;font-size:.5rem;letter-spacing:1.5px;text-transform:uppercase;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--m2);cursor:pointer;font-family:var(--ff);transition:all .12s}
+.wtb.on,.wtb:hover{border-color:var(--b3);color:var(--text);background:rgba(255,255,255,.03)}
+.impact-filter{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.ifb{padding:4px 10px;font-size:.46rem;letter-spacing:1.5px;text-transform:uppercase;border:1px solid;border-radius:10px;cursor:pointer;font-family:var(--ff);transition:all .12s;background:transparent}
+.ifb-all{color:var(--t2);border-color:var(--b2)}.ifb-all.on,.ifb-all:hover{background:rgba(255,255,255,.04);border-color:var(--b3)}
+.ifb-high{color:var(--red);border-color:rgba(255,45,85,.3)}.ifb-high.on,.ifb-high:hover{background:rgba(255,45,85,.08)}
+.ifb-med{color:var(--amber);border-color:rgba(245,166,35,.3)}.ifb-med.on,.ifb-med:hover{background:rgba(245,166,35,.08)}
+.ifb-low{color:var(--blue);border-color:rgba(61,142,255,.3)}.ifb-low.on,.ifb-low:hover{background:rgba(61,142,255,.08)}
+.day-hdr{font-size:.5rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:7px 0;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.day-date{font-family:var(--fd);font-size:.7rem;font-weight:700;color:var(--t2)}
+.today-badge{font-size:.44rem;background:rgba(0,212,122,.1);color:var(--green);border:1px solid rgba(0,212,122,.2);border-radius:10px;padding:2px 7px}
+.event-card{display:flex;align-items:stretch;background:var(--s1);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden;transition:border-color .1s;cursor:pointer}
+.event-card:hover{border-color:var(--b2)}
+.ev-impact{width:4px;flex-shrink:0}
+.ev-high{background:var(--red)}.ev-medium{background:var(--amber)}.ev-low{background:var(--blue)}.ev-none{background:var(--muted)}
+.ev-body{padding:10px 13px;flex:1;min-width:0}
+.ev-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.ev-time{font-size:.5rem;color:var(--m2);min-width:52px;flex-shrink:0}
+.ev-country{font-size:.44rem;background:var(--s2);border:1px solid var(--b2);border-radius:3px;padding:2px 6px;color:var(--t2);flex-shrink:0}
+.ev-title{font-size:.62rem;color:var(--text);font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-vals{display:flex;gap:18px;font-size:.5rem}
+.ev-val-lbl{display:block;font-size:.4rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:1px}
+.ev-forecast{color:var(--blue)}.ev-prev{color:var(--m2)}.ev-actual{color:var(--text)}
+.ev-actual.beat{color:var(--green)}.ev-actual.miss{color:var(--red)}
+.day-section{margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-brand">TRADE<span>OS</span></div>
+  <div class="nav-links" id="nav-links"></div>
+  <div class="nav-right">
+    <div class="nav-px" id="np-eur">EUR —</div>
+    <div class="nav-px" id="np-xau">XAU —</div>
+    <div class="nav-px" id="np-dxy">DXY —</div>
+    <div class="nav-dot" id="nav-dot"></div>
+  </div>
+</nav>
+<div id="alert-bar"></div>
+
+<div class="wrap">
+  <div class="shdr" style="margin-bottom:16px">
+    <div class="shdr-title">Economic Calendar</div>
+    <div class="shdr-line"></div>
+    <div class="shdr-sub" id="news-status">Loading…</div>
+  </div>
+
+  <div class="countdown" id="countdown">
+    <div>
+      <div class="cd-label">Next High-Impact Event</div>
+      <div class="cd-event" id="cd-event">—</div>
+      <div class="cd-sub" id="cd-sub">—</div>
+    </div>
+    <div class="cd-timer" id="cd-timer">—</div>
+  </div>
+
+  <div class="week-toggle">
+    <button class="wtb on" onclick="switchWeek('this',this)">This Week</button>
+    <button class="wtb" onclick="switchWeek('next',this)">Next Week</button>
+  </div>
+
+  <div class="impact-filter">
+    <button class="ifb ifb-all on" onclick="setImpact('all',this)">All</button>
+    <button class="ifb ifb-high" onclick="setImpact('high',this)">● High</button>
+    <button class="ifb ifb-med"  onclick="setImpact('medium',this)">● Medium</button>
+    <button class="ifb ifb-low"  onclick="setImpact('low',this)">● Low</button>
+  </div>
+
+  <div id="calendar-feed"><div class="empty"><strong>Loading…</strong>Fetching ForexFactory calendar</div></div>
+</div>
+
+<div id="price-strip">
+  <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-dxy"><span class="ps-sym">DXY</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-xau"><span class="ps-sym">XAU/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="strip-right">
+    <span class="strip-ts" id="strip-ts"></span>
+    <span class="strip-src" id="strip-src">○ Loading</span>
+  </div>
+</div>
+
+<script src="core/security.js"></script>
+<script src="core/state.js"></script>
+<script src="core/config.js"></script>
+<script src="core/api.js"></script>
+<script src="core/engines.js"></script>
+<script>
+'use strict';
+const PAGE_ID = 'news';
+let _week = 'this', _impact = 'all';
+
+State.on('news', events => {
+  document.getElementById('news-status').textContent = `ForexFactory · ${events.length} events`;
+  document.getElementById('nav-dot').className = 'nav-dot on';
+  renderCalendar();
+  updateCountdown();
+});
+
+function switchWeek(w, btn) {
+  _week = w;
+  document.querySelectorAll('.wtb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderCalendar();
+}
+
+function setImpact(imp, btn) {
+  _impact = imp;
+  document.querySelectorAll('.ifb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderCalendar();
+}
+
+function impactCls(impact) {
+  const i=(impact||'').toLowerCase();
+  return i==='high'?'ev-high':i==='medium'?'ev-medium':i==='low'?'ev-low':'ev-none';
+}
+
+function renderCalendar() {
+  const feed = document.getElementById('calendar-feed');
+  const events = State.get('news') || [];
+  if(!events.length) { feed.innerHTML='<div class="empty"><strong>No events</strong>Calendar unavailable</div>'; return; }
+  const now = new Date();
+  const getMonday = (offset=0) => {
+    const d=new Date(now), dow=d.getDay();
+    d.setDate(d.getDate()-(dow===0?6:dow-1)+offset*7); d.setHours(0,0,0,0); return d;
+  };
+  const mon = getMonday(_week==='next'?1:0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  const filtered = events.filter(ev => {
+    const d=new Date(ev.date); if(isNaN(d))return false;
+    if(d<mon||d>sun)return false;
+    if(_impact==='all')return true;
+    return (ev.impact||'').toLowerCase()===_impact;
+  });
+  if(!filtered.length){ feed.innerHTML='<div class="empty"><strong>No events</strong>No events match filters</div>'; return; }
+  const byDay={};
+  filtered.forEach(ev=>{const dk=new Date(ev.date).toISOString().slice(0,10);if(!byDay[dk])byDay[dk]=[];byDay[dk].push(ev);});
+  const todayKey = now.toISOString().slice(0,10);
+  let html='';
+  Object.entries(byDay).sort(([a],[b])=>a.localeCompare(b)).forEach(([key,evs])=>{
+    const d=new Date(key+'T12:00:00');
+    const lbl=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    html+=`<div class="day-section"><div class="day-hdr"><span class="day-date">${esc(lbl)}</span>${key===todayKey?'<span class="today-badge">TODAY</span>':''}<span style="margin-left:auto;font-size:.44rem">${evs.length} event${evs.length!==1?'s':''}</span></div>`;
+    evs.forEach(ev=>{
+      let timeStr='Tentative';
+      try{const d2=new Date(ev.date);if(!isNaN(d2)&&d2.getHours()!==0)timeStr=d2.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}catch{}
+      let actualCls='ev-actual';
+      if(ev.actual&&ev.forecast){const a=parseFloat(ev.actual),f=parseFloat(ev.forecast);if(!isNaN(a)&&!isNaN(f))actualCls='ev-actual '+(a>=f?'beat':'miss');}
+      html+=`<div class="event-card"><div class="ev-impact ${impactCls(ev.impact)}"></div><div class="ev-body">
+        <div class="ev-top"><span class="ev-time">${esc(timeStr)}</span><span class="ev-country">${esc(ev.country||'—')}</span><span class="ev-title">${esc(ev.title||ev.name||'—')}</span></div>
+        <div class="ev-vals">
+          <div><span class="ev-val-lbl">Forecast</span><span class="ev-forecast">${esc(ev.forecast||'—')}</span></div>
+          <div><span class="ev-val-lbl">Previous</span><span class="ev-prev">${esc(ev.previous||'—')}</span></div>
+          <div><span class="ev-val-lbl">Actual</span><span class="${actualCls}">${esc(ev.actual||'Pending')}</span></div>
+        </div>
+      </div></div>`;
+    });
+    html+='</div>';
+  });
+  feed.innerHTML = html;
+}
+
+function updateCountdown() {
+  const next = NewsEngine.nextHighImpact();
+  const el = document.getElementById('countdown');
+  if(!next){el.classList.remove('show');return;}
+  el.classList.add('show');
+  document.getElementById('cd-event').textContent = next.title||next.name||'—';
+  const d = new Date(next.date);
+  document.getElementById('cd-sub').textContent = `${next.country||''} · ${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} ${d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
+  setInterval(() => {
+    const diff=d-new Date(); if(diff<0){document.getElementById('countdown').classList.remove('show');return;}
+    const h=Math.floor(diff/3600000),m=Math.floor((diff%3600000)/60000),s=Math.floor((diff%60000)/1000);
+    document.getElementById('cd-timer').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  },1000);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  NavEngine.init(PAGE_ID);
+  PriceEngine.start();
+  NewsEngine.start();
+});
+</script>
+</body>
+</html>
