@@ -45,3 +45,4 @@ const Config = {
 
   VERSION: 'v4.0.0',
 };
+window.Config = Config;
