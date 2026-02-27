@@ -8,25 +8,57 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="core/style.css">
 <style>
-.macro-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
-@media(max-width:900px){.macro-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+/* ── Macro mobile-first grid ─────────────────────────────── */
+.macro-kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+@media(min-width:640px){.macro-kpi-grid{grid-template-columns:repeat(4,1fr)}}
+
+/* Central banks — horizontal scroll on small screens */
 .cb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-@media(max-width:640px){.cb-grid{grid-template-columns:1fr}}
-.cb-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:center;position:relative;overflow:hidden}
-.cb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px}
+@media(max-width:520px){
+  .cb-grid{grid-template-columns:1fr;gap:8px}
+  .cb-card{display:flex;align-items:center;gap:14px;text-align:left;padding:12px 14px}
+  .cb-rate{font-size:1.4rem;margin-bottom:0}
+  .cb-name{margin-bottom:2px}
+}
+.cb-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;position:relative;overflow:hidden;transition:border-color .15s}
+.cb-card:hover{border-color:var(--b3)}
+.cb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .cb-fed::before{background:linear-gradient(90deg,transparent,var(--amber),transparent)}
 .cb-ecb::before{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
 .cb-boe::before{background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
 .cb-name{font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
 .cb-rate{font-family:var(--fd);font-size:1.6rem;font-weight:800;margin-bottom:3px}
 .cb-date{font-size:.44rem;color:var(--m2);margin-bottom:6px}
-.cb-bias{font-size:.46rem;display:inline-block;padding:2px 9px;border-radius:10px}
+.cb-bias{font-size:.44rem;display:inline-block;padding:2px 9px;border-radius:10px}
+
+/* Sparklines — stack on mobile */
 .spark-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-@media(max-width:760px){.spark-row{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.spark-row{grid-template-columns:1fr}}
 .spark-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px}
-.hist-tbl-wrap{overflow:auto;margin-bottom:24px}
+
+/* AI panel mobile */
+.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.ai-chip{font-size:.5rem;padding:5px 10px;border-radius:20px;background:var(--s2);border:1px solid var(--border);color:var(--t2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.ai-chip:hover{background:var(--s3);color:var(--text);border-color:var(--b3)}
+.ai-inp-row{display:flex;gap:8px;align-items:center}
+@media(max-width:500px){.ai-inp-row{flex-direction:column}}
+@media(max-width:500px){#ai-send-btn{width:100%;justify-content:center}}
+
+/* History table — scrollable on mobile */
+.hist-tbl-wrap{overflow-x:auto;margin-bottom:24px;-webkit-overflow-scrolling:touch}
+.hist-tbl-wrap table{min-width:480px}
+
+/* Retry button */
+.retry-btn{font-size:.5rem;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--t2);cursor:pointer;margin-left:8px}
+.retry-btn:hover{background:var(--s3);color:var(--text)}
+
 .nokey-msg{background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.18);border-radius:8px;padding:18px;font-size:.6rem;color:var(--t2);line-height:1.8;margin-bottom:18px}
 .nokey-msg strong{color:var(--amber)}
+
+/* Loading skeleton */
+.macro-loading{text-align:center;padding:32px;color:var(--muted);font-size:.55rem;letter-spacing:2px}
+.macro-loading::after{content:'';animation:dots 1.2s infinite}
+@keyframes dots{0%{content:''} 33%{content:'.'} 66%{content:'..'} 100%{content:'...'}}
 </style>
 </head>
 <body>
@@ -36,8 +68,8 @@
   <div class="nav-links" id="nav-links"></div>
   <div class="nav-right">
     <div class="nav-px" id="np-eur">EUR —</div>
-    <div class="nav-px" id="np-xau">XAU —</div>
-    <div class="nav-px" id="np-dxy">DXY —</div>
+    <div class="nav-px" id="np-nas">NAS —</div>
+    <div class="nav-px" id="np-spx">SPX —</div>
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">☀</button>
     <div class="nav-dot" id="nav-dot"></div>
   </div>
@@ -50,6 +82,7 @@
     <div class="shdr-title">Macro Intelligence</div>
     <div class="shdr-line"></div>
     <div class="shdr-sub" id="macro-status">Loading…</div>
+    <button class="retry-btn" onclick="MacroEngine.fetch()" title="Reload macro data">↺ Retry</button>
   </div>
 
   <!-- Central Banks -->
@@ -139,8 +172,8 @@
 <div id="price-strip">
   <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
   <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
-  <div class="ps-pair" id="ps-dxy"><span class="ps-sym">DXY</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
-  <div class="ps-pair" id="ps-xau"><span class="ps-sym">XAU/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-nas"><span class="ps-sym">NAS100</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-spx"><span class="ps-sym">SPX500</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
   <div class="strip-right">
     <span class="strip-ts" id="strip-ts"></span>
     <span class="strip-src" id="strip-src">○ Loading</span>

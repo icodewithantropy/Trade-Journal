@@ -64,8 +64,8 @@
   <div class="nav-links" id="nav-links"></div>
   <div class="nav-right">
     <div class="nav-px" id="np-eur">EUR —</div>
-    <div class="nav-px" id="np-xau">XAU —</div>
-    <div class="nav-px" id="np-dxy">DXY —</div>
+    <div class="nav-px" id="np-nas">NAS —</div>
+    <div class="nav-px" id="np-spx">SPX —</div>
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">☀</button>
     <div class="nav-dot" id="nav-dot"></div>
   </div>
@@ -211,7 +211,7 @@
       <table class="tbl">
         <thead><tr>
           <th>Date</th><th>Pair</th><th>Dir</th><th>Outcome</th>
-          <th>R</th><th>Grade</th><th>Session</th><th>Confluences</th><th>Chart</th>
+          <th>R</th><th>Grade</th><th class="col-hide-mobile">Session</th><th class="col-hide-mobile">Confluences</th><th class="col-hide-mobile">Chart</th>
         </tr></thead>
         <tbody id="trades-tbody"></tbody>
       </table>
@@ -224,8 +224,8 @@
 <div id="price-strip">
   <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
   <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
-  <div class="ps-pair" id="ps-dxy"><span class="ps-sym">DXY</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
-  <div class="ps-pair" id="ps-xau"><span class="ps-sym">XAU/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-nas"><span class="ps-sym">NAS100</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-spx"><span class="ps-sym">SPX500</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
   <div class="strip-right">
     <span class="strip-ts" id="strip-ts"></span>
     <span class="strip-src" id="strip-src">○ Loading</span>
@@ -422,7 +422,9 @@ function renderCalendar(stats) {
 
   const year = d.getFullYear(), mon = d.getMonth();
   const days = new Date(year,mon+1,0).getDate();
-  const startDow = (new Date(year,mon,1).getDay()+6)%7;
+  // Monday-first calendar: Sun=0 becomes 6, Mon=1 becomes 0
+  const firstDay = new Date(year, mon, 1);
+  const startDow = (firstDay.getDay() + 6) % 7; // Mon=0, Tue=1...Sun=6
 
   const grid = document.getElementById('cal-grid'); if(!grid) return;
   let html = '<div class="cal-day empty"></div>'.repeat(startDow);
@@ -534,9 +536,9 @@ function renderTradesTable(trades) {
       <td class="outcome-${(t.outcome||'').toLowerCase()}">${esc(t.outcome||'—')}</td>
       <td style="color:${rClr};font-weight:700">${t.rMultiple!=null?(t.rMultiple>=0?'+':'')+t.rMultiple.toFixed(2)+'R':'—'}</td>
       <td><span style="color:${gradeColor};font-weight:700;cursor:help" title="${esc(gradeTitle)}">${esc(t.grade||'C')}</span></td>
-      <td style="color:var(--m2);font-size:.48rem">${esc(t.session||'—')}</td>
-      <td>${conf}</td>
-      <td>${imgHtml}</td>
+      <td class="col-hide-mobile" style="color:var(--m2);font-size:.48rem">${esc(t.session||'—')}</td>
+      <td class="col-hide-mobile">${conf}</td>
+      <td class="col-hide-mobile">${imgHtml}</td>
     </tr>`;
   }).join('');
 }
