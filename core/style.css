@@ -35,25 +35,69 @@
 
 /* ── Light mode overrides ────────────────────────────────── */
 body.light {
-  --bg:    #f0f2f5;
+  --bg:    #f7f8fc;
   --s1:    #ffffff;
-  --s2:    #f5f7fa;
-  --s3:    #edf0f4;
-  --s4:    #e4e8ee;
-  --border:#d0d7e2;
-  --b2:    #c4ccd8;
-  --b3:    #b0bac8;
+  --s2:    #f0f2f8;
+  --s3:    #e8ecf4;
+  --s4:    #dde2ed;
+  --border:#c8d0e0;
+  --b2:    #b8c4d8;
+  --b3:    #a0b0cc;
   --text:  #0d1420;
-  --t2:    #3a4a60;
-  --muted: #8090a8;
-  --m2:    #607088;
+  --t2:    #2a3a55;
+  --muted: #7080a0;
+  --m2:    #506080;
 
-  --green: #00a85e;
-  --red:   #e0193a;
-  --amber: #c47a00;
-  --blue:  #1a6ae0;
-  --cyan:  #007ab8;
-  --purple:#6b3de0;
+  --green: #007a45;
+  --red:   #cc1133;
+  --amber: #b06800;
+  --blue:  #1558c8;
+  --cyan:  #006899;
+  --purple:#5530cc;
+}
+
+/* Light mode nav — fix invisible text */
+body.light #nav {
+  background: rgba(255,255,255,0.97);
+  border-bottom-color: var(--border);
+}
+body.light .nav-brand { color: #0d1420; }
+body.light .nav-brand span { color: var(--green); }
+body.light .nav-link { color: var(--muted); }
+body.light .nav-link.active { color: var(--text); background: rgba(0,0,0,.04); border-color: var(--border); }
+body.light .nav-px { background: #f0f2f8; border-color: var(--border); color: var(--m2); }
+body.light .theme-toggle { background: #f0f2f8; border-color: var(--border); color: var(--m2); }
+
+/* Light mode price strip */
+body.light #price-strip {
+  background: rgba(255,255,255,0.97);
+  border-top-color: var(--border);
+}
+body.light .ps-sym { color: var(--muted); }
+body.light .ps-price { color: var(--text); }
+body.light .strip-ts { color: var(--muted); }
+
+/* Light mode body — plain white background, no grid lines */
+body.light {
+  background-image: none;
+}
+
+/* Light mode cards — clear visual separation with shadow */
+body.light .card,
+body.light .kpi,
+body.light .ai-panel {
+  box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.05);
+}
+
+/* Light mode section header line */
+body.light .shdr-line { background: var(--border); }
+
+/* Light mode table */
+body.light .tbl td { border-bottom-color: rgba(0,0,0,.05); }
+body.light .tbl tr:hover td { background: rgba(0,0,0,.02); }
+
+/* Light mode token screen */
+body.light #token-screen { background: #f7f8fc; }
 }
 
 /* ── Theme toggle button ─────────────────────────────────── */
@@ -329,7 +373,55 @@ select.inp { cursor: pointer; }
 
 /* ── MOBILE ───────────────────────────────────────────────── */
 @media(max-width:640px) {
+  /* Nav */
   .nav-px { display: none; }
-  .nav-link { padding: 5px 8px; font-size: .44rem; letter-spacing: 1px; }
-  .wrap { padding: 16px 12px; }
+  .nav-link { padding: 5px 7px; font-size: .42rem; letter-spacing: .5px; }
+  .nav-brand { font-size: .7rem; letter-spacing: 2px; }
+
+  /* Wrap */
+  .wrap { padding: 14px 10px; }
+
+  /* Section headers */
+  .shdr { flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .shdr-title { font-size: .6rem; }
+
+  /* KPI cards — 2 column on mobile */
+  .row2,.row3,.row4,.row5 { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kpi { padding: 10px; }
+  .kpi-v { font-size: 1.1rem; }
+
+  /* Cards */
+  .card { padding: 12px; border-radius: 8px; }
+
+  /* Price strip — fewer items */
+  .ps-pair { padding: 0 10px; }
+  .ps-label { display: none; }
+
+  /* Tables — horizontal scroll */
+  .tbl-wrap, .hist-tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+  table { min-width: 500px; font-size: .48rem; }
+  th, td { padding: 6px 8px; }
+
+  /* Charts — slightly shorter on mobile */
+  .chart-lbl { font-size: .42rem; }
+
+  /* Badges */
+  .badge { font-size: .38rem; padding: 2px 5px; }
+
+  /* AI panel */
+  .ai-panel { padding: 12px; }
+  .ai-hdr { font-size: .48rem; }
+  .ai-response { font-size: .52rem; min-height: 60px; }
+
+  /* Buttons — bigger tap targets */
+  .btn, button { min-height: 36px; }
+
+  /* Hide less important columns in trade table */
+  .col-hide-mobile { display: none !important; }
+}
+
+@media(max-width:400px) {
+  .nav-link { padding: 4px 5px; font-size: .38rem; }
+  .row2,.row3,.row4,.row5 { grid-template-columns: 1fr; }
+  .kpi-v { font-size: 1rem; }
 }

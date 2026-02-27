@@ -4,7 +4,7 @@
  */
 
 /* ═══════════════════════════════════════
-   PRICE ENGINE
+   PRICE ENGINE — EUR/GBP + NAS100/SPX500
 ═══════════════════════════════════════ */
 const PriceEngine = {
   _timer: null,
@@ -20,16 +20,20 @@ const PriceEngine = {
       const raw = await API.prices();
       const prev = State.get('prices') || {};
       const prices = {};
-      ['EURUSD','GBPUSD','DXY','XAUUSD'].forEach(sym => {
-        if (!raw[sym]) return;
-        const price = typeof raw[sym]==='object' ? parseFloat(raw[sym].price) : parseFloat(raw[sym]);
-        const changePct = typeof raw[sym]==='object' ? parseFloat(raw[sym].change||0) : 0;
+      ['EURUSD','GBPUSD','NAS100','SPX500'].forEach(sym => {
+        // Worker may return old key names — map them
+        const rawKey = sym === 'NAS100' ? (raw.NAS100 || raw.NDX || raw.DXY) :
+                       sym === 'SPX500' ? (raw.SPX500 || raw.SPX || raw.XAUUSD) :
+                       raw[sym];
+        if (!rawKey) return;
+        const price = typeof rawKey === 'object' ? parseFloat(rawKey.price) : parseFloat(rawKey);
+        const changePct = typeof rawKey === 'object' ? parseFloat(rawKey.change || 0) : 0;
         if (isNaN(price)) return;
         const prevPrice = prev[sym]?.price ?? null;
         prices[sym] = {
           price, prev: prevPrice,
-          change: prevPrice !== null ? +(price-prevPrice).toFixed(6) : 0,
-          changePct: changePct || (prevPrice!==null ? +((price-prevPrice)/prevPrice*100).toFixed(4) : 0),
+          change: prevPrice !== null ? +(price - prevPrice).toFixed(6) : 0,
+          changePct: changePct || (prevPrice !== null ? +((price-prevPrice)/prevPrice*100).toFixed(4) : 0),
           source: raw.source, ts: Date.now(),
         };
       });
@@ -40,22 +44,28 @@ const PriceEngine = {
 };
 
 function updatePriceUI(prices, source) {
-  const map = [{elId:'ps-eur',sym:'EURUSD',dec:5},{elId:'ps-gbp',sym:'GBPUSD',dec:5},{elId:'ps-dxy',sym:'DXY',dec:3},{elId:'ps-xau',sym:'XAUUSD',dec:2}];
-  map.forEach(({elId,sym,dec}) => {
-    const d=prices[sym]; if(!d) return;
-    const el=document.getElementById(elId); if(!el) return;
-    const up=d.change>=0;
+  const map = [
+    { elId:'ps-eur', sym:'EURUSD', dec:5 },
+    { elId:'ps-gbp', sym:'GBPUSD', dec:5 },
+    { elId:'ps-nas', sym:'NAS100', dec:0 },
+    { elId:'ps-spx', sym:'SPX500', dec:0 },
+  ];
+  map.forEach(({elId, sym, dec}) => {
+    const d = prices[sym]; if (!d) return;
+    const el = document.getElementById(elId); if (!el) return;
+    const up = d.change >= 0;
     el.querySelector('.ps-price').textContent = d.price.toFixed(dec);
-    const chg=el.querySelector('.ps-chg');
-    chg.textContent=(up?'▲':'▼')+' '+Math.abs(d.change).toFixed(dec);
-    chg.style.color=up?'var(--green)':'var(--red)';
+    const chg = el.querySelector('.ps-chg');
+    chg.textContent = (up ? '▲' : '▼') + ' ' + Math.abs(d.changePct || 0).toFixed(2) + '%';
+    chg.style.color = up ? 'var(--green)' : 'var(--red)';
   });
-  if(prices.EURUSD){const e=document.getElementById('np-eur');if(e){e.textContent=`EUR ${prices.EURUSD.price.toFixed(5)}`;e.style.color=prices.EURUSD.change>=0?'var(--green)':'var(--red)';}}
-  if(prices.XAUUSD){const e=document.getElementById('np-xau');if(e){e.textContent=`XAU $${prices.XAUUSD.price.toFixed(0)}`;e.style.color=prices.XAUUSD.change>=0?'var(--green)':'var(--red)';}}
-  if(prices.DXY){const e=document.getElementById('np-dxy');if(e){e.textContent=`DXY ${prices.DXY.price.toFixed(3)}`;}}
-  const ts=document.getElementById('strip-ts'); if(ts) ts.textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const src=document.getElementById('strip-src'); if(src){src.textContent=source==='twelvedata'?'● Live':'● Hourly';src.style.color='var(--green)';}
-  const dot=document.getElementById('nav-dot'); if(dot) dot.className='nav-dot on';
+  // Nav pills
+  if (prices.EURUSD) { const e=document.getElementById('np-eur'); if(e){e.textContent=`EUR ${prices.EURUSD.price.toFixed(5)}`;e.style.color=prices.EURUSD.change>=0?'var(--green)':'var(--red)';}}
+  if (prices.NAS100) { const e=document.getElementById('np-nas'); if(e){e.textContent=`NAS ${Math.round(prices.NAS100.price)}`;e.style.color=prices.NAS100.change>=0?'var(--green)':'var(--red)';}}
+  if (prices.SPX500) { const e=document.getElementById('np-spx'); if(e){e.textContent=`SPX ${Math.round(prices.SPX500.price)}`;}}
+  const ts = document.getElementById('strip-ts'); if(ts) ts.textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const src = document.getElementById('strip-src'); if(src){src.textContent=source==='twelvedata'?'● Live':'● Hourly';src.style.color='var(--green)';}
+  const dot = document.getElementById('nav-dot'); if(dot) dot.className='nav-dot on';
 }
 
 
@@ -66,19 +76,46 @@ const MacroEngine = {
   _timer: null,
   async start() { await this.fetch(); this._timer=setInterval(()=>this.fetch(),Config.INTERVALS.MACRO); },
   stop() { clearInterval(this._timer); this._timer=null; },
+
   async fetch() {
     if (!State.isStale('macro', Config.CACHE.MACRO)) return;
     try {
-      const results = await Promise.allSettled(Config.FRED_SERIES.map(s=>API.fred(s).then(d=>({series:s,obs:d.observations||[]}))));
       const macro = {};
-      results.forEach(r=>{ if(r.status==='fulfilled') macro[r.value.series]=MacroEngine._process(r.value.series,r.value.obs); });
+      // Load sequentially with retry — prevents race conditions & rate limits
+      for (const series of Config.FRED_SERIES) {
+        try {
+          const data = await this._fetchWithRetry(series);
+          macro[series] = MacroEngine._process(series, data.observations||[]);
+        } catch(e) {
+          console.warn(`[MacroEngine] ${series} failed:`, e.message);
+          macro[series] = []; // empty array — page shows — instead of crashing
+        }
+      }
       State.set('macro', macro);
-      // Also update news calendar based on fresh macro data
+      // Update news calendar with fresh data
       const events = NewsEngine._buildCalendar(macro);
       State.set('news', events);
       console.log('[MacroEngine] Loaded');
-    } catch(e) { console.warn('[MacroEngine]', e.message); State.set('macro',{_error:e.message}); }
+    } catch(e) {
+      console.warn('[MacroEngine]', e.message);
+      State.set('macro', {_error: e.message});
+    }
   },
+
+  // Retry up to 3 times with exponential backoff
+  async _fetchWithRetry(series, attempts=3) {
+    for (let i=0; i<attempts; i++) {
+      try {
+        const data = await API.fred(series);
+        if (data.error) throw new Error(data.error);
+        return data;
+      } catch(e) {
+        if (i === attempts-1) throw e;
+        await new Promise(r => setTimeout(r, 800 * (i+1))); // 800ms, 1600ms backoff
+      }
+    }
+  },
+
   _process(series, obs) {
     const sorted = [...obs].reverse();
     if (series==='CPIAUCSL'||series==='CPILFESL') {
@@ -544,92 +581,112 @@ const Charts = {
 
 /* ═══════════════════════════════════════
    AUTO GRADING ENGINE
-   Grades trades based on confluences + comment
-   No manual input needed. Runs locally, no API calls.
-
-   A+ = 3+ strong confluences OR comment shows elite execution
-   B  = 2 confluences OR decent setup described in comment
-   C  = 1 confluence OR comment shows hesitation/forced trade
+   Reads confluences + comment → assigns A+/B/C automatically.
+   Also supports Mistral AI deep-grade per trade (aiGrade method).
 ═══════════════════════════════════════ */
 const GradingEngine = {
 
-  // High-value confluence keywords → strong setups
   STRONG: [
     'displacement','fvg','fair value gap','order block','ob',
     'sweep','liquidity','bos','break of structure','choch','change of character',
     'cisd','imbalance','inducement','pdh','pdl','previous day','htf',
     'higher time frame','weekly','daily','institutional','smt','divergence',
-    'breaker','mitigation','wick','rejection','pin bar','engulf',
+    'breaker','mitigation','rejection','engulf','reversal','confluence',
   ],
 
-  // Comment keywords that suggest quality
   QUALITY_COMMENT: [
-    'perfect','clean','textbook','waited','patient','confluences',
-    'confirmed','structure','aligned','htf','planned','as expected',
-    'no doubt','clear','obvious','high probability','thesis',
+    'perfect','clean','textbook','waited','patient','confirmed',
+    'aligned','planned','as expected','clear','high probability',
+    'thesis','structured','no hesitation','strong','valid',
   ],
 
-  // Comment keywords that suggest poor setup
   WEAK_COMMENT: [
     'fomo','rushed','forced','revenge','gut','feeling','random','lucky',
     'shouldnt','should not','mistake','impulsive','emotional','early',
-    'late entry','chased','over','doubt','not sure','unclear','gambling',
-    'bored','scared','hesitat',
+    'late entry','chased','doubt','not sure','unclear','gambling',
+    'bored','scared','hesitat','overtraded','broke rules',
   ],
 
   grade(trade) {
-    // If Notion already has a grade set, respect it
     const notionGrade = (trade.grade||'').trim();
-    if (notionGrade && ['A+','A','B','C','D','F'].includes(notionGrade)) {
-      return notionGrade;
-    }
+    if (notionGrade && ['A+','A','B','C','D','F'].includes(notionGrade)) return notionGrade;
 
     const confluences = (trade.confluences||[]).map(c=>c.toLowerCase());
     const comment = (trade.comment||'').toLowerCase();
     const allText = [...confluences, comment].join(' ');
 
-    // Count strong confluences
-    const strongCount = this.STRONG.filter(kw => allText.includes(kw)).length;
+    const strongCount  = this.STRONG.filter(kw => allText.includes(kw)).length;
+    const qualityCount = this.QUALITY_COMMENT.filter(kw => comment.includes(kw)).length;
+    const weakCount    = this.WEAK_COMMENT.filter(kw => comment.includes(kw)).length;
+    const totalConfs   = confluences.length;
 
-    // Quality signals from comment
-    const qualitySignals = this.QUALITY_COMMENT.filter(kw => comment.includes(kw)).length;
-    const weakSignals    = this.WEAK_COMMENT.filter(kw => comment.includes(kw)).length;
-
-    // Total confluence count (any tag counts)
-    const totalConfs = confluences.length;
-
-    // Grading logic
-    if (weakSignals >= 2) return 'C'; // clearly poor trade
-    if (strongCount >= 3 || (strongCount >= 2 && qualitySignals >= 1)) return 'A+';
-    if (strongCount >= 2 || (totalConfs >= 3 && qualitySignals >= 1)) return 'A+';
+    if (weakCount >= 2) return 'C';
+    if (strongCount >= 3 || (strongCount >= 2 && qualityCount >= 1)) return 'A+';
+    if (strongCount >= 2 || (totalConfs >= 3 && qualityCount >= 1)) return 'A+';
     if (strongCount >= 1 && totalConfs >= 2) return 'B';
-    if (totalConfs >= 2 && weakSignals === 0) return 'B';
-    if (totalConfs >= 1 || qualitySignals >= 1) return 'C';
-    if (comment.length > 20 && weakSignals === 0) return 'C'; // has notes, not FOMO
-    return 'C'; // default — untagged trade
+    if (totalConfs >= 2 && weakCount === 0) return 'B';
+    if (totalConfs >= 1 || qualityCount >= 1) return 'C';
+    return 'C';
   },
 
-  // Run on all trades — mutates grade in place
   gradeAll(trades) {
-    trades.forEach(t => { t.grade = GradingEngine.grade(t); });
+    trades.forEach(t => { t.grade = this.grade(t); });
     return trades;
   },
 
-  // Get explanation of why a trade got its grade
   explain(trade) {
-    const confluences = (trade.confluences||[]);
+    const confluences = trade.confluences||[];
     const comment = (trade.comment||'').toLowerCase();
     const allText = [...confluences.map(c=>c.toLowerCase()), comment].join(' ');
-    const matched = this.STRONG.filter(kw => allText.includes(kw));
-    const weak    = this.WEAK_COMMENT.filter(kw => comment.includes(kw));
-    const quality = this.QUALITY_COMMENT.filter(kw => comment.includes(kw));
-
+    const matched  = this.STRONG.filter(kw => allText.includes(kw));
+    const weak     = this.WEAK_COMMENT.filter(kw => comment.includes(kw));
+    const quality  = this.QUALITY_COMMENT.filter(kw => comment.includes(kw));
     const lines = [];
-    if (matched.length)  lines.push(`Strong confluences: ${matched.join(', ')}`);
-    if (quality.length)  lines.push(`Quality signals: ${quality.join(', ')}`);
-    if (weak.length)     lines.push(`⚠ Weakness: ${weak.join(', ')}`);
-    if (!confluences.length && !comment) lines.push('No confluences or comment — auto-graded C');
-    return lines.join(' · ') || `Grade: ${trade.grade}`;
+    if (matched.length)  lines.push(`Confluences: ${matched.slice(0,4).join(', ')}`);
+    if (quality.length)  lines.push(`Quality: ${quality.join(', ')}`);
+    if (weak.length)     lines.push(`⚠ Weak signals: ${weak.join(', ')}`);
+    if (!confluences.length && !trade.comment) lines.push('No confluences or comment tagged');
+    return `Grade ${trade.grade} — ${lines.join(' · ')||'auto-graded from setup'}`;
+  },
+
+  // Mistral AI deep-grade a single trade
+  async aiGrade(trade) {
+    const prompt =
+      `You are a professional ICT/SMC FX trading coach grading a trade.
+
+` +
+      `Pair: ${trade.pair||'?'} | Direction: ${trade.direction||'?'} | Outcome: ${trade.outcome||'?'} | R: ${trade.rMultiple!=null?trade.rMultiple+'R':'?'}
+` +
+      `Session: ${trade.session||'?'} | Timeframe: ${trade.timeframe||'?'}
+` +
+      `Confluences: ${(trade.confluences||[]).join(', ')||'none listed'}
+` +
+      `Comment: ${trade.comment||'no comment'}
+
+` +
+      `Grade A+, B, or C:
+` +
+      `A+ = 3+ strong ICT confluences (FVG, OB, sweep, displacement, HTF bias), patient execution, clear written thesis
+` +
+      `B  = 2 confluences, decent structure, room for improvement
+` +
+      `C  = 1 or no confluences, FOMO/revenge/impulsive signals, or poorly documented
+
+` +
+      `Reply ONLY in this exact format:
+GRADE: [A+/B/C]
+REASON: [one sentence]
+IMPROVE: [one actionable tip]`;
+    try {
+      const res = await API.ai(prompt);
+      const text = res.reply||'';
+      const gm = text.match(/GRADE:\s*(A\+|B|C)/i);
+      const rm = text.match(/REASON:\s*(.+)/i);
+      const im = text.match(/IMPROVE:\s*(.+)/i);
+      return { grade: gm?gm[1].toUpperCase():trade.grade, reason: rm?rm[1].trim():'', improve: im?im[1].trim():'', raw:text };
+    } catch(e) {
+      return { grade: trade.grade, reason: 'AI unavailable: '+e.message, improve: '' };
+    }
   }
 };
 

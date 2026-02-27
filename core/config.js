@@ -40,6 +40,14 @@ const Config = {
     TRADES:     300_000,   // 5 min
   },
 
+  // ── Price symbols in strip ────────────────────────────────
+  SYMBOLS: {
+    EURUSD: { sym:'EUR/USD', label:'EUR/USD', dec:5 },
+    GBPUSD: { sym:'GBP/USD', label:'GBP/USD', dec:5 },
+    NAS100: { sym:'NDX',     label:'NAS100',  dec:0 },
+    SPX500: { sym:'SPX',     label:'SPX500',  dec:0 },
+  },
+
   // ── FRED series to fetch ──────────────────────────────────
   FRED_SERIES: ['CPIAUCSL', 'CPILFESL', 'PAYEMS', 'UNRATE', 'A191RL1Q225SBEA', 'FEDFUNDS'],
 
