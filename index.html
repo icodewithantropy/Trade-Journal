@@ -173,11 +173,10 @@
         </div>
         <span id="cal-stats" style="font-size:.44rem"></span>
       </div>
-      <div class="cal-grid" id="cal-head-row">
+      <div class="cal-grid" id="cal-grid">
         <div class="cal-head">MO</div><div class="cal-head">TU</div><div class="cal-head">WE</div>
         <div class="cal-head">TH</div><div class="cal-head">FR</div><div class="cal-head">SA</div><div class="cal-head">SU</div>
       </div>
-      <div class="cal-grid" id="cal-grid"></div>
     </div>
     <div class="card">
       <div class="chart-lbl">Entry Timeframe</div>
@@ -430,7 +429,18 @@ function renderCalendar(stats) {
   const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
   const grid = document.getElementById('cal-grid'); if(!grid) return;
-  let html = '<div class="cal-day empty"></div>'.repeat(startDow);
+
+  // Remove previous day cells but keep header row (first 7 children)
+  const headers = Array.from(grid.children).slice(0,7);
+  grid.innerHTML = '';
+  headers.forEach(h => grid.appendChild(h));
+
+  // Empty cells before day 1
+  for(let i=0;i<startDow;i++){
+    const e=document.createElement('div');
+    e.className='cal-day empty';
+    grid.appendChild(e);
+  }
 
   let wCount=0,wWins=0;
   for(let day=1;day<=days;day++){
@@ -440,16 +450,14 @@ function renderCalendar(stats) {
     const losses = trades.filter(t=>/los/i.test(t.outcome)).length;
     const r      = trades.reduce((sum,t)=>sum+(t.rMultiple||0),0);
     wCount+=trades.length; wWins+=wins;
-    let cls = '';
-    if(trades.length) cls = wins>losses?'win':losses>wins?'loss':'be';
+    let cls=''; if(trades.length) cls=wins>losses?'win':losses>wins?'loss':'be';
     const isToday = key===todayKey;
-    const onclick = trades.length ? `onclick="openCalPopup('${esc(key)}')"` : '';
-    html += `<div class="cal-day ${cls} ${trades.length?'has-trades':''} ${isToday?'today':''}" ${onclick}>
-      <span class="cal-dn" style="${isToday?'color:var(--green);font-weight:700':''}">${day}</span>
-      ${trades.length ? `<span class="cal-r" style="color:${r>=0?'var(--green)':'var(--red)'}">${r>=0?'+':''}${r.toFixed(1)}</span>` : ''}
-    </div>`;
+    const el = document.createElement('div');
+    el.className = `cal-day ${cls} ${trades.length?'has-trades':''} ${isToday?'today':''}`.trim();
+    if(trades.length) el.onclick = () => openCalPopup(key);
+    el.innerHTML = `<span class="cal-dn" style="${isToday?'color:var(--green);font-weight:700':''}">${day}</span>${trades.length?`<span class="cal-r" style="color:${r>=0?'var(--green)':'var(--red)'}">${r>=0?'+':''}${r.toFixed(1)}</span>`:''}`;
+    grid.appendChild(el);
   }
-  grid.innerHTML = html;
   document.getElementById('cal-stats').textContent = wCount ? `${wCount} trades · ${Math.round(wWins/wCount*100)}% WR` : '';
 }
 

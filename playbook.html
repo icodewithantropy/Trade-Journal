@@ -193,7 +193,7 @@
 <script>
 'use strict';
 const PAGE_ID = 'playbook';
-let _weekOffset = 0, _currentPageId = null, _selectedGrade = '';
+let _weekOffset = 0, _currentPageId = null, _selectedGrade = '', _titlePropName = 'Name', _propNames = {};
 
 function doSaveToken() {
   const val = document.getElementById('ts-inp').value.trim();
@@ -247,9 +247,30 @@ async function loadPlaybook() {
 
     if(match) {
       _currentPageId = match.id;
-      populateForm(match.properties);
+      // Discover actual property names from this page so saves work correctly
+      const props = match.properties;
+      // Find title property name
+      const titleKey = Object.keys(props).find(k=>props[k].type==='title');
+      if(titleKey) _titlePropName = titleKey;
+      // Map fuzzy names to actual property names
+      const findProp = (q) => Object.keys(props).find(k=>k.toLowerCase().includes(q.toLowerCase()));
+      _propNames = {
+        bias:    findProp('bias'),
+        dxy:     findProp('dxy'),
+        eur:     findProp('eur'),
+        gbp:     findProp('gbp'),
+        xau:     findProp('xau'),
+        narr:    findProp('narr'),
+        pairs:   findProp('pair') || findProp('focus'),
+        risk:    findProp('risk'),
+        grade:   findProp('grade') || findProp('review'),
+        worked:  findProp('work'),
+        mistake: findProp('mistake'),
+        lesson:  findProp('lesson'),
+      };
+      populateForm(props);
       loadWeekStats(key);
-      loadCharts(match.properties);
+      loadCharts(props);
       document.getElementById('week-status').textContent = '● Synced';
       document.getElementById('sync-status').textContent = 'Notion · Synced';
     } else {
@@ -327,22 +348,44 @@ function loadCharts(props) {
 
 function buildProps(fields) {
   const {key,label}=getWeekDates(_weekOffset);
-  const props={'Week':{title:[{text:{content:label}}]},'Date':{date:{start:key}}};
+  // Use the actual title property name from the loaded page, or default to 'Name'
+  const titlePropName = _titlePropName || 'Name';
+  const props={};
+  props[titlePropName] = {title:[{text:{content:label}}]};
+  props['Date'] = {date:{start:key}};
+
   const t=(name,val)=>{if(val)props[name]={rich_text:[{text:{content:val.slice(0,2000)}}]};};
   const s=(name,val)=>{if(val)props[name]={select:{name:val}};};
   if(fields.plan){
-    s('Bias',document.getElementById('f-bias').value);s('DXY',document.getElementById('f-dxy').value);
-    t('EUR/USD Levels',document.getElementById('f-eur').value);t('GBP/USD Levels',document.getElementById('f-gbp').value);
-    t('XAU/USD Levels',document.getElementById('f-xau').value);t('Narrative',document.getElementById('f-narrative').value);
-    t('Focus Pairs',document.getElementById('f-pairs').value);t('Max Risk',document.getElementById('f-maxrisk').value);
+    // Use prop names discovered from existing page, fallback to standard names
+    const biasName   = _propNames?.bias   || 'Bias';
+    const dxyName    = _propNames?.dxy    || 'DXY';
+    const eurName    = _propNames?.eur    || 'EUR/USD Levels';
+    const gbpName    = _propNames?.gbp    || 'GBP/USD Levels';
+    const xauName    = _propNames?.xau    || 'XAU/USD Levels';
+    const narrName   = _propNames?.narr   || 'Narrative';
+    const pairsName  = _propNames?.pairs  || 'Focus Pairs';
+    const riskName   = _propNames?.risk   || 'Max Risk';
+    s(biasName,  document.getElementById('f-bias').value);
+    s(dxyName,   document.getElementById('f-dxy').value);
+    t(eurName,   document.getElementById('f-eur').value);
+    t(gbpName,   document.getElementById('f-gbp').value);
+    t(xauName,   document.getElementById('f-xau').value);
+    t(narrName,  document.getElementById('f-narrative').value);
+    t(pairsName, document.getElementById('f-pairs').value);
+    t(riskName,  document.getElementById('f-maxrisk').value);
     const checked=[...document.querySelectorAll('.check-item.checked label')].map(l=>'✓ '+l.textContent).join('\n');
     if(checked)t('Checklist',checked);
   }
   if(fields.review){
-    s('Review Grade',_selectedGrade);
-    t('What Worked',document.getElementById('r-worked').value);
-    t('Mistakes',document.getElementById('r-mistakes').value);
-    t('Lesson',document.getElementById('r-lesson').value);
+    const gradeName   = _propNames?.grade   || 'Review Grade';
+    const workedName  = _propNames?.worked  || 'What Worked';
+    const mistakeName = _propNames?.mistake || 'Mistakes';
+    const lessonName  = _propNames?.lesson  || 'Lesson';
+    s(gradeName,   _selectedGrade);
+    t(workedName,  document.getElementById('r-worked').value);
+    t(mistakeName, document.getElementById('r-mistakes').value);
+    t(lessonName,  document.getElementById('r-lesson').value);
   }
   return props;
 }
