@@ -13,7 +13,6 @@
 @media(min-width:640px){.macro-kpi-grid{grid-template-columns:repeat(4,1fr)}}
 
 /* Central banks — horizontal scroll on small screens */
-.cb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
 @media(max-width:520px){
   .cb-grid{grid-template-columns:1fr;gap:8px}
   .cb-card{display:flex;align-items:center;gap:14px;text-align:left;padding:12px 14px}
@@ -24,8 +23,6 @@
 .cb-card:hover{border-color:var(--b3)}
 .cb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .cb-fed::before{background:linear-gradient(90deg,transparent,var(--amber),transparent)}
-.cb-ecb::before{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
-.cb-boe::before{background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
 .cb-name{font-size:.44rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
 .cb-rate{font-family:var(--fd);font-size:1.6rem;font-weight:800;margin-bottom:3px}
 .cb-date{font-size:.44rem;color:var(--m2);margin-bottom:6px}
@@ -85,27 +82,18 @@
     <button class="retry-btn" onclick="MacroEngine.fetch()" title="Reload macro data">↺ Retry</button>
   </div>
 
-  <!-- Central Banks -->
-  <div class="shdr"><div class="shdr-title" style="font-size:.65rem">Central Banks</div><div class="shdr-line"></div></div>
-  <div class="cb-grid">
-    <div class="cb-card cb-fed">
+  <!-- Fed Funds Rate — live from FRED -->
+  <div style="display:flex;align-items:center;gap:16px;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--amber),transparent)"></div>
+    <div>
       <div class="cb-name">Fed Funds Rate</div>
       <div class="cb-rate" id="cb-fed" style="color:var(--amber)">—</div>
-      <div class="cb-date" id="cb-fed-d">—</div>
-      <div class="cb-bias" id="cb-fed-b">—</div>
     </div>
-    <div class="cb-card cb-ecb">
-      <div class="cb-name">ECB Rate</div>
-      <div class="cb-rate" id="cb-ecb" style="color:var(--blue)">—</div>
-      <div class="cb-date" id="cb-ecb-d">—</div>
-      <div class="cb-bias" id="cb-ecb-b">—</div>
+    <div style="margin-left:12px">
+      <div style="font-size:.44rem;color:var(--m2)" id="cb-fed-d">—</div>
+      <div class="cb-bias" id="cb-fed-b" style="margin-top:4px"></div>
     </div>
-    <div class="cb-card cb-boe">
-      <div class="cb-name">BoE Base Rate</div>
-      <div class="cb-rate" id="cb-boe" style="color:var(--cyan)">—</div>
-      <div class="cb-date" id="cb-boe-d">—</div>
-      <div class="cb-bias" id="cb-boe-b">—</div>
-    </div>
+    <div style="margin-left:auto;font-size:.44rem;color:var(--muted)">Live · FRED</div>
   </div>
 
   <!-- US Macro KPIs -->
@@ -215,27 +203,6 @@ function renderCentralBanks(macro) {
     el.style.cssText = 'background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.2);padding:2px 9px;border-radius:10px;font-size:.46rem;display:inline-block';
   }
 
-  // ECB — hardcoded current rate (ECB not on FRED, update manually when changes)
-  // Current ECB deposit facility rate as of Feb 2026: 2.75%
-  const ecbRate = 2.75;
-  const ecbDate = 'Jan 2026';
-  document.getElementById('cb-ecb').textContent = ecbRate.toFixed(2)+'%';
-  document.getElementById('cb-ecb-d').textContent = ecbDate;
-  const ecbBias = ecbRate>3?'Restrictive':ecbRate>1.5?'Easing':'Accommodative';
-  const ecbEl = document.getElementById('cb-ecb-b');
-  ecbEl.textContent = ecbBias;
-  ecbEl.style.cssText = 'background:rgba(61,142,255,.1);color:var(--blue);border:1px solid rgba(61,142,255,.2);padding:2px 9px;border-radius:10px;font-size:.46rem;display:inline-block';
-
-  // BoE — hardcoded current rate (BoE not on FRED, update manually when changes)
-  // Current BoE base rate as of Feb 2026: 4.50%
-  const boeRate = 4.50;
-  const boeDate = 'Feb 2026';
-  document.getElementById('cb-boe').textContent = boeRate.toFixed(2)+'%';
-  document.getElementById('cb-boe-d').textContent = boeDate;
-  const boeBias = boeRate>4?'Restrictive':boeRate>2?'Neutral':'Accommodative';
-  const boeEl = document.getElementById('cb-boe-b');
-  boeEl.textContent = boeBias;
-  boeEl.style.cssText = 'background:rgba(0,210,210,.1);color:var(--cyan);border:1px solid rgba(0,210,210,.2);padding:2px 9px;border-radius:10px;font-size:.46rem;display:inline-block';
 }
 
 function renderMacroKPIs(macro) {

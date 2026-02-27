@@ -17,6 +17,7 @@
 .cal-day.loss{background:rgba(255,45,85,.08);border-color:rgba(255,45,85,.2)}
 .cal-day.be{background:rgba(245,166,35,.07);border-color:rgba(245,166,35,.18)}
 .cal-day.empty{border-color:transparent}
+.cal-day.today{border-color:var(--green)!important;background:rgba(0,212,122,.04)}
 .cal-dn{font-size:.42rem;color:var(--m2)}
 .cal-r{font-size:.44rem;font-weight:700}
 .cal-nav{display:flex;align-items:center;gap:8px}
@@ -422,9 +423,11 @@ function renderCalendar(stats) {
 
   const year = d.getFullYear(), mon = d.getMonth();
   const days = new Date(year,mon+1,0).getDate();
-  // Monday-first calendar: Sun=0 becomes 6, Mon=1 becomes 0
-  const firstDay = new Date(year, mon, 1);
-  const startDow = (firstDay.getDay() + 6) % 7; // Mon=0, Tue=1...Sun=6
+  // Monday-first: Mon=0 ... Sun=6
+  const startDow = (new Date(year, mon, 1).getDay() + 6) % 7;
+
+  // Today key using local date (works regardless of timezone — India IST etc)
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
   const grid = document.getElementById('cal-grid'); if(!grid) return;
   let html = '<div class="cal-day empty"></div>'.repeat(startDow);
@@ -433,15 +436,16 @@ function renderCalendar(stats) {
   for(let day=1;day<=days;day++){
     const key = `${year}-${String(mon+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const trades = s.byDay[key] || [];
-    const wins   = trades.filter(t=>t.outcome==='Win').length;
-    const losses = trades.filter(t=>t.outcome==='Lose').length;
+    const wins   = trades.filter(t=>/win/i.test(t.outcome)).length;
+    const losses = trades.filter(t=>/los/i.test(t.outcome)).length;
     const r      = trades.reduce((sum,t)=>sum+(t.rMultiple||0),0);
     wCount+=trades.length; wWins+=wins;
     let cls = '';
     if(trades.length) cls = wins>losses?'win':losses>wins?'loss':'be';
+    const isToday = key===todayKey;
     const onclick = trades.length ? `onclick="openCalPopup('${esc(key)}')"` : '';
-    html += `<div class="cal-day ${cls} ${trades.length?'has-trades':''}" ${onclick}>
-      <span class="cal-dn">${day}</span>
+    html += `<div class="cal-day ${cls} ${trades.length?'has-trades':''} ${isToday?'today':''}" ${onclick}>
+      <span class="cal-dn" style="${isToday?'color:var(--green);font-weight:700':''}">${day}</span>
       ${trades.length ? `<span class="cal-r" style="color:${r>=0?'var(--green)':'var(--red)'}">${r>=0?'+':''}${r.toFixed(1)}</span>` : ''}
     </div>`;
   }
@@ -557,23 +561,64 @@ function renderPagination(pages) {
 function openTradeModal(id) {
   const s = State.get('journalStats'); if(!s) return;
   const t = s.valid.find(x => x.id===id); if(!t) return;
+  window._modalTrade = t; // store for AI grade
   document.getElementById('modal-title').textContent = `${t.pair||'—'} · ${t.date?.slice(0,10)||'—'}`;
-  const rClr = (t.rMultiple||0)>=0?'var(--green)':'var(--red)';
+  const rClr = (t.rMultiple||0)>=0?'#00d47a':'#ff2d55';
+  const gradeColor = t.grade==='A+'?'#00d47a':t.grade==='B'?'#3d8eff':'#f5a623';
+  const gradeExplain = window.GradingEngine ? GradingEngine.explain(t) : '';
   const imgs = (t.images||[]).map(url => {
     const safe = escUrl(url);
     return safe ? `<img src="${safe}" style="width:100%;border-radius:6px;margin-bottom:8px" loading="lazy">` : '';
   }).join('');
   document.getElementById('modal-body').innerHTML = `
     <div class="row2" style="margin-bottom:14px">
-      <div class="kpi"><div class="kpi-l">Outcome</div><div class="kpi-v class="outcome-${(t.outcome||'').toLowerCase()}">${esc(t.outcome||'—')}</div></div>
+      <div class="kpi"><div class="kpi-l">Outcome</div><div class="kpi-v" style="color:${(t.outcome||'').match(/win/i)?'#00d47a':(t.outcome||'').match(/los/i)?'#ff2d55':'#f5a623'}">${esc(t.outcome||'—')}</div></div>
       <div class="kpi"><div class="kpi-l">R Multiple</div><div class="kpi-v" style="color:${rClr}">${t.rMultiple!=null?(t.rMultiple>=0?'+':'')+t.rMultiple.toFixed(2)+'R':'—'}</div></div>
-      <div class="kpi"><div class="kpi-l">Direction</div><div class="kpi-v" style="color:${t.direction==='Long'?'var(--green)':'var(--red)'}">${esc(t.direction||'—')}</div></div>
-      <div class="kpi"><div class="kpi-l">Grade</div><div class="kpi-v">${esc(t.grade||'—')}</div></div>
+      <div class="kpi"><div class="kpi-l">Direction</div><div class="kpi-v" style="color:${t.direction==='Long'?'#00d47a':'#ff2d55'}">${esc(t.direction||'—')}</div></div>
+      <div class="kpi"><div class="kpi-l">Session</div><div class="kpi-v" style="font-size:.9rem">${esc(t.session||'—')}</div></div>
+    </div>
+    <!-- AI Grade Panel -->
+    <div style="background:rgba(155,107,255,.06);border:1px solid rgba(155,107,255,.2);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:.44rem;letter-spacing:2px;color:var(--purple);text-transform:uppercase">◈ AI Grade</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:var(--fd);font-size:1.4rem;font-weight:800;color:${gradeColor}">${esc(t.grade||'C')}</span>
+          <button onclick="runAiGrade()" style="font-size:.44rem;padding:4px 10px;border-radius:4px;border:1px solid rgba(155,107,255,.3);background:transparent;color:var(--purple);cursor:pointer;font-family:var(--ff)">◈ Re-grade with AI</button>
+        </div>
+      </div>
+      <div id="grade-explain" style="font-size:.54rem;color:var(--t2);line-height:1.7">${esc(gradeExplain)}</div>
+      <div id="grade-improve" style="display:none;font-size:.52rem;color:var(--amber);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)"></div>
     </div>
     ${t.confluences?.length ? `<div style="margin-bottom:12px">${t.confluences.map(c=>`<span class="badge bp" style="margin-right:4px;margin-bottom:4px">${esc(c)}</span>`).join('')}</div>` : ''}
-    ${t.comment ? `<div style="font-size:.6rem;color:var(--t2);line-height:1.8;margin-bottom:14px;padding:10px;background:var(--s2);border-radius:6px;border:1px solid var(--border)">${esc(t.comment)}</div>` : ''}
+    ${t.comment ? `<div style="font-size:.58rem;color:var(--t2);line-height:1.9;margin-bottom:14px;padding:12px;background:var(--s2);border-radius:6px;border-left:3px solid var(--purple)">${esc(t.comment)}</div>` : '<div style="font-size:.52rem;color:var(--muted);margin-bottom:12px;font-style:italic">No comment — add notes in Notion to improve AI grading accuracy.</div>'}
     ${imgs}`;
   document.getElementById('trade-modal').classList.add('open');
+}
+
+async function runAiGrade() {
+  const t = window._modalTrade; if(!t) return;
+  const btn = document.querySelector('[onclick="runAiGrade()"]');
+  const el  = document.getElementById('grade-explain');
+  const imp = document.getElementById('grade-improve');
+  if(btn) { btn.textContent='◈ Grading…'; btn.disabled=true; }
+  el.textContent = 'Mistral is reading your setup…';
+  try {
+    const result = await GradingEngine.aiGrade(t);
+    const gradeColor = result.grade==='A+'?'#00d47a':result.grade==='B'?'#3d8eff':'#f5a623';
+    // Update grade display
+    const gradeEl = btn?.parentElement.querySelector('span');
+    if(gradeEl) { gradeEl.textContent=result.grade; gradeEl.style.color=gradeColor; }
+    // Update trade grade in state
+    t.grade = result.grade;
+    el.textContent = result.reason || gradeExplain;
+    if(result.improve) {
+      imp.style.display='block';
+      imp.textContent = '💡 ' + result.improve;
+    }
+  } catch(e) {
+    el.textContent = 'AI grading failed: ' + e.message;
+  }
+  if(btn) { btn.textContent='◈ Re-grade with AI'; btn.disabled=false; }
 }
 
 // ── Boot ──────────────────────────────────────────────────

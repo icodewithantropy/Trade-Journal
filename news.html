@@ -40,6 +40,15 @@
 .ev-forecast{color:var(--blue)}.ev-prev{color:var(--m2)}.ev-actual{color:var(--text)}
 .ev-actual.beat{color:var(--green)}.ev-actual.miss{color:var(--red)}
 .day-section{margin-bottom:16px}
+.ev-expand{display:none;padding:10px 13px 12px;border-top:1px solid var(--border);background:var(--s2)}
+.ev-expand.open{display:block}
+.ev-hist-table{width:100%;font-size:.48rem;border-collapse:collapse}
+.ev-hist-table td,.ev-hist-table th{padding:4px 8px;border-bottom:1px solid var(--border)}
+.ev-hist-table th{color:var(--muted);font-size:.42rem;letter-spacing:1px;text-transform:uppercase;font-weight:400}
+.ev-hist-table td{color:var(--t2)}
+.ev-expand-btn{font-size:.42rem;color:var(--muted);margin-left:auto;cursor:pointer;padding:0 4px;transition:color .1s}
+.ev-expand-btn:hover{color:var(--t2)}
+.ev-title-row{display:flex;align-items:center;width:100%;gap:8px}
 </style>
 </head>
 <body>
@@ -111,7 +120,7 @@ const PAGE_ID = 'news';
 let _week = 'this', _impact = 'all';
 
 State.on('news', events => {
-  document.getElementById('news-status').textContent = `ForexFactory · ${events.length} events`;
+  document.getElementById('news-status').textContent = `FRED · ${events.length} events`;
   document.getElementById('nav-dot').className = 'nav-dot on';
   renderCalendar();
   updateCountdown();
@@ -139,6 +148,7 @@ function impactCls(impact) {
 function renderCalendar() {
   const feed = document.getElementById('calendar-feed');
   const events = State.get('news') || [];
+  const macro  = State.get('macro') || {};
   if(!events.length) { feed.innerHTML='<div class="empty"><strong>No events</strong>Calendar unavailable</div>'; return; }
   const now = new Date();
   const getMonday = (offset=0) => {
@@ -153,32 +163,102 @@ function renderCalendar() {
     if(_impact==='all')return true;
     return (ev.impact||'').toLowerCase()===_impact;
   });
-  if(!filtered.length){ feed.innerHTML='<div class="empty"><strong>No events</strong>No events match filters</div>'; return; }
+  if(!filtered.length){ feed.innerHTML='<div class="empty"><strong>No events</strong>No events match filters for this week</div>'; return; }
   const byDay={};
-  filtered.forEach(ev=>{const dk=new Date(ev.date).toISOString().slice(0,10);if(!byDay[dk])byDay[dk]=[];byDay[dk].push(ev);});
-  const todayKey = now.toISOString().slice(0,10);
+  filtered.forEach(ev=>{
+    // Use local date string to handle IST and other timezones correctly
+    const evDate = new Date(ev.date);
+    const dk = `${evDate.getFullYear()}-${String(evDate.getMonth()+1).padStart(2,'0')}-${String(evDate.getDate()).padStart(2,'0')}`;
+    if(!byDay[dk])byDay[dk]=[];
+    byDay[dk].push(ev);
+  });
+  // Today key using local time
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   let html='';
   Object.entries(byDay).sort(([a],[b])=>a.localeCompare(b)).forEach(([key,evs])=>{
     const d=new Date(key+'T12:00:00');
-    const lbl=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-    html+=`<div class="day-section"><div class="day-hdr"><span class="day-date">${esc(lbl)}</span>${key===todayKey?'<span class="today-badge">TODAY</span>':''}<span style="margin-left:auto;font-size:.44rem">${evs.length} event${evs.length!==1?'s':''}</span></div>`;
-    evs.forEach(ev=>{
-      let timeStr='Tentative';
-      try{const d2=new Date(ev.date);if(!isNaN(d2)&&d2.getHours()!==0)timeStr=d2.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}catch{}
+    const lbl=d.toLocaleDateString('en-IN',{weekday:'long',month:'long',day:'numeric'});
+    html+=`<div class="day-section"><div class="day-hdr"><span class="day-date">${esc(lbl.toUpperCase())}</span>${key===todayKey?'<span class="today-badge">TODAY</span>':''}<span style="margin-left:auto;font-size:.44rem;color:var(--muted)">${evs.length} event${evs.length!==1?'s':''}</span></div>`;
+    evs.forEach((ev,ei)=>{
+      const evId = `ev-${key}-${ei}`;
+      let timeStr='TBA';
+      try{
+        const d2=new Date(ev.date);
+        if(!isNaN(d2)){
+          // Show in IST (India timezone)
+          timeStr=d2.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
+        }
+      }catch{}
       let actualCls='ev-actual';
       if(ev.actual&&ev.forecast){const a=parseFloat(ev.actual),f=parseFloat(ev.forecast);if(!isNaN(a)&&!isNaN(f))actualCls='ev-actual '+(a>=f?'beat':'miss');}
-      html+=`<div class="event-card"><div class="ev-impact ${impactCls(ev.impact)}"></div><div class="ev-body">
-        <div class="ev-top"><span class="ev-time">${esc(timeStr)}</span><span class="ev-country">${esc(ev.country||'—')}</span><span class="ev-title">${esc(ev.title||ev.name||'—')}</span></div>
-        <div class="ev-vals">
-          <div><span class="ev-val-lbl">Forecast</span><span class="ev-forecast">${esc(ev.forecast||'—')}</span></div>
-          <div><span class="ev-val-lbl">Previous</span><span class="ev-prev">${esc(ev.previous||'—')}</span></div>
-          <div><span class="ev-val-lbl">Actual</span><span class="${actualCls}">${esc(ev.actual||'Pending')}</span></div>
+
+      // Build historical data from FRED for this event
+      const histHtml = buildHistorical(ev, macro);
+
+      html+=`<div class="event-card" onclick="toggleExpand('${evId}')">
+        <div class="ev-impact ${impactCls(ev.impact)}"></div>
+        <div class="ev-body">
+          <div class="ev-top">
+            <span class="ev-time">${esc(timeStr)}</span>
+            <span class="ev-country">${esc(ev.country||'—')}</span>
+            <span class="ev-title-row">
+              <span class="ev-title">${esc(ev.title||'—')}</span>
+              <span class="ev-expand-btn">${histHtml?'▾':''}</span>
+            </span>
+          </div>
+          <div class="ev-vals">
+            <div><span class="ev-val-lbl">Forecast</span><span class="ev-forecast">${esc(ev.forecast||'—')}</span></div>
+            <div><span class="ev-val-lbl">Previous</span><span class="ev-prev">${esc(ev.previous||'—')}</span></div>
+            <div><span class="ev-val-lbl">Actual</span><span class="${actualCls}">${esc(ev.actual||'Pending')}</span></div>
+          </div>
         </div>
-      </div></div>`;
+        ${histHtml ? `<div class="ev-expand" id="${evId}">${histHtml}</div>` : ''}
+      </div>`;
     });
     html+='</div>';
   });
   feed.innerHTML = html;
+}
+
+function toggleExpand(id) {
+  const el = document.getElementById(id); if(!el) return;
+  el.classList.toggle('open');
+  const btn = el.previousElementSibling?.querySelector('.ev-expand-btn');
+  if(btn) btn.textContent = el.classList.contains('open') ? '▴' : '▾';
+}
+
+function buildHistorical(ev, macro) {
+  // Map event to FRED series
+  const seriesMap = {
+    'CPI':         'CPIAUCSL',
+    'CORE CPI':    'CPILFESL',
+    'NFP':         'PAYEMS',
+    'NON-FARM':    'PAYEMS',
+    'UNEMPLOYMENT':'UNRATE',
+    'GDP':         'A191RL1Q225SBEA',
+    'FED FUNDS':   'FEDFUNDS',
+    'FOMC':        'FEDFUNDS',
+    'RATE DECISION':'FEDFUNDS',
+  };
+  const titleUpper = (ev.title||'').toUpperCase();
+  let series = null;
+  for(const [key,val] of Object.entries(seriesMap)) {
+    if(titleUpper.includes(key)) { series=val; break; }
+  }
+  if(!series || !macro[series]?.length) return '';
+  const data = macro[series].slice(-12).reverse(); // last 12 months newest first
+  const formatVal = (d) => {
+    if(series==='CPIAUCSL'||series==='CPILFESL') return d.yoyPct!=null ? d.yoyPct.toFixed(1)+'%' : '—';
+    if(series==='PAYEMS') return d.mom!=null ? (d.mom>=0?'+':'')+Math.round(d.mom)+'K' : '—';
+    if(series==='UNRATE'||series==='FEDFUNDS') return d.value.toFixed(2)+'%';
+    if(series==='A191RL1Q225SBEA') return (d.value>=0?'+':'')+d.value.toFixed(1)+'%';
+    return d.value.toFixed(2);
+  };
+  let rows = data.slice(0,8).map(d => {
+    const lbl = new Date(d.date).toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    return `<tr><td>${esc(lbl)}</td><td style="color:var(--text);font-weight:600">${esc(formatVal(d))}</td></tr>`;
+  }).join('');
+  return `<table class="ev-hist-table"><thead><tr><th>Month</th><th>Actual</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function updateCountdown() {
