@@ -578,55 +578,194 @@ const Charts = {
   }
 };
 
+/* ═══════════════════════════════════════════════════════════
+   GRADING ENGINE v2 — Context-Aware ICT/SMC Trade Grading
+   ═══════════════════════════════════════════════════════════
 
-/* ═══════════════════════════════════════
-   AUTO GRADING ENGINE
-   Reads confluences + comment → assigns A+/B/C automatically.
-   Also supports Mistral AI deep-grade per trade (aiGrade method).
-═══════════════════════════════════════ */
+   PHILOSOPHY (why old system was wrong):
+   ─────────────────────────────────────
+   Old system: count confluences → more confluences = better grade
+   Problem: In ranging/consolidating markets you CAN have FVG + OB +
+   sweep + BOS and STILL lose because price was inside a range.
+   Confluence count alone does not measure trade QUALITY.
+
+   New system grades on 5 PILLARS:
+   1. CONTEXT    — Was the HTF bias clear? Was it trending or ranging?
+   2. ENTRY      — Was entry at a precise POI or did you chase?
+   3. STRUCTURE  — Was there a real BOS/CHoCH or just noise?
+   4. RISK       — R:R, position relative to invalidation
+   5. EXECUTION  — Did you follow your plan or react emotionally?
+
+   OUTCOME DECOUPLING:
+   ─────────────────
+   Winning ≠ A+. Losing ≠ C.
+   A trade can be A+ and lose (correct process, random outcome).
+   A trade can be C and win (luck, wrong for right reasons).
+   The grade reflects PROCESS QUALITY not result.
+
+   GRADES:
+   A+ = All 5 pillars clean. Repeatable edge. High conviction.
+   A  = 4/5 pillars clean. Minor gap. Still a quality trade.
+   B  = 3/5 pillars. Setup was there but execution or context was off.
+   C  = 2/5 or less. One correct element surrounded by gaps.
+   D  = Emotional/impulsive. Rules broken. Should not have been taken.
+═══════════════════════════════════════════════════════════ */
+
 const GradingEngine = {
 
-  STRONG: [
-    'displacement','fvg','fair value gap','order block','ob',
-    'sweep','liquidity','bos','break of structure','choch','change of character',
-    'cisd','imbalance','inducement','pdh','pdl','previous day','htf',
-    'higher time frame','weekly','daily','institutional','smt','divergence',
-    'breaker','mitigation','rejection','engulf','reversal','confluence',
+  // ── PILLAR 1: CONTEXT KEYWORDS ────────────────────────────
+  // HTF alignment, market structure, trending vs ranging signals
+  CONTEXT_POSITIVE: [
+    'htf','higher time frame','daily bias','weekly bias','monthly bias',
+    'trending','with trend','trend continuation','draw on liquidity',
+    'premium','discount','equilibrium','50%','dealing range',
+    'previous week high','previous week low','pwh','pwl',
+    'previous day high','previous day low','pdh','pdl',
+    'new week opening gap','nwog','new day opening gap','ndog',
+    'asia range','killzone','london open','new york open',
+    'quarterly shift','higher high','higher low','lower high','lower low',
+    'macro','narrative','institutional','smart money','draw',
+  ],
+  CONTEXT_NEGATIVE: [
+    'consolidation','ranging','choppy','sideways','no trend',
+    'unclear','no bias','mixed','indecisive','news spike',
+    'random','low volume','holiday','thin','no context',
+    'forced direction','against trend','counter trend without reason',
   ],
 
-  QUALITY_COMMENT: [
-    'perfect','clean','textbook','waited','patient','confirmed',
-    'aligned','planned','as expected','clear','high probability',
-    'thesis','structured','no hesitation','strong','valid',
+  // ── PILLAR 2: ENTRY QUALITY KEYWORDS ──────────────────────
+  // Precise POI entry vs chasing
+  ENTRY_POSITIVE: [
+    'order block','ob','fvg','fair value gap','imbalance','ifvg',
+    'breaker','mitigation block','rejection block','propulsion block',
+    'optimal trade entry','ote','0.618','0.705','0.79','golden pocket',
+    'liquidity void','volume imbalance','opening gap','waited for price',
+    'limit order','set and forget','entry confirmed','tapped poi',
+    'returned to','retraced to','came back to','filled gap',
+  ],
+  ENTRY_NEGATIVE: [
+    'market order at high','market order at low','chased','late entry',
+    'entered early','entered late','missed poi','skipped entry',
+    'no poi','no retest','entered at market','random entry',
+    'top of range','bottom of range without poi',
   ],
 
-  WEAK_COMMENT: [
-    'fomo','rushed','forced','revenge','gut','feeling','random','lucky',
-    'shouldnt','should not','mistake','impulsive','emotional','early',
-    'late entry','chased','doubt','not sure','unclear','gambling',
-    'bored','scared','hesitat','overtraded','broke rules',
+  // ── PILLAR 3: STRUCTURE KEYWORDS ──────────────────────────
+  // Real market structure confirmation
+  STRUCTURE_POSITIVE: [
+    'bos','break of structure','choch','change of character',
+    'displacement','impulse','expansion','cisd','shift',
+    'internal bos','external bos','inducement taken','liquidity swept',
+    'sweep and reverse','turtle soup','spring','shakeout',
+    'equal highs taken','equal lows taken','stop hunt','engineered',
+    'manipulation','accumulation complete','distribution complete',
+    'smt','smart money technique','divergence confirmed',
+  ],
+  STRUCTURE_NEGATIVE: [
+    'no bos','no choch','no displacement','no confirmation',
+    'structure intact','against structure','broke below support',
+    'no sweep','no inducement','impulsive against me',
   ],
 
+  // ── PILLAR 4: RISK/RR KEYWORDS ────────────────────────────
+  RISK_POSITIVE: [
+    'sl below ob','sl above ob','sl below fvg','sl above fvg',
+    'tight stop','defined risk','1:2','1:3','1:4','1:5','2r','3r','4r','5r',
+    'partial taken','partial profit','secured','moved to be',
+    'trailed stop','risk defined','max 1%','max 2%','risking 1','risking 2',
+    'good rr','high rr','positive expectancy','worth the risk',
+  ],
+  RISK_NEGATIVE: [
+    'wide stop','no stop','moved stop','revenge','doubled down',
+    'added to loser','averaging down','no target','random tp',
+    'took profit early','cut too soon','scratched for no reason',
+    'moved tp higher','moved tp lower without reason',
+  ],
+
+  // ── PILLAR 5: EXECUTION KEYWORDS ──────────────────────────
+  EXECUTION_POSITIVE: [
+    'patient','waited','planned','pre-marked','in playbook',
+    'followed plan','rule based','no hesitation','trusted process',
+    'let it play','let trade breathe','did not interfere',
+    'journaled before','prepared','expected this','thesis played out',
+    'systematic','mechanical','confirmed before entry',
+  ],
+  EXECUTION_NEGATIVE: [
+    'fomo','revenge','emotional','impulsive','panic','scared',
+    'forced','bored','overtrade','broke rules','did not plan',
+    'not in playbook','random','gut feel','feeling','intuition only',
+    'hesitated then chased','should not have taken','regret',
+    'did not wait','rushed','news spike reaction','gambling',
+  ],
+
+  // ── OUTCOME WEIGHTS (for pattern analysis only, NOT grade) ─
+  // Outcome INFORMS pattern analysis but does NOT determine grade
+  WIN_PATTERN_BOOST: 0,   // winning does NOT add to grade
+  LOSS_PATTERN_NOTE: true, // losing is noted but does not penalise grade
+
+  // ─────────────────────────────────────────────────────────
+  // CORE GRADE FUNCTION
+  // ─────────────────────────────────────────────────────────
   grade(trade) {
-    const notionGrade = (trade.grade||'').trim();
+    // If Notion has a manually set grade, respect it
+    const notionGrade = (trade.grade || '').trim();
     if (notionGrade && ['A+','A','B','C','D','F'].includes(notionGrade)) return notionGrade;
 
-    const confluences = (trade.confluences||[]).map(c=>c.toLowerCase());
-    const comment = (trade.comment||'').toLowerCase();
-    const allText = [...confluences, comment].join(' ');
+    const scores = this._scorePillars(trade);
+    return this._scoreToGrade(scores);
+  },
 
-    const strongCount  = this.STRONG.filter(kw => allText.includes(kw)).length;
-    const qualityCount = this.QUALITY_COMMENT.filter(kw => comment.includes(kw)).length;
-    const weakCount    = this.WEAK_COMMENT.filter(kw => comment.includes(kw)).length;
-    const totalConfs   = confluences.length;
+  _scorePillars(trade) {
+    const confs   = (trade.confluences || []).map(c => c.toLowerCase());
+    const comment = (trade.comment || '').toLowerCase();
+    const all     = [...confs, comment].join(' ');
 
-    if (weakCount >= 2) return 'C';
-    if (strongCount >= 3 || (strongCount >= 2 && qualityCount >= 1)) return 'A+';
-    if (strongCount >= 2 || (totalConfs >= 3 && qualityCount >= 1)) return 'A+';
-    if (strongCount >= 1 && totalConfs >= 2) return 'B';
-    if (totalConfs >= 2 && weakCount === 0) return 'B';
-    if (totalConfs >= 1 || qualityCount >= 1) return 'C';
-    return 'C';
+    const score = (positives, negatives) => {
+      const pos = positives.filter(kw => all.includes(kw)).length;
+      const neg = negatives.filter(kw => all.includes(kw)).length;
+      // 0–3 scale: 3=excellent, 2=good, 1=partial, 0=missing/negative
+      if (neg >= 2) return 0;
+      if (neg >= 1 && pos === 0) return 0;
+      if (pos === 0) return 0;
+      if (pos >= 3 && neg === 0) return 3;
+      if (pos >= 2 && neg <= 1) return 2;
+      if (pos >= 1 && neg === 0) return 2;
+      if (pos >= 1 && neg >= 1) return 1;
+      return 1;
+    };
+
+    return {
+      context:   score(this.CONTEXT_POSITIVE,   this.CONTEXT_NEGATIVE),
+      entry:     score(this.ENTRY_POSITIVE,      this.ENTRY_NEGATIVE),
+      structure: score(this.STRUCTURE_POSITIVE,  this.STRUCTURE_NEGATIVE),
+      risk:      score(this.RISK_POSITIVE,       this.RISK_NEGATIVE),
+      execution: score(this.EXECUTION_POSITIVE,  this.EXECUTION_NEGATIVE),
+    };
+  },
+
+  _scoreToGrade(scores) {
+    const total   = Object.values(scores).reduce((s, v) => s + v, 0);
+    const maxScore = 15; // 5 pillars × 3 max each
+    const pillarsAbove1 = Object.values(scores).filter(v => v >= 1).length;
+    const pillarsAbove2 = Object.values(scores).filter(v => v >= 2).length;
+    const pillarsAt0    = Object.values(scores).filter(v => v === 0).length;
+
+    // D grade — emotional/impulsive
+    if (scores.execution === 0 && scores.context === 0) return 'D';
+
+    // A+ — 4+ pillars at 2+ AND total ≥ 12
+    if (pillarsAbove2 >= 4 && total >= 12) return 'A+';
+
+    // A — 4 pillars at 1+, at least 2 at level 3
+    if (pillarsAbove1 >= 4 && pillarsAbove2 >= 2 && total >= 9) return 'A';
+
+    // B — 3 pillars at 1+, some quality
+    if (pillarsAbove1 >= 3 && total >= 6) return 'B';
+
+    // C — 2 pillars at 1+
+    if (pillarsAbove1 >= 2) return 'C';
+
+    return 'D';
   },
 
   gradeAll(trades) {
@@ -634,63 +773,151 @@ const GradingEngine = {
     return trades;
   },
 
+  // ─────────────────────────────────────────────────────────
+  // EXPLAIN — breakdown for display in modal
+  // ─────────────────────────────────────────────────────────
   explain(trade) {
-    const confluences = trade.confluences||[];
-    const comment = (trade.comment||'').toLowerCase();
-    const allText = [...confluences.map(c=>c.toLowerCase()), comment].join(' ');
-    const matched  = this.STRONG.filter(kw => allText.includes(kw));
-    const weak     = this.WEAK_COMMENT.filter(kw => comment.includes(kw));
-    const quality  = this.QUALITY_COMMENT.filter(kw => comment.includes(kw));
-    const lines = [];
-    if (matched.length)  lines.push(`Confluences: ${matched.slice(0,4).join(', ')}`);
-    if (quality.length)  lines.push(`Quality: ${quality.join(', ')}`);
-    if (weak.length)     lines.push(`⚠ Weak signals: ${weak.join(', ')}`);
-    if (!confluences.length && !trade.comment) lines.push('No confluences or comment tagged');
-    return `Grade ${trade.grade} — ${lines.join(' · ')||'auto-graded from setup'}`;
+    const scores  = this._scorePillars(trade);
+    const grade   = trade.grade;
+    const isWin   = /win/i.test(trade.outcome);
+    const isLoss  = /los/i.test(trade.outcome);
+
+    const pillarLabel = { context:'Context', entry:'Entry', structure:'Structure', risk:'Risk/RR', execution:'Execution' };
+    const pillars = Object.entries(scores).map(([k, v]) => {
+      const icon = v >= 3 ? '✦' : v >= 2 ? '◆' : v >= 1 ? '◇' : '✗';
+      const color = v >= 2 ? 'green' : v >= 1 ? 'amber' : 'red';
+      return { key: k, score: v, icon, color, label: pillarLabel[k] };
+    });
+
+    return { grade, scores, pillars, isWin, isLoss };
   },
 
-  // Mistral AI deep-grade a single trade
-  async aiGrade(trade) {
+  // ─────────────────────────────────────────────────────────
+  // FIND SIMILAR SETUPS — for "review similar wins" feature
+  // ─────────────────────────────────────────────────────────
+  findSimilar(trade, allTrades, limit = 5) {
+    const confs   = new Set((trade.confluences || []).map(c => c.toLowerCase()));
+    const pair    = (trade.pair || '').toLowerCase();
+    const session = (trade.session || '').toLowerCase();
+    const dir     = (trade.direction || '').toLowerCase();
+
+    return allTrades
+      .filter(t => t.id !== trade.id)
+      .map(t => {
+        let score = 0;
+        const tConfs = new Set((t.confluences || []).map(c => c.toLowerCase()));
+
+        // Same pair = strong signal
+        if ((t.pair || '').toLowerCase() === pair) score += 3;
+        // Same direction
+        if ((t.direction || '').toLowerCase() === dir) score += 1;
+        // Same session
+        if ((t.session || '').toLowerCase() === session) score += 2;
+        // Confluence overlap
+        const overlap = [...confs].filter(c => tConfs.has(c)).length;
+        score += overlap * 2;
+        // Same timeframe
+        if (t.timeframe === trade.timeframe) score += 1;
+
+        return { trade: t, score };
+      })
+      .filter(x => x.score >= 4) // minimum similarity threshold
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map(x => x.trade);
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // AI DEEP GRADE — Full Mistral analysis with all 5 pillars
+  // ─────────────────────────────────────────────────────────
+  async aiGrade(trade, allTrades) {
+    const scores  = this._scorePillars(trade);
+    const similar = this.findSimilar(trade, allTrades || []);
+    const isWin   = /win/i.test(trade.outcome);
+    const isLoss  = /los/i.test(trade.outcome);
+
+    // Build similar setups summary for AI context
+    const similarSummary = similar.length
+      ? similar.map(t =>
+          `  • ${t.pair} ${t.direction} ${t.date?.slice(0,10)} | ${/win/i.test(t.outcome)?'WIN':'LOSS'} | ${t.rMultiple!=null?t.rMultiple+'R':'?R'} | Confs: ${(t.confluences||[]).join(', ')||'none'}`
+        ).join('\n')
+      : '  None found in journal';
+
     const prompt =
-      `You are a professional ICT/SMC FX trading coach grading a trade.
+`You are an elite ICT/SMC trading coach reviewing a trade from a trader's personal journal.
+Your job is NOT just to count confluences — you must evaluate PROCESS QUALITY across 5 pillars.
 
-` +
-      `Pair: ${trade.pair||'?'} | Direction: ${trade.direction||'?'} | Outcome: ${trade.outcome||'?'} | R: ${trade.rMultiple!=null?trade.rMultiple+'R':'?'}
-` +
-      `Session: ${trade.session||'?'} | Timeframe: ${trade.timeframe||'?'}
-` +
-      `Confluences: ${(trade.confluences||[]).join(', ')||'none listed'}
-` +
-      `Comment: ${trade.comment||'no comment'}
+IMPORTANT PHILOSOPHY:
+- Confluences alone do NOT make a good trade. A trade with 5 confluences in a ranging market is still a C grade.
+- A LOSS can be A+ if the process was correct (random outcome vs correct process).
+- A WIN can be D grade if the trader got lucky (fomo entry that happened to work).
+- Grade the PROCESS, not the result.
 
-` +
-      `Grade A+, B, or C:
-` +
-      `A+ = 3+ strong ICT confluences (FVG, OB, sweep, displacement, HTF bias), patient execution, clear written thesis
-` +
-      `B  = 2 confluences, decent structure, room for improvement
-` +
-      `C  = 1 or no confluences, FOMO/revenge/impulsive signals, or poorly documented
+═══ TRADE DETAILS ═══
+Pair: ${trade.pair||'?'} | Direction: ${trade.direction||'?'} | Date: ${trade.date?.slice(0,10)||'?'}
+Session: ${trade.session||'?'} | Timeframe: ${trade.timeframe||'?'}
+Outcome: ${trade.outcome||'?'} | R: ${trade.rMultiple!=null?trade.rMultiple+'R':'?'}
+Confluences tagged: ${(trade.confluences||[]).join(', ')||'none'}
+Trader comment: "${trade.comment||'no comment written'}"
 
-` +
-      `Reply ONLY in this exact format:
-GRADE: [A+/B/C]
-REASON: [one sentence]
-IMPROVE: [one actionable tip]`;
+═══ AUTO-SCORED PILLARS (0-3 each) ═══
+Context (HTF bias, trend/range):  ${scores.context}/3
+Entry (POI precision):            ${scores.entry}/3
+Structure (BOS/CHoCH/displacement): ${scores.structure}/3
+Risk/RR (SL placement, RR):      ${scores.risk}/3
+Execution (discipline, planning): ${scores.execution}/3
+
+═══ SIMILAR PAST SETUPS IN JOURNAL ═══
+${similarSummary}
+
+═══ YOUR TASK ═══
+${isWin
+  ? 'This trade WON. Analyse what specifically worked and how to repeat it consistently.'
+  : 'This trade LOST. Analyse whether this was a process failure or a correct process with a random loss outcome.'}
+
+Reply in EXACTLY this format (no extra text):
+GRADE: [A+/A/B/C/D]
+REASON: [2 sentences — what drove this grade, reference specific pillars]
+${isWin
+  ? 'WHAT_WORKED: [2 sentences — what specifically made this setup work, be precise]'
+  : 'PROCESS_CHECK: [1 sentence — was this a process failure or correct process/bad outcome?]'}
+MISSING: [1-2 sentences — what was absent or weak in this setup]
+CONSISTENCY: [1 sentence — what specific habit to build to repeat the good parts]
+REVIEW_SIMILAR: [1 sentence — what to look for when reviewing similar trades above]`;
+
     try {
-      const res = await API.ai(prompt);
-      const text = res.reply||'';
-      const gm = text.match(/GRADE:\s*(A\+|B|C)/i);
-      const rm = text.match(/REASON:\s*(.+)/i);
-      const im = text.match(/IMPROVE:\s*(.+)/i);
-      return { grade: gm?gm[1].toUpperCase():trade.grade, reason: rm?rm[1].trim():'', improve: im?im[1].trim():'', raw:text };
+      const res  = await API.ai(prompt);
+      const text = res.reply || '';
+
+      const parse = (tag) => {
+        const m = text.match(new RegExp(`${tag}:\\s*(.+?)(?=\\n[A-Z_]+:|$)`, 's'));
+        return m ? m[1].trim() : '';
+      };
+
+      return {
+        grade:         parse('GRADE').replace(/[^A-Z+]/g,'') || trade.grade,
+        reason:        parse('REASON'),
+        whatWorked:    parse('WHAT_WORKED'),
+        processCheck:  parse('PROCESS_CHECK'),
+        missing:       parse('MISSING'),
+        consistency:   parse('CONSISTENCY'),
+        reviewSimilar: parse('REVIEW_SIMILAR'),
+        similar,
+        scores,
+        raw: text,
+      };
     } catch(e) {
-      return { grade: trade.grade, reason: 'AI unavailable: '+e.message, improve: '' };
+      return {
+        grade: trade.grade, reason: 'AI unavailable: ' + e.message,
+        whatWorked:'', processCheck:'', missing:'', consistency:'',
+        reviewSimilar:'', similar:[], scores,
+      };
     }
   }
 };
 
 window.GradingEngine = GradingEngine;
+
 
 const NavEngine = {
   init(pageId) {
