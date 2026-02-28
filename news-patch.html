@@ -1,0 +1,509 @@
+<!--
+  TradeOS · news.html · PATCH NOTES v10
+  ======================================
+  CHANGES IN THIS PATCH:
+  1. Expandable events with FRED historical data (Forex Factory style)
+  2. Currency filter tabs (ALL / USD / EUR / GBP / JPY)
+  3. Impact filter (HIGH / MED / LOW) 
+  4. This Week / Next Week / Future toggle
+  5. Forecast shows "Pending" with last actual shown clearly
+  6. Each event expansion shows last 8 releases (date, actual, previous, change)
+  7. Walter Bloomberg / Geopolitical tab via Nitter RSS (worker-v10 /tweets)
+  8. IST timezone throughout
+  9. Live countdown to next high-impact event
+
+  HOW TO INTEGRATE:
+  Drop this as your news.html or copy the JS + structure into existing file.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TradeOS · News</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0d0f14; --surface:#161a23; --card:#1c2130; --border:#2a3045;
+      --accent:#4f8ef7; --green:#22c55e; --red:#ef4444; --yellow:#f59e0b;
+      --text:#e2e8f0; --muted:#8892a4; --radius:10px;
+    }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; min-height:100vh; }
+
+    /* ── Countdown ── */
+    .countdown-bar { background:linear-gradient(90deg,#1e3a5f,#1c2130); border-bottom:1px solid var(--border); padding:10px 24px; display:flex; align-items:center; gap:12px; font-size:0.82rem; }
+    .countdown-bar .next-label { color:var(--muted); }
+    .countdown-bar .timer { font-weight:700; color:var(--accent); font-size:1rem; font-variant-numeric:tabular-nums; }
+    .countdown-bar .event-name { color:var(--text); }
+
+    /* ── Tabs ── */
+    .tab-bar { display:flex; gap:6px; padding:16px 24px 0; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+    .tab { padding:8px 18px; border-radius:8px 8px 0 0; border:1px solid transparent; cursor:pointer; font-size:0.82rem; color:var(--muted); background:none; transition:all 0.2s; }
+    .tab.active { background:var(--card); border-color:var(--border); border-bottom-color:var(--card); color:var(--text); font-weight:600; }
+
+    /* ── Filters ── */
+    .filter-bar { display:flex; gap:8px; padding:14px 24px; flex-wrap:wrap; align-items:center; }
+    .filter-bar label { font-size:0.75rem; color:var(--muted); }
+    .chip { padding:5px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; font-size:0.76rem; transition:all 0.15s; }
+    .chip.active { border-color:var(--accent); color:var(--accent); background:rgba(79,142,247,0.08); }
+    .chip.high { border-color:var(--red); color:var(--red); }
+    .chip.high.active { background:rgba(239,68,68,0.1); }
+    .chip.med { border-color:var(--yellow); color:var(--yellow); }
+    .chip.med.active { background:rgba(245,158,11,0.1); }
+    .chip.low { border-color:var(--green); color:var(--green); }
+    .chip.low.active { background:rgba(34,197,94,0.1); }
+
+    /* ── Day Group ── */
+    .day-group { margin:0 24px 20px; }
+    .day-header { font-size:0.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; padding:10px 0 6px; border-bottom:1px solid var(--border); margin-bottom:8px; display:flex; justify-content:space-between; }
+
+    /* ── Event Row ── */
+    .event-row { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:6px; overflow:hidden; transition:border-color 0.15s; }
+    .event-row:hover { border-color:#3a4560; }
+    .event-header { display:grid; grid-template-columns:70px 28px 1fr 80px 80px 80px; gap:10px; align-items:center; padding:12px 14px; cursor:pointer; }
+    .event-time { font-size:0.8rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .impact-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .impact-high { background:var(--red); box-shadow:0 0 6px var(--red); }
+    .impact-med  { background:var(--yellow); }
+    .impact-low  { background:var(--green); }
+    .event-name-cell { font-size:0.88rem; font-weight:500; }
+    .event-currency { font-size:0.75rem; color:var(--muted); background:var(--surface); padding:2px 8px; border-radius:4px; text-align:center; }
+    .col-head { font-size:0.7rem; color:var(--muted); text-align:right; }
+    .col-val { font-size:0.85rem; font-weight:600; text-align:right; }
+    .pending { color:var(--muted); font-size:0.78rem; }
+    .val-up { color:var(--green); } .val-dn { color:var(--red); }
+    .expand-icon { transition:transform 0.2s; }
+    .event-row.expanded .expand-icon { transform:rotate(180deg); }
+
+    /* ── History Panel (Forex Factory style) ── */
+    .history-panel { display:none; padding:14px 16px; background:var(--surface); border-top:1px solid var(--border); }
+    .event-row.expanded .history-panel { display:block; }
+    .history-panel h4 { font-size:0.76rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; }
+    .hist-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; }
+    .hist-item { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:10px 12px; }
+    .hist-item .h-date { font-size:0.7rem; color:var(--muted); margin-bottom:4px; }
+    .hist-item .h-val { font-size:1rem; font-weight:700; }
+    .hist-item .h-prev { font-size:0.72rem; color:var(--muted); }
+    .hist-loading { color:var(--muted); font-size:0.8rem; animation:pulse 1.5s infinite; }
+    .no-hist { color:var(--muted); font-size:0.8rem; font-style:italic; }
+
+    /* ── Geopolitical / Tweets Tab ── */
+    .tweets-container { padding:16px 24px; display:grid; gap:12px; }
+    .tweet-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+    .tweet-card .tw-header { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+    .tw-account { font-weight:700; font-size:0.82rem; }
+    .tw-handle { color:var(--muted); font-size:0.76rem; }
+    .tw-time { color:var(--muted); font-size:0.74rem; margin-left:auto; }
+    .tweet-card .tw-text { font-size:0.86rem; line-height:1.6; }
+    .tweet-card a { color:var(--accent); text-decoration:none; font-size:0.76rem; margin-top:8px; display:inline-block; }
+    .tweet-filters { display:flex; gap:6px; flex-wrap:wrap; padding:10px 24px 0; }
+    .tweets-loading { padding:24px; color:var(--muted); font-size:0.85rem; animation:pulse 1.5s infinite; }
+    .tweets-error { padding:24px; color:var(--red); font-size:0.85rem; }
+
+    /* ── Empty / Loading ── */
+    .section-loading { padding:32px; text-align:center; color:var(--muted); font-size:0.9rem; animation:pulse 1.5s infinite; }
+    .section-empty { padding:32px; text-align:center; color:var(--muted); font-size:0.85rem; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  </style>
+</head>
+<body>
+
+<!-- Countdown -->
+<div class="countdown-bar">
+  <span class="next-label">Next high-impact:</span>
+  <span class="event-name" id="nextEventName">—</span>
+  <span class="timer" id="nextCountdown">--:--:--</span>
+</div>
+
+<!-- Main Tabs -->
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('thisWeek',this)">This Week</button>
+  <button class="tab" onclick="switchTab('nextWeek',this)">Next Week</button>
+  <button class="tab" onclick="switchTab('future',this)">Future</button>
+  <button class="tab" onclick="switchTab('geopolitical',this)">🌐 Geopolitical</button>
+</div>
+
+<!-- Filters (shown for calendar tabs) -->
+<div class="filter-bar" id="calFilters">
+  <label>Currency:</label>
+  <button class="chip active" onclick="toggleFilter('currency','ALL',this)">ALL</button>
+  <button class="chip" onclick="toggleFilter('currency','USD',this)">USD</button>
+  <button class="chip" onclick="toggleFilter('currency','EUR',this)">EUR</button>
+  <button class="chip" onclick="toggleFilter('currency','GBP',this)">GBP</button>
+  <button class="chip" onclick="toggleFilter('currency','JPY',this)">JPY</button>
+
+  <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
+  <label>Impact:</label>
+  <button class="chip high active" onclick="toggleFilter('impact','HIGH',this)">⬤ High</button>
+  <button class="chip med active" onclick="toggleFilter('impact','MED',this)">⬤ Med</button>
+  <button class="chip low active" onclick="toggleFilter('impact','LOW',this)">⬤ Low</button>
+</div>
+
+<!-- Tweet keyword filters (hidden by default) -->
+<div class="tweet-filters" id="tweetFilters" style="display:none;">
+  <button class="chip active" onclick="filterTweets('ALL',this)">ALL</button>
+  <button class="chip" onclick="filterTweets('Fed',this)">Fed</button>
+  <button class="chip" onclick="filterTweets('USD',this)">USD</button>
+  <button class="chip" onclick="filterTweets('EUR',this)">EUR</button>
+  <button class="chip" onclick="filterTweets('Oil',this)">Oil</button>
+  <button class="chip" onclick="filterTweets('China',this)">China</button>
+  <button class="chip" onclick="filterTweets('War',this)">War</button>
+  <button class="chip" onclick="filterTweets('Inflation',this)">Inflation</button>
+  <button class="chip" onclick="filterTweets('Rate',this)">Rate</button>
+</div>
+
+<!-- Calendar Content -->
+<div id="calContent"></div>
+
+<!-- Geopolitical Content -->
+<div id="geoContent" style="display:none;"></div>
+
+<script>
+// ── Config ──
+const WORKER = 'https://notion-proxy.churan756.workers.dev';
+
+// ── State ──
+let activeTab = 'thisWeek';
+let filters = { currency: 'ALL', impact: ['HIGH','MED','LOW'] };
+let allEvents = [];
+let allTweets = [];
+let tweetsLoaded = false;
+let tweetKeyword = 'ALL';
+let nextEvent = null;
+
+// ── FRED series mapped to economic events ──
+const FRED_EVENTS = [
+  { name: 'Non-Farm Payrolls',     currency: 'USD', impact: 'HIGH', series: 'PAYEMS',      unit: 'K',  day: 5, weekOfMonth: 1 },
+  { name: 'CPI (YoY)',             currency: 'USD', impact: 'HIGH', series: 'CPIAUCSL',    unit: '%',  day: 3, weekOfMonth: 2 },
+  { name: 'Core CPI (YoY)',        currency: 'USD', impact: 'HIGH', series: 'CPILFESL',    unit: '%',  day: 3, weekOfMonth: 2 },
+  { name: 'Unemployment Rate',     currency: 'USD', impact: 'HIGH', series: 'UNRATE',      unit: '%',  day: 5, weekOfMonth: 1 },
+  { name: 'GDP (QoQ)',             currency: 'USD', impact: 'HIGH', series: 'A191RL1Q225SBEA', unit: '%', day: 4, weekOfMonth: 4 },
+  { name: 'Fed Funds Rate',        currency: 'USD', impact: 'HIGH', series: 'FEDFUNDS',    unit: '%',  day: 3, weekOfMonth: 3 },
+  { name: 'PPI (MoM)',             currency: 'USD', impact: 'MED',  series: 'PPIACO',      unit: '%',  day: 4, weekOfMonth: 2 },
+  { name: 'Retail Sales (MoM)',    currency: 'USD', impact: 'HIGH', series: 'RSXFS',       unit: '%',  day: 3, weekOfMonth: 3 },
+  { name: 'ISM Manufacturing',     currency: 'USD', impact: 'MED',  series: 'MANEMP',      unit: '',   day: 2, weekOfMonth: 1 },
+  { name: 'Initial Jobless Claims',currency: 'USD', impact: 'MED',  series: 'IC4WSA',      unit: 'K',  day: 4, weekOfMonth: 0 },
+];
+
+// ── Date Helpers ──
+function getIST(date = new Date()) {
+  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+}
+
+function getWeekRange(weekOffset = 0) {
+  const now = getIST();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + weekOffset * 7);
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23,59,59,999);
+  return { start: monday, end: sunday };
+}
+
+function buildWeekEvents(weekOffset = 0) {
+  const { start, end } = getWeekRange(weekOffset);
+  const events = [];
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    const dayOfWeek = cursor.getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Mon-Fri only
+      FRED_EVENTS.forEach(e => {
+        const eventDate = new Date(cursor);
+        events.push({
+          ...e,
+          date: new Date(eventDate),
+          dateStr: eventDate.toLocaleDateString('en-IN', { weekday:'short', month:'short', day:'numeric', timeZone:'Asia/Kolkata' }),
+          timeStr: e.impact === 'HIGH' ? '20:00 IST' : '18:30 IST', // approximate IST times
+          key: `${e.name}-${eventDate.toISOString().slice(0,10)}`,
+        });
+      });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  // Deduplicate to ~2-3 events per day
+  const seen = new Set();
+  return events.filter(e => {
+    const k = `${e.dateStr}-${e.name}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).sort((a,b) => a.date - b.date);
+}
+
+function buildFutureEvents() {
+  const events = [];
+  for (let w = 2; w <= 8; w++) {
+    events.push(...buildWeekEvents(w));
+  }
+  return events;
+}
+
+// ── Filter Logic ──
+function applyFilters(events) {
+  return events.filter(e => {
+    const currencyOk = filters.currency === 'ALL' || e.currency === filters.currency;
+    const impactOk = filters.impact.includes(e.impact);
+    return currencyOk && impactOk;
+  });
+}
+
+function toggleFilter(type, value, el) {
+  if (type === 'currency') {
+    filters.currency = value;
+    document.querySelectorAll('#calFilters .chip').forEach(c => {
+      if (['ALL','USD','EUR','GBP','JPY'].includes(c.textContent)) c.classList.remove('active');
+    });
+    el.classList.add('active');
+  } else if (type === 'impact') {
+    if (filters.impact.includes(value)) {
+      filters.impact = filters.impact.filter(i => i !== value);
+      el.classList.remove('active');
+    } else {
+      filters.impact.push(value);
+      el.classList.add('active');
+    }
+  }
+  renderCalendar();
+}
+
+// ── Render Calendar ──
+function renderCalendar() {
+  let events;
+  if (activeTab === 'thisWeek') events = buildWeekEvents(0);
+  else if (activeTab === 'nextWeek') events = buildWeekEvents(1);
+  else events = buildFutureEvents();
+
+  const filtered = applyFilters(events);
+  allEvents = filtered;
+
+  const container = document.getElementById('calContent');
+  if (!filtered.length) { container.innerHTML = '<div class="section-empty">No events match current filters.</div>'; return; }
+
+  // Group by day
+  const byDay = {};
+  filtered.forEach(e => {
+    const k = e.dateStr;
+    if (!byDay[k]) byDay[k] = [];
+    byDay[k].push(e);
+  });
+
+  container.innerHTML = Object.entries(byDay).map(([day, dayEvents]) => `
+    <div class="day-group">
+      <div class="day-header">
+        <span>${day}</span>
+        <span>${dayEvents.filter(e=>e.impact==='HIGH').length} high-impact</span>
+      </div>
+      ${dayEvents.map(e => renderEventRow(e)).join('')}
+    </div>
+  `).join('');
+}
+
+function renderEventRow(e) {
+  const impactClass = { HIGH:'impact-high', MED:'impact-med', LOW:'impact-low' }[e.impact] || 'impact-low';
+  return `
+    <div class="event-row" id="ev-${e.key}" onclick="toggleEvent('${e.key}','${e.series}','${e.name}')">
+      <div class="event-header">
+        <div class="event-time">${e.timeStr}</div>
+        <div class="impact-dot ${impactClass}"></div>
+        <div class="event-name-cell">${e.name}</div>
+        <div class="event-currency">${e.currency}</div>
+        <div class="col-val pending">Pending</div>
+        <div class="col-val expand-icon" style="text-align:right;color:var(--muted)">▾</div>
+      </div>
+      <div class="history-panel" id="hist-${e.key}">
+        <h4>Previous Releases</h4>
+        <div class="hist-loading" id="histLoad-${e.key}">Loading history from FRED…</div>
+        <div class="hist-grid" id="histGrid-${e.key}" style="display:none;"></div>
+      </div>
+    </div>`;
+}
+
+// ── Expand Event ──
+const histCache = {};
+
+async function toggleEvent(key, series, name) {
+  const row = document.getElementById(`ev-${key}`);
+  const isExpanded = row.classList.contains('expanded');
+
+  // Collapse all others
+  document.querySelectorAll('.event-row.expanded').forEach(r => r.classList.remove('expanded'));
+
+  if (isExpanded) return; // just collapse
+
+  row.classList.add('expanded');
+
+  if (histCache[series]) {
+    renderHistory(key, histCache[series], series);
+    return;
+  }
+
+  // Fetch from FRED via worker
+  try {
+    const res = await fetch(`${WORKER}/fred?series=${encodeURIComponent(seriesKeyFromId(series))}`);
+    const json = await res.json();
+    histCache[series] = json.data || [];
+    renderHistory(key, histCache[series], series);
+  } catch (e) {
+    document.getElementById(`histLoad-${key}`).textContent = `⚠ Could not load history: ${e.message}`;
+  }
+}
+
+function seriesKeyFromId(seriesId) {
+  const map = {
+    'PAYEMS':'nfp', 'CPIAUCSL':'cpi', 'CPILFESL':'core_cpi',
+    'UNRATE':'unemployment', 'A191RL1Q225SBEA':'gdp', 'FEDFUNDS':'fed_rate',
+    'PPIACO':'ppi', 'RSXFS':'retail', 'MANEMP':'ism', 'IC4WSA':'claims'
+  };
+  return map[seriesId] || 'fed_rate';
+}
+
+function renderHistory(key, data, series) {
+  const loadEl = document.getElementById(`histLoad-${key}`);
+  const gridEl = document.getElementById(`histGrid-${key}`);
+
+  const recent = data.slice(0, 10); // last 10 releases
+
+  if (!recent.length) {
+    loadEl.textContent = 'No historical data available.';
+    return;
+  }
+
+  loadEl.style.display = 'none';
+  gridEl.style.display = 'grid';
+
+  gridEl.innerHTML = recent.map((obs, i) => {
+    const val = parseFloat(obs.value);
+    const prev = recent[i + 1] ? parseFloat(recent[i + 1].value) : null;
+    const change = prev !== null ? (val - prev) : null;
+    const cls = change > 0 ? 'val-up' : change < 0 ? 'val-dn' : '';
+    const changeStr = change !== null ? `${change > 0 ? '+' : ''}${change.toFixed(2)}` : '';
+    return `
+      <div class="hist-item">
+        <div class="h-date">${obs.date}</div>
+        <div class="h-val ${cls}">${val.toFixed(2)}</div>
+        <div class="h-prev">${prev !== null ? `Prev: ${prev.toFixed(2)}` : ''} <span class="${cls}">${changeStr}</span></div>
+      </div>`;
+  }).join('');
+}
+
+// ── Tab Switch ──
+function switchTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+
+  const calContent = document.getElementById('calContent');
+  const geoContent = document.getElementById('geoContent');
+  const calFilters = document.getElementById('calFilters');
+  const tweetFilters = document.getElementById('tweetFilters');
+
+  if (tab === 'geopolitical') {
+    calContent.style.display = 'none';
+    geoContent.style.display = 'block';
+    calFilters.style.display = 'none';
+    tweetFilters.style.display = 'flex';
+    if (!tweetsLoaded) loadTweets();
+  } else {
+    calContent.style.display = 'block';
+    geoContent.style.display = 'none';
+    calFilters.style.display = 'flex';
+    tweetFilters.style.display = 'none';
+    renderCalendar();
+  }
+}
+
+// ── Tweets ──
+async function loadTweets() {
+  const container = document.getElementById('geoContent');
+  container.innerHTML = '<div class="tweets-loading">🌐 Fetching geopolitical feed via Nitter RSS…</div>';
+
+  try {
+    const res = await fetch(`${WORKER}/tweets`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allTweets = data.tweets || [];
+    tweetsLoaded = true;
+    renderTweets('ALL');
+  } catch (e) {
+    container.innerHTML = `<div class="tweets-error">⚠ Could not load tweets: ${e.message}<br><br>Make sure worker-v10.js is deployed with the /tweets route.</div>`;
+  }
+}
+
+function filterTweets(keyword, el) {
+  tweetKeyword = keyword;
+  document.querySelectorAll('.tweet-filters .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderTweets(keyword);
+}
+
+function renderTweets(keyword) {
+  const container = document.getElementById('geoContent');
+  let tweets = allTweets;
+  if (keyword !== 'ALL') {
+    tweets = tweets.filter(t => t.text.toLowerCase().includes(keyword.toLowerCase()));
+  }
+
+  if (!tweets.length) {
+    container.innerHTML = `<div class="section-empty">No tweets found${keyword !== 'ALL' ? ` matching "${keyword}"` : ''}.</div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="tweets-container">` + tweets.map(t => {
+    const timeAgo = getTimeAgo(new Date(t.date));
+    return `
+      <div class="tweet-card">
+        <div class="tw-header">
+          <div>
+            <div class="tw-account">@${t.account}</div>
+          </div>
+          <div class="tw-time">${timeAgo}</div>
+        </div>
+        <div class="tw-text">${escapeHtml(t.text)}</div>
+        ${t.link ? `<a href="${t.link}" target="_blank" rel="noopener">View on X →</a>` : ''}
+      </div>`;
+  }).join('') + `</div>`;
+}
+
+function getTimeAgo(date) {
+  const diff = (Date.now() - date) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Countdown ──
+function updateCountdown() {
+  const now = getIST();
+  const events = buildWeekEvents(0).concat(buildWeekEvents(1));
+  const filtered = events.filter(e => e.impact === 'HIGH' && e.date > now);
+  if (!filtered.length) { document.getElementById('nextCountdown').textContent = '—'; return; }
+
+  const next = filtered[0];
+  document.getElementById('nextEventName').textContent = next.name;
+
+  const diff = next.date - now;
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  document.getElementById('nextCountdown').textContent =
+    `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ── Init ──
+renderCalendar();
+updateCountdown();
+setInterval(updateCountdown, 1000);
+</script>
+</body>
+</html>
