@@ -22,6 +22,10 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TradeOS · News</title>
+  <script src="core/security.js"></script>
+  <script src="core/config.js"></script>
+  <script src="core/state.js"></script>
+  <script src="core/api.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -343,11 +347,10 @@ async function toggleEvent(key, series, name) {
     return;
   }
 
-  // Fetch from FRED via worker
+  // Fetch from FRED via worker using API.fred() — matches ?action=fred&series=SERIESID
   try {
-    const res = await fetch(`${WORKER}/fred?series=${encodeURIComponent(seriesKeyFromId(series))}`);
-    const json = await res.json();
-    histCache[series] = json.data || [];
+    const data = await API.fred(series);
+    histCache[series] = (data.observations || []).filter(o => o.value !== '.');
     renderHistory(key, histCache[series], series);
   } catch (e) {
     document.getElementById(`histLoad-${key}`).textContent = `⚠ Could not load history: ${e.message}`;
@@ -424,14 +427,12 @@ async function loadTweets() {
   container.innerHTML = '<div class="tweets-loading">🌐 Fetching geopolitical feed via Nitter RSS…</div>';
 
   try {
-    const res = await fetch(`${WORKER}/tweets`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    const data = await API.tweets();
     allTweets = data.tweets || [];
     tweetsLoaded = true;
     renderTweets('ALL');
   } catch (e) {
-    container.innerHTML = `<div class="tweets-error">⚠ Could not load tweets: ${e.message}<br><br>Make sure worker-v10.js is deployed with the /tweets route.</div>`;
+    container.innerHTML = `<div class="tweets-error">⚠ Could not load tweets: ${e.message}<br><br>Make sure worker-v11.js is deployed.</div>`;
   }
 }
 

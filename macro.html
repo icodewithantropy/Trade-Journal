@@ -1,155 +1,140 @@
-<!--
-  TradeOS · macro.html · PATCH NOTES v10
-  =======================================
-  CHANGES IN THIS PATCH:
-  1. FRED 500 Error → fixed via worker-v10 (try/catch per series, always 200)
-  2. Charts are now EXPANDABLE (click any chart card → full-screen modal)
-  3. Currency switcher: USD / EUR / GBP bias indicator
-  4. AI Macro Weekly Analysis button reads live FRED data via /ai-macro route
-  5. Sparklines show last 12 months, fallback to "—" on error
-
-  HOW TO INTEGRATE:
-  Replace your existing macro.html script block with the one below,
-  or copy the individual sections into your existing file.
-  Worker endpoint: https://notion-proxy.churan756.workers.dev/fred
-  AI Macro endpoint: https://notion-proxy.churan756.workers.dev/ai-macro
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TradeOS · Macro</title>
+  <script src="core/security.js"></script>
+  <script src="core/config.js"></script>
+  <script src="core/state.js"></script>
+  <script src="core/api.js"></script>
+  <link rel="stylesheet" href="core/style.css"/>
   <style>
-    /* ── Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0d0f14; --surface: #161a23; --card: #1c2130;
-      --border: #2a3045; --accent: #4f8ef7; --green: #22c55e;
-      --red: #ef4444; --yellow: #f59e0b; --text: #e2e8f0;
-      --muted: #8892a4; --radius: 12px;
-    }
-    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+    body { background: var(--bg,#0d0f14); color: var(--text,#e2e8f0); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
 
-    /* ── Header ── */
-    .page-header { padding: 24px 32px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-    .page-header h1 { font-size: 1.4rem; font-weight: 700; }
+    .page-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 1.3rem; font-weight: 700; }
+
     .currency-tabs { display: flex; gap: 6px; }
     .currency-tabs button {
-      padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border);
-      background: var(--surface); color: var(--muted); cursor: pointer; font-size: 0.8rem;
-      transition: all 0.2s;
+      padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border,#2a3045);
+      background: var(--surface,#161a23); color: var(--muted,#8892a4); cursor: pointer; font-size: 0.78rem; transition: all 0.2s;
     }
-    .currency-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .currency-tabs button.active { background: var(--accent,#4f8ef7); color: #fff; border-color: var(--accent,#4f8ef7); }
 
-    /* ── Macro Grid ── */
-    .macro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 24px 32px; }
+    .macro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 20px 24px; }
 
-    /* ── KPI Card ── */
     .kpi-card {
-      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 20px; cursor: pointer; transition: transform 0.15s, border-color 0.15s;
-      position: relative;
+      background: var(--card,#1c2130); border: 1px solid var(--border,#2a3045); border-radius: 12px;
+      padding: 18px; cursor: pointer; transition: transform 0.15s, border-color 0.15s; position: relative;
     }
-    .kpi-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-    .kpi-card .expand-hint { position: absolute; top: 12px; right: 12px; font-size: 0.65rem; color: var(--muted); }
-    .kpi-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .kpi-card .value { font-size: 2rem; font-weight: 700; }
-    .kpi-card .value.loading { font-size: 1rem; color: var(--muted); animation: pulse 1.5s infinite; }
-    .kpi-card .value.error { font-size: 1rem; color: var(--red); }
-    .kpi-card .sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
-    .kpi-card .bias { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; margin-top: 8px; }
-    .bias.hawkish { background: rgba(34,197,94,0.15); color: var(--green); }
-    .bias.dovish   { background: rgba(239,68,68,0.15);  color: var(--red); }
-    .bias.neutral  { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .kpi-card:hover { transform: translateY(-2px); border-color: var(--accent,#4f8ef7); }
+    .kpi-card .expand-hint { position: absolute; top: 10px; right: 10px; font-size: 0.62rem; color: var(--muted,#8892a4); }
+    .kpi-card .label { font-size: 0.72rem; color: var(--muted,#8892a4); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .kpi-card .value { font-size: 1.9rem; font-weight: 700; }
+    .kpi-card .value.loading { font-size: 0.95rem; color: var(--muted,#8892a4); animation: pulse 1.5s infinite; }
+    .kpi-card .value.error { font-size: 0.95rem; color: var(--red,#ef4444); }
+    .kpi-card .sub { font-size: 0.76rem; color: var(--muted,#8892a4); margin-top: 3px; }
+    .bias { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-top: 6px; }
+    .bias.hawkish { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .bias.dovish   { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .bias.neutral  { background: rgba(245,158,11,0.15); color: #f59e0b; }
 
-    /* ── Sparkline ── */
-    .sparkline-wrap { margin-top: 12px; }
-    canvas.spark { width: 100% !important; height: 60px !important; }
+    .sparkline-wrap { margin-top: 10px; height: 56px; position: relative; }
+    .sparkline-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
 
-    /* ── Expand Modal ── */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-      z-index: 1000; align-items: center; justify-content: center;
-    }
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal-box {
-      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 28px; width: 90vw; max-width: 760px; max-height: 85vh; overflow-y: auto;
-    }
-    .modal-box h2 { margin-bottom: 16px; font-size: 1.2rem; }
-    .modal-close { float: right; background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; }
-    canvas.big-chart { width: 100% !important; height: 300px !important; }
+    .modal-box { background: var(--card,#1c2130); border: 1px solid var(--border,#2a3045); border-radius: 12px; padding: 24px; width: 92vw; max-width: 740px; max-height: 88vh; overflow-y: auto; }
+    .modal-box h2 { margin-bottom: 14px; font-size: 1.1rem; }
+    .modal-close { float: right; background: none; border: none; color: var(--muted,#8892a4); font-size: 1.3rem; cursor: pointer; margin-left: 8px; }
+    .modal-chart-wrap { position: relative; height: 280px; width: 100%; }
+    .modal-chart-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
 
-    /* ── Historical Table ── */
-    .hist-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.82rem; }
-    .hist-table th { background: var(--surface); padding: 8px 12px; text-align: left; color: var(--muted); border-bottom: 1px solid var(--border); }
-    .hist-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
-    .hist-table tr:hover td { background: var(--surface); }
-    .up { color: var(--green); } .dn { color: var(--red); }
+    .hist-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.8rem; }
+    .hist-table th { background: var(--surface,#161a23); padding: 7px 10px; text-align: left; color: var(--muted,#8892a4); border-bottom: 1px solid var(--border,#2a3045); }
+    .hist-table td { padding: 7px 10px; border-bottom: 1px solid var(--border,#2a3045); }
+    .hist-table tr:hover td { background: var(--surface,#161a23); }
+    .up { color: #22c55e; } .dn { color: #ef4444; }
 
-    /* ── AI Analysis ── */
-    .ai-section { margin: 0 32px 24px; }
-    .ai-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
-    .ai-card h2 { font-size: 1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .ai-card textarea {
-      width: 100%; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); padding: 12px; font-size: 0.85rem;
-      resize: vertical; min-height: 60px; font-family: inherit;
-    }
-    .ai-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-    .btn {
-      padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
-      font-size: 0.85rem; font-weight: 600; transition: opacity 0.2s;
-    }
+    /* AI */
+    .ai-section { margin: 0 24px 24px; }
+    .ai-card { background: var(--card,#1c2130); border: 1px solid var(--border,#2a3045); border-radius: 12px; padding: 20px; }
+    .ai-card h2 { font-size: 0.95rem; margin-bottom: 14px; }
+    .ai-card textarea { width: 100%; background: var(--surface,#161a23); border: 1px solid var(--border,#2a3045); border-radius: 8px; color: var(--text,#e2e8f0); padding: 10px; font-size: 0.83rem; resize: vertical; min-height: 56px; font-family: inherit; }
+    .ai-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+    .btn { padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.83rem; font-weight: 600; transition: opacity 0.2s; }
     .btn:hover { opacity: 0.85; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
-    .ai-output {
-      margin-top: 16px; background: var(--surface); border-radius: 8px; padding: 16px;
-      font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap; display: none;
-    }
+    .btn-primary { background: var(--accent,#4f8ef7); color: #fff; }
+    .btn-ghost { background: var(--surface,#161a23); color: var(--text,#e2e8f0); border: 1px solid var(--border,#2a3045); }
+    .ai-output { margin-top: 14px; background: var(--surface,#161a23); border-radius: 8px; padding: 14px; font-size: 0.83rem; line-height: 1.7; white-space: pre-wrap; display: none; }
     .ai-output.visible { display: block; }
-    .ai-loading { color: var(--muted); animation: pulse 1.5s infinite; }
+    .ai-loading { color: var(--muted,#8892a4); animation: pulse 1.5s infinite; }
+
+    .status-bar { padding: 6px 24px 16px; font-size: 0.73rem; color: var(--muted,#8892a4); }
 
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-    /* ── Status Bar ── */
-    .status-bar { padding: 8px 32px; font-size: 0.75rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 8px; }
   </style>
 </head>
 <body>
 
-<!-- Header -->
 <div class="page-header">
   <h1>📊 Macro Intelligence</h1>
-  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
     <div class="currency-tabs">
-      <button class="active" onclick="setCurrency('USD')">USD Bias</button>
-      <button onclick="setCurrency('EUR')">EUR Bias</button>
-      <button onclick="setCurrency('GBP')">GBP Bias</button>
+      <button class="active" onclick="setCurrency('USD',this)">USD Bias</button>
+      <button onclick="setCurrency('EUR',this)">EUR Bias</button>
+      <button onclick="setCurrency('GBP',this)">GBP Bias</button>
     </div>
-    <button class="btn btn-ghost" onclick="refreshAll()" style="font-size:0.78rem;padding:6px 14px;">⟳ Refresh</button>
+    <button class="btn btn-ghost" onclick="refreshAll()" style="font-size:0.75rem;padding:5px 12px;">⟳ Refresh</button>
   </div>
 </div>
 
-<!-- KPI Grid -->
 <div class="macro-grid" id="macroGrid">
-  <!-- Cards injected by JS -->
-  <div class="kpi-card"><div class="label">Fed Funds Rate</div><div class="value loading" id="val-fed">Loading…</div><div class="sub" id="sub-fed"></div><div class="sparkline-wrap"><canvas class="spark" id="spark-fed"></canvas></div></div>
-  <div class="kpi-card"><div class="label">CPI YoY %</div><div class="value loading" id="val-cpi">Loading…</div><div class="sub" id="sub-cpi"></div><div class="sparkline-wrap"><canvas class="spark" id="spark-cpi"></canvas></div></div>
-  <div class="kpi-card"><div class="label">Core CPI YoY %</div><div class="value loading" id="val-core">Loading…</div><div class="sub" id="sub-core"></div><div class="sparkline-wrap"><canvas class="spark" id="spark-core"></canvas></div></div>
-  <div class="kpi-card"><div class="label">NFP MoM (000s)</div><div class="value loading" id="val-nfp">Loading…</div><div class="sub" id="sub-nfp"></div><div class="sparkline-wrap"><canvas class="spark" id="spark-nfp"></canvas></div></div>
-  <div class="kpi-card"><div class="label">Unemployment %</div><div class="value loading" id="val-unem">Loading…</div><div class="sub" id="sub-unem"></div><div class="sparkline-wrap"><canvas class="spark" id="spark-unem"></canvas></div></div>
-  <div class="kpi-card"><div class="label">GDP QoQ %</div><div class="value loading" id="val-gdp">Loading…</div><div class="sub" id="sub-gdp"></div><div class="sparkline-wrap"><canvas class="spark" id="spark-gdp"></canvas></div></div>
+  <div class="kpi-card" id="card-fed">
+    <div class="label">Fed Funds Rate</div>
+    <div class="value loading" id="val-fed">Loading…</div>
+    <div class="sub" id="sub-fed"></div>
+    <div class="sparkline-wrap"><canvas id="spark-fed"></canvas></div>
+  </div>
+  <div class="kpi-card" id="card-cpi">
+    <div class="label">CPI YoY %</div>
+    <div class="value loading" id="val-cpi">Loading…</div>
+    <div class="sub" id="sub-cpi"></div>
+    <div class="sparkline-wrap"><canvas id="spark-cpi"></canvas></div>
+  </div>
+  <div class="kpi-card" id="card-core">
+    <div class="label">Core CPI YoY %</div>
+    <div class="value loading" id="val-core">Loading…</div>
+    <div class="sub" id="sub-core"></div>
+    <div class="sparkline-wrap"><canvas id="spark-core"></canvas></div>
+  </div>
+  <div class="kpi-card" id="card-nfp">
+    <div class="label">NFP MoM (000s)</div>
+    <div class="value loading" id="val-nfp">Loading…</div>
+    <div class="sub" id="sub-nfp"></div>
+    <div class="sparkline-wrap"><canvas id="spark-nfp"></canvas></div>
+  </div>
+  <div class="kpi-card" id="card-unem">
+    <div class="label">Unemployment %</div>
+    <div class="value loading" id="val-unem">Loading…</div>
+    <div class="sub" id="sub-unem"></div>
+    <div class="sparkline-wrap"><canvas id="spark-unem"></canvas></div>
+  </div>
+  <div class="kpi-card" id="card-gdp">
+    <div class="label">GDP QoQ %</div>
+    <div class="value loading" id="val-gdp">Loading…</div>
+    <div class="sub" id="sub-gdp"></div>
+    <div class="sparkline-wrap"><canvas id="spark-gdp"></canvas></div>
+  </div>
 </div>
 
-<!-- AI Macro Analysis -->
 <div class="ai-section">
   <div class="ai-card">
-    <h2>◈ AI Macro Analysis <span style="font-size:0.7rem;color:var(--muted);font-weight:400;">Powered by Mistral · reads live FRED data</span></h2>
-    <textarea id="aiQuestion" placeholder="Ask anything… e.g. 'Is the Fed likely to cut rates this quarter?' or leave empty for full weekly analysis"></textarea>
+    <h2>◈ AI Macro Analysis <span style="font-size:0.68rem;color:var(--muted,#8892a4);font-weight:400;">Powered by Mistral · reads live FRED data</span></h2>
+    <textarea id="aiQuestion" placeholder="Ask anything… e.g. 'Is the Fed likely to cut rates?' or leave empty for full weekly analysis"></textarea>
     <div class="ai-actions">
       <button class="btn btn-primary" onclick="runAIMacro()">⚡ Generate Weekly Analysis</button>
       <button class="btn btn-ghost" onclick="clearAI()">Clear</button>
@@ -161,12 +146,12 @@
 <div class="status-bar" id="statusBar">Fetching macro data…</div>
 
 <!-- Chart Expand Modal -->
-<div class="modal-overlay" id="chartModal" onclick="closeModal(event)">
+<div class="modal-overlay" id="chartModal" onclick="closeModalOverlay(event)">
   <div class="modal-box">
     <button class="modal-close" onclick="document.getElementById('chartModal').classList.remove('open')">✕</button>
     <h2 id="modalTitle">Chart</h2>
-    <canvas class="big-chart" id="bigChart"></canvas>
-    <table class="hist-table" id="histTable">
+    <div class="modal-chart-wrap"><canvas id="bigChart"></canvas></div>
+    <table class="hist-table">
       <thead><tr><th>Date</th><th>Value</th><th>Change</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
@@ -175,105 +160,137 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// ── Config ──
-const WORKER = 'https://notion-proxy.churan756.workers.dev';
+// ── Config — uses API.fred() from api.js which calls worker ?action=fred ──
 const SERIES_META = {
-  fed_rate:     { label: 'Fed Funds Rate', unit: '%', id: 'fed',  color: '#4f8ef7', invert: false },
-  cpi:          { label: 'CPI YoY',        unit: '%', id: 'cpi',  color: '#f59e0b', invert: false },
-  core_cpi:     { label: 'Core CPI',       unit: '%', id: 'core', color: '#a78bfa', invert: false },
-  nfp:          { label: 'NFP MoM',        unit: 'K', id: 'nfp',  color: '#22c55e', invert: false },
-  unemployment: { label: 'Unemployment',   unit: '%', id: 'unem', color: '#ef4444', invert: true  },
-  gdp:          { label: 'GDP QoQ',        unit: '%', id: 'gdp',  color: '#06b6d4', invert: false },
+  FEDFUNDS:        { label:'Fed Funds Rate', unit:'%',  id:'fed',  color:'#4f8ef7' },
+  CPIAUCSL:        { label:'CPI YoY',        unit:'%',  id:'cpi',  color:'#f59e0b', yoy:true  },
+  CPILFESL:        { label:'Core CPI',       unit:'%',  id:'core', color:'#a78bfa', yoy:true  },
+  PAYEMS:          { label:'NFP MoM',        unit:'K',  id:'nfp',  color:'#22c55e', mom:true  },
+  UNRATE:          { label:'Unemployment',   unit:'%',  id:'unem', color:'#ef4444' },
+  A191RL1Q225SBEA: { label:'GDP QoQ',        unit:'%',  id:'gdp',  color:'#06b6d4' },
 };
 
-let macroCache = {};
-let bigChartInstance = null;
-let currentCurrency = 'USD';
+let macroCache   = {};       // key = FRED series ID, value = processed observations
+let bigChartInst = null;
+let currentCcy   = 'USD';
 
-// ── Fetch all FRED data ──
+// ── Fetch all series using existing engines pattern ──
 async function refreshAll() {
   document.getElementById('statusBar').textContent = 'Fetching macro data from FRED…';
-  try {
-    const res = await fetch(`${WORKER}/fred`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    macroCache = json.macro || {};
-    renderAllCards();
-    document.getElementById('statusBar').textContent = `Last updated: ${new Date().toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata'})} IST`;
-  } catch (e) {
-    document.getElementById('statusBar').textContent = `⚠ Fetch error: ${e.message}`;
-    showAllErrors();
+  let anyLoaded = false;
+
+  for (const [seriesId, meta] of Object.entries(SERIES_META)) {
+    try {
+      // API.fred() → worker ?action=fred&series=CPIAUCSL → returns { observations:[...] }
+      const data = await API.fred(seriesId);
+      const obs  = (data.observations || []).filter(o => o.value !== '.');
+
+      // Process observations the same way engines.js does
+      const sorted = [...obs].reverse(); // oldest→newest
+      let processed;
+
+      if (meta.yoy) {
+        // CPI: compute YoY % change (compare vs 12 months ago)
+        processed = sorted.map((o, i) => {
+          const prev12 = sorted[i - 12];
+          const val    = parseFloat(o.value);
+          const yoy    = prev12 ? +((val - parseFloat(prev12.value)) / parseFloat(prev12.value) * 100).toFixed(2) : null;
+          return { date: o.date, value: val, yoyPct: yoy };
+        });
+      } else if (meta.mom) {
+        // NFP: compute month-on-month change
+        processed = sorted.map((o, i) => {
+          const prev = sorted[i - 1];
+          const val  = parseFloat(o.value);
+          const mom  = prev ? +(val - parseFloat(prev.value)).toFixed(1) : null;
+          return { date: o.date, value: val, mom };
+        });
+      } else {
+        processed = sorted.map(o => ({ date: o.date, value: parseFloat(o.value) }));
+      }
+
+      macroCache[seriesId] = processed;
+      renderCard(seriesId, meta, processed);
+      anyLoaded = true;
+    } catch (e) {
+      showCardError(meta.id, e.message);
+    }
+  }
+
+  const ts = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
+  document.getElementById('statusBar').textContent = anyLoaded
+    ? `Last updated: ${ts} IST`
+    : '⚠ Could not load macro data — check worker-v11.js is deployed';
+}
+
+function renderCard(seriesId, meta, processed) {
+  // Get display value
+  const latest = processed[processed.length - 1];
+  const prev   = processed[processed.length - 2];
+  if (!latest) { showCardError(meta.id, 'No data'); return; }
+
+  let displayVal, unit = meta.unit;
+
+  if (meta.yoy && latest.yoyPct != null) {
+    displayVal = latest.yoyPct;
+  } else if (meta.mom && latest.mom != null) {
+    displayVal = latest.mom;
+    unit = 'K';
+  } else {
+    displayVal = latest.value;
+  }
+
+  // Display
+  const valEl = document.getElementById(`val-${meta.id}`);
+  valEl.className = 'value';
+  valEl.textContent = `${displayVal.toFixed(2)}${unit}`;
+
+  // Sub — date + change
+  const prevDisplay = prev ? (meta.yoy ? prev.yoyPct : meta.mom ? prev.mom : prev.value) : null;
+  const change = prevDisplay != null ? displayVal - prevDisplay : null;
+  const subEl = document.getElementById(`sub-${meta.id}`);
+  const cls   = change > 0 ? 'up' : change < 0 ? 'dn' : '';
+  const chStr = change != null ? `<span class="${cls}">${change > 0 ? '+' : ''}${change.toFixed(2)}${unit}</span>` : '';
+  subEl.innerHTML = `${latest.date} ${chStr}`;
+
+  // Fed bias badge
+  if (seriesId === 'FEDFUNDS') {
+    const card = document.getElementById(`card-${meta.id}`);
+    let biasEl = card.querySelector('.bias');
+    if (!biasEl) { biasEl = document.createElement('div'); biasEl.className = 'bias'; subEl.insertAdjacentElement('afterend', biasEl); }
+    if (displayVal >= 5)      { biasEl.className = 'bias hawkish'; biasEl.textContent = 'Hawkish'; }
+    else if (displayVal <= 2) { biasEl.className = 'bias dovish';  biasEl.textContent = 'Dovish';  }
+    else                       { biasEl.className = 'bias neutral'; biasEl.textContent = 'Neutral'; }
+  }
+
+  // Sparkline — last 24 values
+  const chartVals = processed.slice(-24).map(o => meta.yoy ? (o.yoyPct ?? o.value) : meta.mom ? (o.mom ?? o.value) : o.value);
+  drawSparkline(`spark-${meta.id}`, chartVals, meta.color);
+
+  // Expand click
+  const card = document.getElementById(`card-${meta.id}`);
+  card.onclick = () => openModal(seriesId, meta, processed);
+  if (!card.querySelector('.expand-hint')) {
+    const h = document.createElement('div'); h.className = 'expand-hint'; h.textContent = '⤢ expand'; card.appendChild(h);
   }
 }
 
-function renderAllCards() {
-  const keys = Object.keys(SERIES_META);
-  keys.forEach(key => {
-    const meta = SERIES_META[key];
-    const raw = macroCache[key] || [];
-    const observations = raw.slice(0, 24).reverse(); // oldest first for charts
-    const latest = raw[0];
-    const prev   = raw[1];
-
-    if (!latest) { showError(meta.id); return; }
-
-    const val = parseFloat(latest.value);
-    const prevVal = prev ? parseFloat(prev.value) : null;
-    const change = prevVal !== null ? (val - prevVal) : null;
-    const changeStr = change !== null ? `${change > 0 ? '+' : ''}${change.toFixed(2)}${meta.unit}` : '';
-    const direction = change > 0 ? 'up' : change < 0 ? 'dn' : '';
-
-    // Value
-    document.getElementById(`val-${meta.id}`).className = 'value';
-    document.getElementById(`val-${meta.id}`).textContent = `${val.toFixed(2)}${meta.unit}`;
-
-    // Sub
-    const subEl = document.getElementById(`sub-${meta.id}`);
-    subEl.innerHTML = `${latest.date} <span class="${direction}">${changeStr}</span>`;
-
-    // Bias badge (for Fed card)
-    if (key === 'fed_rate') {
-      const card = document.getElementById(`val-${meta.id}`).closest('.kpi-card');
-      let biasEl = card.querySelector('.bias');
-      if (!biasEl) { biasEl = document.createElement('div'); biasEl.className = 'bias'; card.appendChild(biasEl); }
-      if (val >= 5) { biasEl.className = 'bias hawkish'; biasEl.textContent = 'Hawkish'; }
-      else if (val <= 2) { biasEl.className = 'bias dovish'; biasEl.textContent = 'Dovish'; }
-      else { biasEl.className = 'bias neutral'; biasEl.textContent = 'Neutral'; }
-    }
-
-    // Sparkline
-    drawSparkline(`spark-${meta.id}`, observations.map(o => parseFloat(o.value)), meta.color);
-
-    // Make card expandable
-    const card = document.getElementById(`spark-${meta.id}`).closest('.kpi-card');
-    card.onclick = () => openChartModal(key, meta, observations);
-    let hint = card.querySelector('.expand-hint');
-    if (!hint) { hint = document.createElement('div'); hint.className = 'expand-hint'; hint.textContent = '⤢ expand'; card.appendChild(hint); }
-  });
-}
-
-function showError(id) {
+function showCardError(id) {
   const el = document.getElementById(`val-${id}`);
   if (el) { el.className = 'value error'; el.textContent = '—'; }
 }
-function showAllErrors() {
-  Object.values(SERIES_META).forEach(m => showError(m.id));
-}
 
-// ── Sparkline ──
 function drawSparkline(canvasId, values, color) {
   const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+  if (!canvas || !values.length) return;
   const existing = Chart.getChart(canvas);
   if (existing) existing.destroy();
 
-  new Chart(ctx, {
+  new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: {
       labels: values.map((_, i) => i),
-      datasets: [{ data: values, borderColor: color, borderWidth: 2, fill: true,
-        backgroundColor: color + '18', pointRadius: 0, tension: 0.4 }]
+      datasets: [{ data: values, borderColor: color, borderWidth: 1.8, fill: true, backgroundColor: color + '18', pointRadius: 0, tension: 0.4 }]
     },
     options: {
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -283,24 +300,21 @@ function drawSparkline(canvasId, values, color) {
   });
 }
 
-// ── Expand Modal ──
-function openChartModal(key, meta, observations) {
-  document.getElementById('modalTitle').textContent = meta.label + ' — Last 24 Months';
+function openModal(seriesId, meta, processed) {
+  document.getElementById('modalTitle').textContent = `${meta.label} — History`;
   document.getElementById('chartModal').classList.add('open');
 
   const canvas = document.getElementById('bigChart');
-  if (bigChartInstance) bigChartInstance.destroy();
+  if (bigChartInst) bigChartInst.destroy();
 
-  bigChartInstance = new Chart(canvas.getContext('2d'), {
+  const vals  = processed.slice(-36).map(o => meta.yoy ? (o.yoyPct ?? o.value) : meta.mom ? (o.mom ?? o.value) : o.value);
+  const dates = processed.slice(-36).map(o => o.date);
+
+  bigChartInst = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: {
-      labels: observations.map(o => o.date),
-      datasets: [{
-        label: meta.label,
-        data: observations.map(o => parseFloat(o.value)),
-        borderColor: meta.color, borderWidth: 2.5, fill: true,
-        backgroundColor: meta.color + '20', pointRadius: 3, tension: 0.3,
-      }]
+      labels: dates,
+      datasets: [{ label: meta.label, data: vals, borderColor: meta.color, borderWidth: 2.5, fill: true, backgroundColor: meta.color + '20', pointRadius: 3, tension: 0.3 }]
     },
     options: {
       plugins: { legend: { display: false }, tooltip: { enabled: true } },
@@ -312,66 +326,51 @@ function openChartModal(key, meta, observations) {
     }
   });
 
-  // Historical table
+  // Historical table — newest first
   const tbody = document.getElementById('histBody');
   tbody.innerHTML = '';
-  const sorted = [...observations].reverse(); // newest first
-  sorted.forEach((o, i) => {
-    const prev = sorted[i + 1];
-    const val = parseFloat(o.value);
-    const prevVal = prev ? parseFloat(prev.value) : null;
-    const change = prevVal !== null ? (val - prevVal).toFixed(2) : '—';
-    const cls = parseFloat(change) > 0 ? 'up' : parseFloat(change) < 0 ? 'dn' : '';
-    tbody.innerHTML += `<tr><td>${o.date}</td><td>${val.toFixed(2)}${meta.unit}</td><td class="${cls}">${change !== '—' ? (parseFloat(change) > 0 ? '+' : '') + change : '—'}</td></tr>`;
+  const displayData = [...processed].reverse().slice(0, 36);
+  displayData.forEach((o, i) => {
+    const val  = meta.yoy ? (o.yoyPct ?? o.value) : meta.mom ? (o.mom ?? o.value) : o.value;
+    const next = displayData[i + 1];
+    const prev = next ? (meta.yoy ? (next.yoyPct ?? next.value) : meta.mom ? (next.mom ?? next.value) : next.value) : null;
+    const chg  = prev != null ? (val - prev) : null;
+    const cls  = chg > 0 ? 'up' : chg < 0 ? 'dn' : '';
+    tbody.innerHTML += `<tr>
+      <td>${o.date}</td>
+      <td>${val != null ? val.toFixed(2) + meta.unit : '—'}</td>
+      <td class="${cls}">${chg != null ? (chg > 0 ? '+' : '') + chg.toFixed(2) : '—'}</td>
+    </tr>`;
   });
 }
 
-function closeModal(e) {
-  if (e.target === document.getElementById('chartModal')) {
-    document.getElementById('chartModal').classList.remove('open');
-  }
+function closeModalOverlay(e) {
+  if (e.target.id === 'chartModal') document.getElementById('chartModal').classList.remove('open');
 }
 
-// ── Currency Switcher ──
-function setCurrency(currency) {
-  currentCurrency = currency;
+function setCurrency(ccy, el) {
+  currentCcy = ccy;
   document.querySelectorAll('.currency-tabs button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  // Update AI prompt suggestion
-  document.getElementById('aiQuestion').placeholder = `Ask about ${currency} bias… e.g. 'What is the ${currency} outlook based on current macro data?'`;
+  el.classList.add('active');
+  document.getElementById('aiQuestion').placeholder = `Ask about ${ccy} bias… e.g. 'What is the ${ccy} outlook based on current macro data?'`;
 }
 
-// ── AI Macro Analysis ──
 async function runAIMacro() {
   const question = document.getElementById('aiQuestion').value.trim();
-  const output = document.getElementById('aiOutput');
+  const output   = document.getElementById('aiOutput');
   output.className = 'ai-output visible';
   output.innerHTML = '<span class="ai-loading">⚡ Fetching live FRED data and generating analysis…</span>';
 
   try {
-    const body = { question: question || '' };
-    if (currentCurrency !== 'USD') {
-      body.question = (question ? question + ' ' : '') + `Focus on implications for ${currentCurrency}.`;
-    }
+    // Uses API.aiMacro() → worker ?action=ai-macro
+    let q = question || '';
+    if (currentCcy !== 'USD') q += (q ? ' ' : '') + `Focus on implications for ${currentCcy}.`;
 
-    const res = await fetch(`${WORKER}/ai-macro`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-
+    const data = await API.aiMacro(q);
     if (data.error) throw new Error(data.error);
-
     output.textContent = data.analysis;
-
-    // Also refresh macro data from response
-    if (data.macroData) { macroCache = data.macroData; renderAllCards(); }
-
   } catch (e) {
-    output.innerHTML = `<span style="color:var(--red)">⚠ AI Error: ${e.message}. Make sure worker-v10.js is deployed.</span>`;
+    output.innerHTML = `<span style="color:#ef4444">⚠ AI Error: ${e.message}. Ensure worker-v11.js is deployed.</span>`;
   }
 }
 
@@ -380,7 +379,7 @@ function clearAI() {
   document.getElementById('aiQuestion').value = '';
 }
 
-// ── Init ──
+// Init
 refreshAll();
 </script>
 </body>
