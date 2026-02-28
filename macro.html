@@ -1,386 +1,405 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TradeOS · Macro</title>
-  <script src="core/security.js"></script>
-  <script src="core/config.js"></script>
-  <script src="core/state.js"></script>
-  <script src="core/api.js"></script>
-  <link rel="stylesheet" href="core/style.css"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg,#0d0f14); color: var(--text,#e2e8f0); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeOS · Macro</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://notion-proxy.churan756.workers.dev https://api.stlouisfed.org; frame-ancestors 'none';">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="core/style.css">
+<style>
+.macro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; padding: 16px 20px; }
+.macro-card {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 8px;
+  padding: 16px; cursor: pointer; transition: border-color .15s, transform .1s; position: relative;
+}
+.macro-card:hover { border-color: var(--b3); transform: translateY(-1px); }
+.macro-card .mc-label { font-size: .45rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; font-family: var(--ff); }
+.macro-card .mc-val { font-family: var(--fd); font-size: 1.8rem; font-weight: 800; line-height: 1; }
+.macro-card .mc-val.loading { font-size: .65rem; color: var(--muted); animation: pulse 1.5s infinite; font-family: var(--ff); }
+.macro-card .mc-val.err { font-size: .65rem; color: var(--red); font-family: var(--ff); }
+.macro-card .mc-sub { font-size: .44rem; color: var(--m2); margin-top: 4px; font-family: var(--ff); }
+.mc-expand { position: absolute; top: 10px; right: 10px; font-size: .4rem; color: var(--muted); }
+.bias-tag { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: .42rem; font-weight: 700; margin-top: 5px; font-family: var(--ff); letter-spacing: .5px; }
+.bias-hawkish { background: rgba(0,212,122,.12); color: var(--green); border: 1px solid rgba(0,212,122,.2); }
+.bias-dovish  { background: rgba(255,45,85,.12);  color: var(--red);   border: 1px solid rgba(255,45,85,.2); }
+.bias-neutral { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid rgba(245,166,35,.2); }
+.spark-wrap { margin-top: 10px; height: 48px; position: relative; }
+.spark-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+.chg-up { color: var(--green); } .chg-dn { color: var(--red); }
 
-    .page-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-    .page-header h1 { font-size: 1.3rem; font-weight: 700; }
+/* AI panel */
+.ai-panel {
+  margin: 0 20px 20px; background: var(--s2); border: 1px solid var(--b2);
+  border-radius: 8px; padding: 18px;
+}
+.ai-panel .shdr { font-size: .48rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.ai-panel textarea {
+  width: 100%; background: var(--s3); border: 1px solid var(--b2); border-radius: 6px;
+  color: var(--text); padding: 10px; font-size: .52rem; resize: vertical;
+  min-height: 52px; font-family: var(--ff);
+}
+.ai-panel textarea:focus { outline: none; border-color: var(--b3); }
+.ai-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.btn-ai { padding: 7px 16px; border-radius: 5px; border: none; cursor: pointer; font-size: .48rem; font-weight: 700; font-family: var(--ff); letter-spacing: .5px; transition: opacity .15s; }
+.btn-ai:hover { opacity: .8; }
+.btn-ai-primary { background: var(--blue); color: #fff; }
+.btn-ai-ghost { background: var(--s3); color: var(--t2); border: 1px solid var(--b2); }
+.ai-out { margin-top: 12px; background: var(--s3); border: 1px solid var(--b2); border-radius: 6px; padding: 12px; font-size: .5rem; line-height: 1.8; white-space: pre-wrap; display: none; font-family: var(--ff); color: var(--text); }
+.ai-out.show { display: block; }
+.ai-pulse { color: var(--muted); animation: pulse 1.5s infinite; }
 
-    .currency-tabs { display: flex; gap: 6px; }
-    .currency-tabs button {
-      padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border,#2a3045);
-      background: var(--surface,#161a23); color: var(--muted,#8892a4); cursor: pointer; font-size: 0.78rem; transition: all 0.2s;
-    }
-    .currency-tabs button.active { background: var(--accent,#4f8ef7); color: #fff; border-color: var(--accent,#4f8ef7); }
+/* Expand modal */
+.modal-ov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 2000; align-items: center; justify-content: center; }
+.modal-ov.show { display: flex; }
+.modal-box { background: var(--s2); border: 1px solid var(--b2); border-radius: 10px; padding: 22px; width: 90vw; max-width: 720px; max-height: 85vh; overflow-y: auto; }
+.modal-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.modal-hdr h3 { font-family: var(--fd); font-size: .85rem; font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 4px 8px; }
+.modal-close:hover { color: var(--text); }
+.modal-chart-wrap { position: relative; height: 260px; }
+.modal-chart-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+.hist-tbl { width: 100%; border-collapse: collapse; margin-top: 14px; }
+.hist-tbl th { font-size: .42rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 6px 10px; border-bottom: 1px solid var(--b2); text-align: left; font-family: var(--ff); }
+.hist-tbl td { padding: 6px 10px; font-size: .48rem; border-bottom: 1px solid var(--b2); font-family: var(--ff); color: var(--t2); }
+.hist-tbl tr:hover td { background: var(--s3); }
 
-    .macro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 20px 24px; }
+/* Currency switcher */
+.ccy-tabs { display: flex; gap: 6px; }
+.ccy-tab { padding: 4px 12px; border-radius: 4px; border: 1px solid var(--b2); background: var(--s3); color: var(--muted); font-size: .44rem; cursor: pointer; font-family: var(--ff); letter-spacing: .5px; transition: all .15s; }
+.ccy-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
 
-    .kpi-card {
-      background: var(--card,#1c2130); border: 1px solid var(--border,#2a3045); border-radius: 12px;
-      padding: 18px; cursor: pointer; transition: transform 0.15s, border-color 0.15s; position: relative;
-    }
-    .kpi-card:hover { transform: translateY(-2px); border-color: var(--accent,#4f8ef7); }
-    .kpi-card .expand-hint { position: absolute; top: 10px; right: 10px; font-size: 0.62rem; color: var(--muted,#8892a4); }
-    .kpi-card .label { font-size: 0.72rem; color: var(--muted,#8892a4); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-    .kpi-card .value { font-size: 1.9rem; font-weight: 700; }
-    .kpi-card .value.loading { font-size: 0.95rem; color: var(--muted,#8892a4); animation: pulse 1.5s infinite; }
-    .kpi-card .value.error { font-size: 0.95rem; color: var(--red,#ef4444); }
-    .kpi-card .sub { font-size: 0.76rem; color: var(--muted,#8892a4); margin-top: 3px; }
-    .bias { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-top: 6px; }
-    .bias.hawkish { background: rgba(34,197,94,0.15); color: #22c55e; }
-    .bias.dovish   { background: rgba(239,68,68,0.15); color: #ef4444; }
-    .bias.neutral  { background: rgba(245,158,11,0.15); color: #f59e0b; }
+/* Status */
+.macro-status { padding: 4px 20px 12px; font-size: .42rem; color: var(--muted); font-family: var(--ff); }
 
-    .sparkline-wrap { margin-top: 10px; height: 56px; position: relative; }
-    .sparkline-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+/* Page header */
+.page-hdr { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 16px 20px 8px; }
+.page-hdr h1 { font-family: var(--fd); font-size: 1rem; font-weight: 800; }
+.page-hdr-right { display: flex; gap: 10px; align-items: center; }
 
-    /* Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 1000; align-items: center; justify-content: center; }
-    .modal-overlay.open { display: flex; }
-    .modal-box { background: var(--card,#1c2130); border: 1px solid var(--border,#2a3045); border-radius: 12px; padding: 24px; width: 92vw; max-width: 740px; max-height: 88vh; overflow-y: auto; }
-    .modal-box h2 { margin-bottom: 14px; font-size: 1.1rem; }
-    .modal-close { float: right; background: none; border: none; color: var(--muted,#8892a4); font-size: 1.3rem; cursor: pointer; margin-left: 8px; }
-    .modal-chart-wrap { position: relative; height: 280px; width: 100%; }
-    .modal-chart-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
-
-    .hist-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.8rem; }
-    .hist-table th { background: var(--surface,#161a23); padding: 7px 10px; text-align: left; color: var(--muted,#8892a4); border-bottom: 1px solid var(--border,#2a3045); }
-    .hist-table td { padding: 7px 10px; border-bottom: 1px solid var(--border,#2a3045); }
-    .hist-table tr:hover td { background: var(--surface,#161a23); }
-    .up { color: #22c55e; } .dn { color: #ef4444; }
-
-    /* AI */
-    .ai-section { margin: 0 24px 24px; }
-    .ai-card { background: var(--card,#1c2130); border: 1px solid var(--border,#2a3045); border-radius: 12px; padding: 20px; }
-    .ai-card h2 { font-size: 0.95rem; margin-bottom: 14px; }
-    .ai-card textarea { width: 100%; background: var(--surface,#161a23); border: 1px solid var(--border,#2a3045); border-radius: 8px; color: var(--text,#e2e8f0); padding: 10px; font-size: 0.83rem; resize: vertical; min-height: 56px; font-family: inherit; }
-    .ai-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-    .btn { padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.83rem; font-weight: 600; transition: opacity 0.2s; }
-    .btn:hover { opacity: 0.85; }
-    .btn-primary { background: var(--accent,#4f8ef7); color: #fff; }
-    .btn-ghost { background: var(--surface,#161a23); color: var(--text,#e2e8f0); border: 1px solid var(--border,#2a3045); }
-    .ai-output { margin-top: 14px; background: var(--surface,#161a23); border-radius: 8px; padding: 14px; font-size: 0.83rem; line-height: 1.7; white-space: pre-wrap; display: none; }
-    .ai-output.visible { display: block; }
-    .ai-loading { color: var(--muted,#8892a4); animation: pulse 1.5s infinite; }
-
-    .status-bar { padding: 6px 24px 16px; font-size: 0.73rem; color: var(--muted,#8892a4); }
-
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  </style>
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
 </head>
 <body>
 
-<div class="page-header">
-  <h1>📊 Macro Intelligence</h1>
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-    <div class="currency-tabs">
-      <button class="active" onclick="setCurrency('USD',this)">USD Bias</button>
-      <button onclick="setCurrency('EUR',this)">EUR Bias</button>
-      <button onclick="setCurrency('GBP',this)">GBP Bias</button>
+<nav id="nav">
+  <div class="nav-brand">TRADE<span>OS</span></div>
+  <div class="nav-links" id="nav-links"></div>
+  <div class="nav-right">
+    <div class="nav-px" id="np-eur">EUR —</div>
+    <div class="nav-px" id="np-nas">NAS —</div>
+    <div class="nav-px" id="np-spx">SPX —</div>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀</button>
+    <div class="nav-dot" id="nav-dot"></div>
+  </div>
+</nav>
+
+<div class="page-hdr">
+  <h1>MACRO INTELLIGENCE</h1>
+  <div class="page-hdr-right">
+    <div class="ccy-tabs">
+      <button class="ccy-tab active" onclick="setCcy('USD',this)">USD</button>
+      <button class="ccy-tab" onclick="setCcy('EUR',this)">EUR</button>
+      <button class="ccy-tab" onclick="setCcy('GBP',this)">GBP</button>
     </div>
-    <button class="btn btn-ghost" onclick="refreshAll()" style="font-size:0.75rem;padding:5px 12px;">⟳ Refresh</button>
+    <button class="btn-ai btn-ai-ghost" onclick="loadAll()" style="font-size:.42rem;padding:5px 10px;">⟳ REFRESH</button>
   </div>
 </div>
 
 <div class="macro-grid" id="macroGrid">
-  <div class="kpi-card" id="card-fed">
-    <div class="label">Fed Funds Rate</div>
-    <div class="value loading" id="val-fed">Loading…</div>
-    <div class="sub" id="sub-fed"></div>
-    <div class="sparkline-wrap"><canvas id="spark-fed"></canvas></div>
+  <div class="macro-card" id="card-FEDFUNDS">
+    <div class="mc-label">Fed Funds Rate</div>
+    <div class="mc-val loading" id="val-FEDFUNDS">Loading…</div>
+    <div class="mc-sub" id="sub-FEDFUNDS"></div>
+    <div class="spark-wrap"><canvas id="spark-FEDFUNDS"></canvas></div>
   </div>
-  <div class="kpi-card" id="card-cpi">
-    <div class="label">CPI YoY %</div>
-    <div class="value loading" id="val-cpi">Loading…</div>
-    <div class="sub" id="sub-cpi"></div>
-    <div class="sparkline-wrap"><canvas id="spark-cpi"></canvas></div>
+  <div class="macro-card" id="card-CPIAUCSL">
+    <div class="mc-label">CPI YoY %</div>
+    <div class="mc-val loading" id="val-CPIAUCSL">Loading…</div>
+    <div class="mc-sub" id="sub-CPIAUCSL"></div>
+    <div class="spark-wrap"><canvas id="spark-CPIAUCSL"></canvas></div>
   </div>
-  <div class="kpi-card" id="card-core">
-    <div class="label">Core CPI YoY %</div>
-    <div class="value loading" id="val-core">Loading…</div>
-    <div class="sub" id="sub-core"></div>
-    <div class="sparkline-wrap"><canvas id="spark-core"></canvas></div>
+  <div class="macro-card" id="card-CPILFESL">
+    <div class="mc-label">Core CPI YoY %</div>
+    <div class="mc-val loading" id="val-CPILFESL">Loading…</div>
+    <div class="mc-sub" id="sub-CPILFESL"></div>
+    <div class="spark-wrap"><canvas id="spark-CPILFESL"></canvas></div>
   </div>
-  <div class="kpi-card" id="card-nfp">
-    <div class="label">NFP MoM (000s)</div>
-    <div class="value loading" id="val-nfp">Loading…</div>
-    <div class="sub" id="sub-nfp"></div>
-    <div class="sparkline-wrap"><canvas id="spark-nfp"></canvas></div>
+  <div class="macro-card" id="card-PAYEMS">
+    <div class="mc-label">NFP MoM (000s)</div>
+    <div class="mc-val loading" id="val-PAYEMS">Loading…</div>
+    <div class="mc-sub" id="sub-PAYEMS"></div>
+    <div class="spark-wrap"><canvas id="spark-PAYEMS"></canvas></div>
   </div>
-  <div class="kpi-card" id="card-unem">
-    <div class="label">Unemployment %</div>
-    <div class="value loading" id="val-unem">Loading…</div>
-    <div class="sub" id="sub-unem"></div>
-    <div class="sparkline-wrap"><canvas id="spark-unem"></canvas></div>
+  <div class="macro-card" id="card-UNRATE">
+    <div class="mc-label">Unemployment %</div>
+    <div class="mc-val loading" id="val-UNRATE">Loading…</div>
+    <div class="mc-sub" id="sub-UNRATE"></div>
+    <div class="spark-wrap"><canvas id="spark-UNRATE"></canvas></div>
   </div>
-  <div class="kpi-card" id="card-gdp">
-    <div class="label">GDP QoQ %</div>
-    <div class="value loading" id="val-gdp">Loading…</div>
-    <div class="sub" id="sub-gdp"></div>
-    <div class="sparkline-wrap"><canvas id="spark-gdp"></canvas></div>
-  </div>
-</div>
-
-<div class="ai-section">
-  <div class="ai-card">
-    <h2>◈ AI Macro Analysis <span style="font-size:0.68rem;color:var(--muted,#8892a4);font-weight:400;">Powered by Mistral · reads live FRED data</span></h2>
-    <textarea id="aiQuestion" placeholder="Ask anything… e.g. 'Is the Fed likely to cut rates?' or leave empty for full weekly analysis"></textarea>
-    <div class="ai-actions">
-      <button class="btn btn-primary" onclick="runAIMacro()">⚡ Generate Weekly Analysis</button>
-      <button class="btn btn-ghost" onclick="clearAI()">Clear</button>
-    </div>
-    <div class="ai-output" id="aiOutput"></div>
+  <div class="macro-card" id="card-A191RL1Q225SBEA">
+    <div class="mc-label">GDP QoQ %</div>
+    <div class="mc-val loading" id="val-A191RL1Q225SBEA">Loading…</div>
+    <div class="mc-sub" id="sub-A191RL1Q225SBEA"></div>
+    <div class="spark-wrap"><canvas id="spark-A191RL1Q225SBEA"></canvas></div>
   </div>
 </div>
 
-<div class="status-bar" id="statusBar">Fetching macro data…</div>
+<div class="macro-status" id="macroStatus">Connecting to FRED…</div>
 
-<!-- Chart Expand Modal -->
-<div class="modal-overlay" id="chartModal" onclick="closeModalOverlay(event)">
+<!-- AI Panel -->
+<div class="ai-panel">
+  <div class="shdr">◈ AI MACRO ANALYSIS <span style="color:var(--muted);font-size:.4rem;font-weight:400;">· Mistral reads live FRED data</span></div>
+  <textarea id="aiQ" placeholder="Ask anything… e.g. 'What is the USD bias this week?' or leave empty for full weekly analysis"></textarea>
+  <div class="ai-btns">
+    <button class="btn-ai btn-ai-primary" onclick="runAI()">⚡ GENERATE ANALYSIS</button>
+    <button class="btn-ai btn-ai-ghost" onclick="clearAI()">CLEAR</button>
+  </div>
+  <div class="ai-out" id="aiOut"></div>
+</div>
+
+<!-- Expand Modal -->
+<div class="modal-ov" id="expandModal" onclick="closeModalClick(event)">
   <div class="modal-box">
-    <button class="modal-close" onclick="document.getElementById('chartModal').classList.remove('open')">✕</button>
-    <h2 id="modalTitle">Chart</h2>
+    <div class="modal-hdr">
+      <h3 id="modalTitle">—</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
     <div class="modal-chart-wrap"><canvas id="bigChart"></canvas></div>
-    <table class="hist-table">
+    <table class="hist-tbl">
       <thead><tr><th>Date</th><th>Value</th><th>Change</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<div id="price-strip">
+  <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-nas"><span class="ps-sym">NAS100</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-spx"><span class="ps-sym">SPX500</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="strip-right">
+    <span class="strip-ts" id="strip-ts"></span>
+    <span class="strip-src" id="strip-src">○ Loading</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="core/security.js"></script>
+<script src="core/config.js"></script>
+<script src="core/state.js"></script>
+<script src="core/api.js"></script>
+<script src="core/engines.js"></script>
 <script>
-// ── Config — uses API.fred() from api.js which calls worker ?action=fred ──
-const SERIES_META = {
-  FEDFUNDS:        { label:'Fed Funds Rate', unit:'%',  id:'fed',  color:'#4f8ef7' },
-  CPIAUCSL:        { label:'CPI YoY',        unit:'%',  id:'cpi',  color:'#f59e0b', yoy:true  },
-  CPILFESL:        { label:'Core CPI',       unit:'%',  id:'core', color:'#a78bfa', yoy:true  },
-  PAYEMS:          { label:'NFP MoM',        unit:'K',  id:'nfp',  color:'#22c55e', mom:true  },
-  UNRATE:          { label:'Unemployment',   unit:'%',  id:'unem', color:'#ef4444' },
-  A191RL1Q225SBEA: { label:'GDP QoQ',        unit:'%',  id:'gdp',  color:'#06b6d4' },
+const PAGE_ID = 'macro';
+
+// Series metadata
+const SERIES = {
+  FEDFUNDS:        { label:'Fed Funds Rate',  unit:'%',  color:'#3d8eff', yoy:false, mom:false },
+  CPIAUCSL:        { label:'CPI YoY',         unit:'%',  color:'#f5a623', yoy:true,  mom:false },
+  CPILFESL:        { label:'Core CPI YoY',    unit:'%',  color:'#9b6bff', yoy:true,  mom:false },
+  PAYEMS:          { label:'NFP MoM',         unit:'K',  color:'#00d47a', yoy:false, mom:true  },
+  UNRATE:          { label:'Unemployment',    unit:'%',  color:'#ff2d55', yoy:false, mom:false },
+  A191RL1Q225SBEA: { label:'GDP QoQ',         unit:'%',  color:'#00c4f5', yoy:false, mom:false },
 };
 
-let macroCache   = {};       // key = FRED series ID, value = processed observations
-let bigChartInst = null;
-let currentCcy   = 'USD';
+let macroData = {};   // seriesId → processed observations
+let bigInst   = null;
+let currentCcy = 'USD';
 
-// ── Fetch all series using existing engines pattern ──
-async function refreshAll() {
-  document.getElementById('statusBar').textContent = 'Fetching macro data from FRED…';
-  let anyLoaded = false;
+// ── Load all series via API.fred() ──────────────────────
+async function loadAll() {
+  document.getElementById('macroStatus').textContent = 'Fetching from FRED…';
 
-  for (const [seriesId, meta] of Object.entries(SERIES_META)) {
+  for (const [sid, meta] of Object.entries(SERIES)) {
     try {
-      // API.fred() → worker ?action=fred&series=CPIAUCSL → returns { observations:[...] }
-      const data = await API.fred(seriesId);
-      const obs  = (data.observations || []).filter(o => o.value !== '.');
-
-      // Process observations the same way engines.js does
-      const sorted = [...obs].reverse(); // oldest→newest
-      let processed;
-
-      if (meta.yoy) {
-        // CPI: compute YoY % change (compare vs 12 months ago)
-        processed = sorted.map((o, i) => {
-          const prev12 = sorted[i - 12];
-          const val    = parseFloat(o.value);
-          const yoy    = prev12 ? +((val - parseFloat(prev12.value)) / parseFloat(prev12.value) * 100).toFixed(2) : null;
-          return { date: o.date, value: val, yoyPct: yoy };
-        });
-      } else if (meta.mom) {
-        // NFP: compute month-on-month change
-        processed = sorted.map((o, i) => {
-          const prev = sorted[i - 1];
-          const val  = parseFloat(o.value);
-          const mom  = prev ? +(val - parseFloat(prev.value)).toFixed(1) : null;
-          return { date: o.date, value: val, mom };
-        });
-      } else {
-        processed = sorted.map(o => ({ date: o.date, value: parseFloat(o.value) }));
-      }
-
-      macroCache[seriesId] = processed;
-      renderCard(seriesId, meta, processed);
-      anyLoaded = true;
-    } catch (e) {
-      showCardError(meta.id, e.message);
+      const res  = await API.fred(sid);
+      const obs  = (res.observations || []).filter(o => o.value !== '.' && o.value !== '');
+      const proc = processObs(sid, meta, obs);
+      macroData[sid] = proc;
+      renderCard(sid, meta, proc);
+    } catch(e) {
+      setCardErr(sid, e.message);
     }
   }
 
-  const ts = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
-  document.getElementById('statusBar').textContent = anyLoaded
-    ? `Last updated: ${ts} IST`
-    : '⚠ Could not load macro data — check worker-v11.js is deployed';
+  const t = new Date().toLocaleTimeString('en-IN', { timeZone:'Asia/Kolkata' });
+  document.getElementById('macroStatus').textContent = `Last updated: ${t} IST · Click any card to expand`;
 }
 
-function renderCard(seriesId, meta, processed) {
-  // Get display value
-  const latest = processed[processed.length - 1];
-  const prev   = processed[processed.length - 2];
-  if (!latest) { showCardError(meta.id, 'No data'); return; }
-
-  let displayVal, unit = meta.unit;
-
-  if (meta.yoy && latest.yoyPct != null) {
-    displayVal = latest.yoyPct;
-  } else if (meta.mom && latest.mom != null) {
-    displayVal = latest.mom;
-    unit = 'K';
-  } else {
-    displayVal = latest.value;
+function processObs(sid, meta, obs) {
+  const sorted = [...obs].sort((a,b) => a.date.localeCompare(b.date)); // oldest first
+  if (meta.yoy) {
+    return sorted.map((o, i) => {
+      const p12  = sorted[i - 12];
+      const val  = parseFloat(o.value);
+      const yoy  = p12 ? +((val - parseFloat(p12.value)) / parseFloat(p12.value) * 100).toFixed(2) : null;
+      return { date: o.date, raw: val, display: yoy };
+    });
   }
-
-  // Display
-  const valEl = document.getElementById(`val-${meta.id}`);
-  valEl.className = 'value';
-  valEl.textContent = `${displayVal.toFixed(2)}${unit}`;
-
-  // Sub — date + change
-  const prevDisplay = prev ? (meta.yoy ? prev.yoyPct : meta.mom ? prev.mom : prev.value) : null;
-  const change = prevDisplay != null ? displayVal - prevDisplay : null;
-  const subEl = document.getElementById(`sub-${meta.id}`);
-  const cls   = change > 0 ? 'up' : change < 0 ? 'dn' : '';
-  const chStr = change != null ? `<span class="${cls}">${change > 0 ? '+' : ''}${change.toFixed(2)}${unit}</span>` : '';
-  subEl.innerHTML = `${latest.date} ${chStr}`;
-
-  // Fed bias badge
-  if (seriesId === 'FEDFUNDS') {
-    const card = document.getElementById(`card-${meta.id}`);
-    let biasEl = card.querySelector('.bias');
-    if (!biasEl) { biasEl = document.createElement('div'); biasEl.className = 'bias'; subEl.insertAdjacentElement('afterend', biasEl); }
-    if (displayVal >= 5)      { biasEl.className = 'bias hawkish'; biasEl.textContent = 'Hawkish'; }
-    else if (displayVal <= 2) { biasEl.className = 'bias dovish';  biasEl.textContent = 'Dovish';  }
-    else                       { biasEl.className = 'bias neutral'; biasEl.textContent = 'Neutral'; }
+  if (meta.mom) {
+    return sorted.map((o, i) => {
+      const prev = sorted[i - 1];
+      const val  = parseFloat(o.value);
+      const mom  = prev ? +(val - parseFloat(prev.value)).toFixed(1) : null;
+      return { date: o.date, raw: val, display: mom };
+    });
   }
-
-  // Sparkline — last 24 values
-  const chartVals = processed.slice(-24).map(o => meta.yoy ? (o.yoyPct ?? o.value) : meta.mom ? (o.mom ?? o.value) : o.value);
-  drawSparkline(`spark-${meta.id}`, chartVals, meta.color);
-
-  // Expand click
-  const card = document.getElementById(`card-${meta.id}`);
-  card.onclick = () => openModal(seriesId, meta, processed);
-  if (!card.querySelector('.expand-hint')) {
-    const h = document.createElement('div'); h.className = 'expand-hint'; h.textContent = '⤢ expand'; card.appendChild(h);
-  }
+  return sorted.map(o => ({ date: o.date, raw: parseFloat(o.value), display: parseFloat(o.value) }));
 }
 
-function showCardError(id) {
-  const el = document.getElementById(`val-${id}`);
-  if (el) { el.className = 'value error'; el.textContent = '—'; }
+function renderCard(sid, meta, proc) {
+  if (!proc.length) { setCardErr(sid, 'No data'); return; }
+
+  const latest  = proc[proc.length - 1];
+  const prev    = proc[proc.length - 2];
+  const val     = latest.display ?? latest.raw;
+  const prevVal = prev ? (prev.display ?? prev.raw) : null;
+  const chg     = prevVal !== null ? val - prevVal : null;
+
+  // Value
+  const valEl = document.getElementById(`val-${sid}`);
+  valEl.className = 'mc-val';
+  valEl.textContent = val != null ? val.toFixed(2) + meta.unit : '—';
+
+  // Sub
+  const chgStr = chg !== null
+    ? `<span class="${chg >= 0 ? 'chg-up' : 'chg-dn'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}${meta.unit}</span>`
+    : '';
+  document.getElementById(`sub-${sid}`).innerHTML = `${latest.date} ${chgStr}`;
+
+  // Fed bias
+  if (sid === 'FEDFUNDS') {
+    const card = document.getElementById(`card-${sid}`);
+    let tag = card.querySelector('.bias-tag');
+    if (!tag) { tag = document.createElement('div'); card.querySelector('.mc-sub').insertAdjacentElement('afterend', tag); }
+    if (val >= 5)      { tag.className = 'bias-tag bias-hawkish'; tag.textContent = 'HAWKISH'; }
+    else if (val <= 2) { tag.className = 'bias-tag bias-dovish';  tag.textContent = 'DOVISH';  }
+    else               { tag.className = 'bias-tag bias-neutral'; tag.textContent = 'NEUTRAL'; }
+  }
+
+  // Sparkline — last 24
+  const sparkVals = proc.slice(-24).map(o => o.display ?? o.raw).filter(v => v != null);
+  drawSpark(`spark-${sid}`, sparkVals, meta.color);
+
+  // Expand hint + click
+  const card = document.getElementById(`card-${sid}`);
+  if (!card.querySelector('.mc-expand')) {
+    const h = document.createElement('div'); h.className = 'mc-expand'; h.textContent = '⤢ EXPAND'; card.appendChild(h);
+  }
+  card.onclick = () => openModal(sid, meta, proc);
 }
 
-function drawSparkline(canvasId, values, color) {
+function setCardErr(sid) {
+  const el = document.getElementById(`val-${sid}`);
+  if (el) { el.className = 'mc-val err'; el.textContent = '— FRED unavailable'; }
+}
+
+function drawSpark(canvasId, vals, color) {
   const canvas = document.getElementById(canvasId);
-  if (!canvas || !values.length) return;
-  const existing = Chart.getChart(canvas);
-  if (existing) existing.destroy();
-
+  if (!canvas || !vals.length) return;
+  const ex = Chart.getChart(canvas);
+  if (ex) ex.destroy();
   new Chart(canvas.getContext('2d'), {
     type: 'line',
-    data: {
-      labels: values.map((_, i) => i),
-      datasets: [{ data: values, borderColor: color, borderWidth: 1.8, fill: true, backgroundColor: color + '18', pointRadius: 0, tension: 0.4 }]
-    },
-    options: {
-      plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { x: { display: false }, y: { display: false } },
-      animation: false, responsive: true, maintainAspectRatio: false,
-    }
+    data: { labels: vals.map((_,i)=>i), datasets: [{ data: vals, borderColor: color, borderWidth: 1.5, fill: true, backgroundColor: color + '18', pointRadius: 0, tension: 0.4 }] },
+    options: { plugins: { legend:{display:false}, tooltip:{enabled:false} }, scales: { x:{display:false}, y:{display:false} }, animation:false, responsive:true, maintainAspectRatio:false }
   });
 }
 
-function openModal(seriesId, meta, processed) {
-  document.getElementById('modalTitle').textContent = `${meta.label} — History`;
-  document.getElementById('chartModal').classList.add('open');
+// ── Modal ────────────────────────────────────────────────
+function openModal(sid, meta, proc) {
+  document.getElementById('modalTitle').textContent = `${meta.label} — ${proc.length} Observations`;
+  document.getElementById('expandModal').classList.add('show');
 
-  const canvas = document.getElementById('bigChart');
-  if (bigChartInst) bigChartInst.destroy();
+  if (bigInst) bigInst.destroy();
+  const display36 = proc.slice(-36);
+  const vals  = display36.map(o => o.display ?? o.raw);
+  const dates = display36.map(o => o.date);
+  const color = meta.color;
 
-  const vals  = processed.slice(-36).map(o => meta.yoy ? (o.yoyPct ?? o.value) : meta.mom ? (o.mom ?? o.value) : o.value);
-  const dates = processed.slice(-36).map(o => o.date);
-
-  bigChartInst = new Chart(canvas.getContext('2d'), {
+  bigInst = new Chart(document.getElementById('bigChart').getContext('2d'), {
     type: 'line',
-    data: {
-      labels: dates,
-      datasets: [{ label: meta.label, data: vals, borderColor: meta.color, borderWidth: 2.5, fill: true, backgroundColor: meta.color + '20', pointRadius: 3, tension: 0.3 }]
-    },
+    data: { labels: dates, datasets: [{ label: meta.label, data: vals, borderColor: color, borderWidth: 2, fill: true, backgroundColor: color + '20', pointRadius: 2, tension: 0.3 }] },
     options: {
-      plugins: { legend: { display: false }, tooltip: { enabled: true } },
-      scales: {
-        x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#2a3045' } },
-        y: { ticks: { color: '#8892a4' }, grid: { color: '#2a3045' } }
-      },
-      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{enabled:true, backgroundColor:'#0a0e17', titleColor:'#9aaabb', bodyColor: color } },
+      scales: { x:{ticks:{color:'#374a60',maxTicksLimit:8,font:{size:9}}, grid:{color:'#182030'}}, y:{ticks:{color:'#374a60',font:{size:9}}, grid:{color:'#182030'}} },
+      responsive: true, maintainAspectRatio: false
     }
   });
 
-  // Historical table — newest first
+  // Table — newest first
   const tbody = document.getElementById('histBody');
   tbody.innerHTML = '';
-  const displayData = [...processed].reverse().slice(0, 36);
-  displayData.forEach((o, i) => {
-    const val  = meta.yoy ? (o.yoyPct ?? o.value) : meta.mom ? (o.mom ?? o.value) : o.value;
-    const next = displayData[i + 1];
-    const prev = next ? (meta.yoy ? (next.yoyPct ?? next.value) : meta.mom ? (next.mom ?? next.value) : next.value) : null;
-    const chg  = prev != null ? (val - prev) : null;
-    const cls  = chg > 0 ? 'up' : chg < 0 ? 'dn' : '';
+  const rev = [...proc].reverse().slice(0, 36);
+  rev.forEach((o, i) => {
+    const val  = o.display ?? o.raw;
+    const next = rev[i + 1];
+    const pval = next ? (next.display ?? next.raw) : null;
+    const chg  = pval !== null ? val - pval : null;
+    const cls  = chg > 0 ? 'chg-up' : chg < 0 ? 'chg-dn' : '';
     tbody.innerHTML += `<tr>
       <td>${o.date}</td>
       <td>${val != null ? val.toFixed(2) + meta.unit : '—'}</td>
-      <td class="${cls}">${chg != null ? (chg > 0 ? '+' : '') + chg.toFixed(2) : '—'}</td>
+      <td class="${cls}">${chg !== null ? (chg >= 0 ? '+' : '') + chg.toFixed(2) : '—'}</td>
     </tr>`;
   });
 }
 
-function closeModalOverlay(e) {
-  if (e.target.id === 'chartModal') document.getElementById('chartModal').classList.remove('open');
-}
+function closeModal() { document.getElementById('expandModal').classList.remove('show'); }
+function closeModalClick(e) { if (e.target.id === 'expandModal') closeModal(); }
 
-function setCurrency(ccy, el) {
+// ── Currency switcher ────────────────────────────────────
+function setCcy(ccy, el) {
   currentCcy = ccy;
-  document.querySelectorAll('.currency-tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ccy-tab').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('aiQuestion').placeholder = `Ask about ${ccy} bias… e.g. 'What is the ${ccy} outlook based on current macro data?'`;
+  document.getElementById('aiQ').placeholder = `Ask about ${ccy} bias… e.g. 'What is the ${ccy} outlook?'`;
 }
 
-async function runAIMacro() {
-  const question = document.getElementById('aiQuestion').value.trim();
-  const output   = document.getElementById('aiOutput');
-  output.className = 'ai-output visible';
-  output.innerHTML = '<span class="ai-loading">⚡ Fetching live FRED data and generating analysis…</span>';
+// ── AI Analysis ──────────────────────────────────────────
+async function runAI() {
+  const q   = document.getElementById('aiQ').value.trim();
+  const out = document.getElementById('aiOut');
+  out.className = 'ai-out show';
+  out.innerHTML = '<span class="ai-pulse">⚡ Reading live FRED data and generating analysis…</span>';
 
   try {
-    // Uses API.aiMacro() → worker ?action=ai-macro
-    let q = question || '';
-    if (currentCcy !== 'USD') q += (q ? ' ' : '') + `Focus on implications for ${currentCcy}.`;
-
-    const data = await API.aiMacro(q);
-    if (data.error) throw new Error(data.error);
-    output.textContent = data.analysis;
-  } catch (e) {
-    output.innerHTML = `<span style="color:#ef4444">⚠ AI Error: ${e.message}. Ensure worker-v11.js is deployed.</span>`;
+    let question = q || '';
+    if (currentCcy !== 'USD') question += (question ? ' ' : '') + `Focus on ${currentCcy} implications.`;
+    const res = await API.aiMacro(question);
+    if (res.error) throw new Error(res.error);
+    out.textContent = res.analysis;
+  } catch(e) {
+    out.innerHTML = `<span style="color:var(--red)">⚠ ${e.message}</span>`;
   }
 }
 
 function clearAI() {
-  document.getElementById('aiOutput').className = 'ai-output';
-  document.getElementById('aiQuestion').value = '';
+  document.getElementById('aiOut').className = 'ai-out';
+  document.getElementById('aiQ').value = '';
 }
 
-// Init
-refreshAll();
+// ── Boot ──────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  NavEngine.init(PAGE_ID);
+  PriceEngine.start();
+  loadAll();
+});
+
+// ── Theme ─────────────────────────────────────────────────
+(function() {
+  if (localStorage.getItem('tradeos-theme') === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('theme-toggle') && (document.getElementById('theme-toggle').textContent = '☾');
+  }
+})();
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('tradeos-theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = isLight ? '☾' : '☀';
+}
 </script>
 </body>
 </html>
