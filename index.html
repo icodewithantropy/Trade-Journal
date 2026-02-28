@@ -566,67 +566,158 @@ function renderPagination(pages) {
   document.getElementById('pagination').innerHTML = html;
 }
 
+function gradeColor(g) {
+  return g==='A+'?'#00d47a':g==='A'?'#00c4f5':g==='B'?'#3d8eff':g==='C'?'#f5a623':'#ff2d55';
+}
+
+function pillarBar(score) {
+  const filled = Math.round(score);
+  return [0,1,2].map(i =>
+    `<span style="display:inline-block;width:14px;height:6px;border-radius:2px;margin-right:2px;background:${i<filled?'#3d8eff':'var(--b2)'}"></span>`
+  ).join('');
+}
+
 function openTradeModal(id) {
   const s = State.get('journalStats'); if(!s) return;
   const t = s.valid.find(x => x.id===id); if(!t) return;
-  window._modalTrade = t; // store for AI grade
+  window._modalTrade = t;
+
   document.getElementById('modal-title').textContent = `${t.pair||'—'} · ${t.date?.slice(0,10)||'—'}`;
-  const rClr = (t.rMultiple||0)>=0?'#00d47a':'#ff2d55';
-  const gradeColor = t.grade==='A+'?'#00d47a':t.grade==='B'?'#3d8eff':'#f5a623';
-  const gradeExplain = window.GradingEngine ? GradingEngine.explain(t) : '';
+  const rClr    = (t.rMultiple||0)>=0?'#00d47a':'#ff2d55';
+  const gClr    = gradeColor(t.grade);
+  const explain = GradingEngine.explain(t);
+  const scores  = explain.scores;
+  const isWin   = /win/i.test(t.outcome);
+
+  // Find similar setups immediately
+  const similar = GradingEngine.findSimilar(t, s.valid);
+
   const imgs = (t.images||[]).map(url => {
     const safe = escUrl(url);
     return safe ? `<img src="${safe}" style="width:100%;border-radius:6px;margin-bottom:8px" loading="lazy">` : '';
   }).join('');
+
+  const pillarRows = [
+    { key:'context',   label:'Context / HTF Bias' },
+    { key:'entry',     label:'Entry Precision'     },
+    { key:'structure', label:'Structure / BOS'     },
+    { key:'risk',      label:'Risk & R:R'          },
+    { key:'execution', label:'Execution'           },
+  ].map(p => {
+    const v = scores[p.key];
+    const col = v>=2?'#00d47a':v>=1?'#f5a623':'#ff2d55';
+    const lbl = v>=2?'GOOD':v>=1?'PARTIAL':'WEAK';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--b2)">
+      <div style="width:130px;font-size:.42rem;color:var(--t2)">${p.label}</div>
+      <div>${pillarBar(v)}</div>
+      <div style="font-size:.38rem;color:${col};letter-spacing:.5px">${lbl}</div>
+    </div>`;
+  }).join('');
+
+  const similarHTML = similar.length ? similar.map(sim => {
+    const sWin  = /win/i.test(sim.outcome);
+    const sRClr = (sim.rMultiple||0)>=0?'#00d47a':'#ff2d55';
+    return `<div onclick="openTradeModal('${esc(sim.id)}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:5px;padding:8px 10px;cursor:pointer;transition:border-color .1s" onmouseover="this.style.borderColor='var(--b3)'" onmouseout="this.style.borderColor='var(--b2)'">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:.48rem;font-weight:700;color:var(--text)">${esc(sim.pair||'—')}</span>
+        <span style="font-size:.4rem;color:${sWin?'#00d47a':'#ff2d55'}">${sWin?'WIN':'LOSS'}</span>
+        <span style="font-size:.4rem;color:${sRClr};margin-left:auto">${sim.rMultiple!=null?(sim.rMultiple>=0?'+':'')+sim.rMultiple.toFixed(2)+'R':'—'}</span>
+        <span style="font-size:.4rem;color:${gradeColor(sim.grade)};font-weight:700">${esc(sim.grade||'?')}</span>
+      </div>
+      <div style="font-size:.38rem;color:var(--muted)">${sim.date?.slice(0,10)||'—'} · ${esc(sim.session||'—')} · ${(sim.confluences||[]).slice(0,3).map(c=>esc(c)).join(', ')||'no tags'}</div>
+    </div>`;
+  }).join('') : `<div style="font-size:.44rem;color:var(--muted);font-style:italic">No similar setups found yet — your journal will build up over time.</div>`;
+
   document.getElementById('modal-body').innerHTML = `
     <div class="row2" style="margin-bottom:14px">
-      <div class="kpi"><div class="kpi-l">Outcome</div><div class="kpi-v" style="color:${(t.outcome||'').match(/win/i)?'#00d47a':(t.outcome||'').match(/los/i)?'#ff2d55':'#f5a623'}">${esc(t.outcome||'—')}</div></div>
+      <div class="kpi"><div class="kpi-l">Outcome</div><div class="kpi-v" style="color:${isWin?'#00d47a':/los/i.test(t.outcome)?'#ff2d55':'#f5a623'}">${esc(t.outcome||'—')}</div></div>
       <div class="kpi"><div class="kpi-l">R Multiple</div><div class="kpi-v" style="color:${rClr}">${t.rMultiple!=null?(t.rMultiple>=0?'+':'')+t.rMultiple.toFixed(2)+'R':'—'}</div></div>
       <div class="kpi"><div class="kpi-l">Direction</div><div class="kpi-v" style="color:${t.direction==='Long'?'#00d47a':'#ff2d55'}">${esc(t.direction||'—')}</div></div>
       <div class="kpi"><div class="kpi-l">Session</div><div class="kpi-v" style="font-size:.9rem">${esc(t.session||'—')}</div></div>
     </div>
-    <!-- AI Grade Panel -->
-    <div style="background:rgba(155,107,255,.06);border:1px solid rgba(155,107,255,.2);border-radius:8px;padding:12px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:.44rem;letter-spacing:2px;color:var(--purple);text-transform:uppercase">◈ AI Grade</div>
+
+    <!-- Grade Panel -->
+    <div style="background:rgba(155,107,255,.05);border:1px solid rgba(155,107,255,.18);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:.38rem;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:4px">◈ Process Grade</div>
+          <div style="font-size:.42rem;color:var(--muted)">Grades the PROCESS not the result</div>
+        </div>
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-family:var(--fd);font-size:1.4rem;font-weight:800;color:${gradeColor}">${esc(t.grade||'C')}</span>
-          <button onclick="runAiGrade()" style="font-size:.44rem;padding:4px 10px;border-radius:4px;border:1px solid rgba(155,107,255,.3);background:transparent;color:var(--purple);cursor:pointer;font-family:var(--ff)">◈ Re-grade with AI</button>
+          <span id="modal-grade-lbl" style="font-family:var(--fd);font-size:1.8rem;font-weight:800;color:${gClr}">${esc(t.grade||'?')}</span>
+          <button id="ai-grade-btn" onclick="runAiGrade()" style="font-size:.42rem;padding:5px 12px;border-radius:4px;border:1px solid rgba(155,107,255,.3);background:transparent;color:var(--purple);cursor:pointer;font-family:var(--ff);transition:all .1s">◈ Deep AI Analysis</button>
         </div>
       </div>
-      <div id="grade-explain" style="font-size:.54rem;color:var(--t2);line-height:1.7">${esc(gradeExplain)}</div>
-      <div id="grade-improve" style="display:none;font-size:.52rem;color:var(--amber);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)"></div>
+
+      <!-- 5 Pillar Scores -->
+      <div style="margin-bottom:10px">${pillarRows}</div>
+
+      <!-- AI output area -->
+      <div id="ai-grade-out" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--b2)"></div>
     </div>
-    ${t.confluences?.length ? `<div style="margin-bottom:12px">${t.confluences.map(c=>`<span class="badge bp" style="margin-right:4px;margin-bottom:4px">${esc(c)}</span>`).join('')}</div>` : ''}
-    ${t.comment ? `<div style="font-size:.58rem;color:var(--t2);line-height:1.9;margin-bottom:14px;padding:12px;background:var(--s2);border-radius:6px;border-left:3px solid var(--purple)">${esc(t.comment)}</div>` : '<div style="font-size:.52rem;color:var(--muted);margin-bottom:12px;font-style:italic">No comment — add notes in Notion to improve AI grading accuracy.</div>'}
+
+    <!-- Confluences -->
+    ${t.confluences?.length ? `<div style="margin-bottom:10px">${t.confluences.map(c=>`<span class="badge bp" style="margin-right:4px;margin-bottom:4px">${esc(c)}</span>`).join('')}</div>` : ''}
+
+    <!-- Comment -->
+    ${t.comment
+      ? `<div style="font-size:.54rem;color:var(--t2);line-height:1.9;margin-bottom:14px;padding:12px;background:var(--s2);border-radius:6px;border-left:3px solid var(--purple)">${esc(t.comment)}</div>`
+      : `<div style="font-size:.48rem;color:var(--muted);margin-bottom:12px;font-style:italic;padding:8px 12px;background:var(--s2);border-radius:6px">⚠ No comment in Notion — adding a comment dramatically improves grading accuracy and AI coaching quality.</div>`}
+
+    <!-- Similar Setups -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:.38rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">◈ Similar Setups in Your Journal</div>
+      <div style="display:grid;gap:6px">${similarHTML}</div>
+    </div>
+
+    <!-- Images -->
     ${imgs}`;
+
   document.getElementById('trade-modal').classList.add('open');
 }
 
 async function runAiGrade() {
   const t = window._modalTrade; if(!t) return;
-  const btn = document.querySelector('[onclick="runAiGrade()"]');
-  const el  = document.getElementById('grade-explain');
-  const imp = document.getElementById('grade-improve');
-  if(btn) { btn.textContent='◈ Grading…'; btn.disabled=true; }
-  el.textContent = 'Mistral is reading your setup…';
+  const btn = document.getElementById('ai-grade-btn');
+  const out = document.getElementById('ai-grade-out');
+  const s   = State.get('journalStats');
+
+  if(btn) { btn.textContent='◈ Analysing…'; btn.disabled=true; }
+  out.style.display = 'block';
+  out.innerHTML = `<div style="font-size:.48rem;color:var(--muted);animation:pulse 1.5s infinite">Mistral is reading your 5 pillars and journal history…</div>`;
+
   try {
-    const result = await GradingEngine.aiGrade(t);
-    const gradeColor = result.grade==='A+'?'#00d47a':result.grade==='B'?'#3d8eff':'#f5a623';
-    // Update grade display
-    const gradeEl = btn?.parentElement.querySelector('span');
-    if(gradeEl) { gradeEl.textContent=result.grade; gradeEl.style.color=gradeColor; }
-    // Update trade grade in state
+    const result = await GradingEngine.aiGrade(t, s?.valid || []);
+    const gClr   = gradeColor(result.grade);
+
+    // Update grade badge
+    const gradeEl = document.getElementById('modal-grade-lbl');
+    if(gradeEl) { gradeEl.textContent = result.grade; gradeEl.style.color = gClr; }
     t.grade = result.grade;
-    el.textContent = result.reason || gradeExplain;
-    if(result.improve) {
-      imp.style.display='block';
-      imp.textContent = '💡 ' + result.improve;
-    }
+
+    const isWin = /win/i.test(t.outcome);
+    const block = (icon, color, label, text) =>
+      text ? `<div style="margin-bottom:10px">
+        <div style="font-size:.38rem;color:${color};text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${icon} ${label}</div>
+        <div style="font-size:.5rem;color:var(--t2);line-height:1.8">${esc(text)}</div>
+      </div>` : '';
+
+    out.innerHTML =
+      block('▸', gClr, 'Grade Reasoning', result.reason) +
+      (isWin
+        ? block('✦', '#00d47a', 'What Worked — Repeat This', result.whatWorked)
+        : block('◆', '#f5a623', 'Process Check', result.processCheck)) +
+      block('✗', '#ff2d55', 'What Was Missing', result.missing) +
+      block('↻', '#3d8eff', 'Consistency Habit to Build', result.consistency) +
+      (result.similar?.length
+        ? block('◈', '#9b6bff', 'When Reviewing Similar Setups Above', result.reviewSimilar)
+        : '');
+
   } catch(e) {
-    el.textContent = 'AI grading failed: ' + e.message;
+    out.innerHTML = `<div style="font-size:.48rem;color:var(--red)">AI failed: ${esc(e.message)}</div>`;
   }
-  if(btn) { btn.textContent='◈ Re-grade with AI'; btn.disabled=false; }
+
+  if(btn) { btn.textContent='◈ Deep AI Analysis'; btn.disabled=false; }
 }
 
 // ── Boot ──────────────────────────────────────────────────
