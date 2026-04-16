@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeOS · Geopolitical</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://notion-proxy.churan756.workers.dev https://api.stlouisfed.org; frame-ancestors 'none';">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="core/style.css">
+<style>
+
+/* ── Layout ─────────────────────────────────────────────── */
+.geo-wrap { padding: 0 20px 120px; }
+
+.page-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px; padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--b2);
+}
+.page-hdr h1 { font-family: var(--fd); font-size: 1rem; font-weight: 800; }
+.page-hdr-sub { font-size: .4rem; color: var(--muted); font-family: var(--ff); margin-top: 2px; letter-spacing: .5px; }
+
+/* ── Filter bar ─────────────────────────────────────────── */
+.filter-row {
+  display: flex; gap: 6px; padding: 10px 20px;
+  border-bottom: 1px solid var(--b2); flex-wrap: wrap; align-items: center;
+}
+.filter-label { font-size: .38rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--ff); margin-right: 4px; }
+.chip {
+  padding: 3px 12px; border-radius: 3px; border: 1px solid var(--b2);
+  background: var(--s3); color: var(--muted); cursor: pointer;
+  font-size: .4rem; font-family: var(--ff); letter-spacing: .5px; transition: all .12s;
+}
+.chip.active { border-color: var(--blue); color: var(--blue); background: rgba(61,142,255,.08); }
+.chip.c-red.active   { border-color: var(--red);    color: var(--red);    background: rgba(255,45,85,.08); }
+.chip.c-amber.active { border-color: var(--amber);  color: var(--amber);  background: rgba(245,166,35,.08); }
+.chip.c-green.active { border-color: var(--green);  color: var(--green);  background: rgba(0,212,122,.08); }
+.sep { width: 1px; height: 16px; background: var(--b2); }
+
+/* ── Two column layout ──────────────────────────────────── */
+.geo-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 16px;
+  padding: 16px 20px;
+}
+@media(max-width:900px) { .geo-grid { grid-template-columns: 1fr; } }
+
+/* ── Event cards ────────────────────────────────────────── */
+.section-label {
+  font-size: .38rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1.5px; font-family: var(--ff); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after { content:''; flex:1; height:1px; background: var(--b2); }
+
+.event-card {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 6px;
+  margin-bottom: 8px; overflow: hidden; transition: border-color .12s;
+  cursor: pointer;
+}
+.event-card:hover { border-color: var(--b3); }
+.event-card.open  { border-color: var(--b3); }
+
+.event-hdr {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px;
+}
+.ev-impact {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+}
+.imp-critical { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+.imp-high     { background: var(--amber);  box-shadow: 0 0 4px var(--amber); }
+.imp-medium   { background: var(--blue);   }
+.imp-low      { background: var(--muted);  }
+
+.ev-main { flex: 1; }
+.ev-title { font-size: .52rem; font-weight: 600; font-family: var(--ff); color: var(--text); margin-bottom: 3px; }
+.ev-meta  { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ev-tag {
+  font-size: .36rem; padding: 1px 7px; border-radius: 2px;
+  font-family: var(--ff); letter-spacing: .5px; font-weight: 700;
+  border: 1px solid;
+}
+.tag-war      { color: var(--red);    border-color: rgba(255,45,85,.3);    background: rgba(255,45,85,.08); }
+.tag-sanction { color: var(--amber);  border-color: rgba(245,166,35,.3);   background: rgba(245,166,35,.08); }
+.tag-energy   { color: var(--cyan);   border-color: rgba(0,196,245,.3);    background: rgba(0,196,245,.08); }
+.tag-trade    { color: var(--purple); border-color: rgba(155,107,255,.3);  background: rgba(155,107,255,.08); }
+.tag-policy   { color: var(--blue);   border-color: rgba(61,142,255,.3);   background: rgba(61,142,255,.08); }
+.tag-currency { color: var(--green);  border-color: rgba(0,212,122,.3);    background: rgba(0,212,122,.08); }
+.tag-supply   { color: #f5a623;       border-color: rgba(245,166,35,.3);   background: rgba(245,166,35,.08); }
+
+.ev-date { font-size: .38rem; color: var(--muted); font-family: var(--ff); margin-left: auto; flex-shrink: 0; }
+.ev-chevron { font-size: .5rem; color: var(--muted); margin-left: 8px; transition: transform .2s; flex-shrink: 0; }
+.event-card.open .ev-chevron { transform: rotate(180deg); }
+
+/* ── Event body — expanded ──────────────────────────────── */
+.event-body {
+  display: none; padding: 0 14px 14px; border-top: 1px solid var(--b2);
+  background: var(--s3);
+}
+.event-card.open .event-body { display: block; }
+
+.ev-section { margin-top: 12px; }
+.ev-section-title {
+  font-size: .38rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; font-family: var(--ff); margin-bottom: 6px;
+}
+.ev-desc { font-size: .46rem; line-height: 1.8; color: var(--t2); font-family: var(--ff); }
+
+/* Market impact grid */
+.impact-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr));
+  gap: 6px; margin-top: 6px;
+}
+.impact-box {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 4px;
+  padding: 8px 10px;
+}
+.ib-asset { font-size: .38rem; color: var(--muted); font-family: var(--ff); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.ib-effect {
+  font-size: .44rem; font-weight: 700; font-family: var(--ff);
+  display: flex; align-items: center; gap: 4px;
+}
+.eff-bull  { color: var(--green); }
+.eff-bear  { color: var(--red); }
+.eff-neut  { color: var(--muted); }
+.eff-watch { color: var(--amber); }
+.ib-reason { font-size: .38rem; color: var(--muted); font-family: var(--ff); margin-top: 3px; line-height: 1.5; }
+
+/* Filter result — your ICT angle */
+.geo-filter-box {
+  margin-top: 10px; padding: 10px 12px;
+  border-radius: 4px; font-family: var(--ff);
+  border-left: 2px solid;
+}
+.gfb-pass { background: rgba(0,212,122,.06); border-color: var(--green); }
+.gfb-fail { background: rgba(255,45,85,.06); border-color: var(--red); }
+.gfb-label { font-size: .36rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; }
+.gfb-pass .gfb-label { color: var(--green); }
+.gfb-fail .gfb-label { color: var(--red); }
+.gfb-text  { font-size: .44rem; line-height: 1.7; color: var(--t2); }
+
+/* Script pad inside event */
+.script-pad {
+  width: 100%; background: var(--s2); border: 1px solid var(--b2);
+  border-radius: 4px; color: var(--text); padding: 8px 10px;
+  font-size: .46rem; resize: vertical; min-height: 60px;
+  font-family: var(--ff); margin-top: 6px; line-height: 1.7;
+}
+.script-pad:focus { outline: none; border-color: var(--b3); }
+.script-save-btn {
+  margin-top: 6px; padding: 5px 14px; border-radius: 4px;
+  border: 1px solid var(--b2); background: var(--s3);
+  color: var(--t2); font-size: .4rem; font-family: var(--ff);
+  cursor: pointer; letter-spacing: .5px; transition: all .12s;
+}
+.script-save-btn:hover { border-color: var(--blue); color: var(--blue); }
+.saved-flash { color: var(--green); font-size: .38rem; font-family: var(--ff); margin-left: 8px; opacity: 0; transition: opacity .3s; }
+
+/* ── Right column — sidebar ─────────────────────────────── */
+.sidebar { display: flex; flex-direction: column; gap: 14px; }
+
+/* Filter check panel */
+.filter-panel {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 6px; padding: 14px;
+}
+.fp-title {
+  font-size: .42rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; font-family: var(--ff); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.filter-check {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid var(--b2);
+}
+.filter-check:last-child { border-bottom: none; }
+.fc-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.fc-dot.active { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.fc-dot.inactive { background: var(--muted); }
+.fc-text { font-size: .44rem; font-family: var(--ff); color: var(--t2); line-height: 1.6; }
+.fc-sub  { font-size: .38rem; color: var(--muted); font-family: var(--ff); margin-top: 2px; }
+
+/* Weekly script builder */
+.script-builder {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 6px; padding: 14px;
+}
+.sb-title {
+  font-size: .42rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; font-family: var(--ff); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.sb-field { margin-bottom: 10px; }
+.sb-label { font-size: .38rem; color: var(--muted); font-family: var(--ff); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.sb-input {
+  width: 100%; background: var(--s3); border: 1px solid var(--b2);
+  border-radius: 4px; color: var(--text); padding: 7px 10px;
+  font-size: .46rem; font-family: var(--ff); resize: vertical;
+}
+.sb-input:focus { outline: none; border-color: var(--b3); }
+.sb-select {
+  width: 100%; background: var(--s3); border: 1px solid var(--b2);
+  border-radius: 4px; color: var(--t2); padding: 6px 10px;
+  font-size: .44rem; font-family: var(--ff);
+}
+.sb-select:focus { outline: none; border-color: var(--b3); }
+.gen-btn {
+  width: 100%; padding: 9px; border-radius: 4px; border: none;
+  background: var(--blue); color: #fff; font-size: .46rem;
+  font-weight: 700; font-family: var(--ff); letter-spacing: .5px;
+  cursor: pointer; transition: opacity .15s; margin-top: 4px;
+}
+.gen-btn:hover { opacity: .85; }
+.script-out {
+  margin-top: 10px; background: var(--s3); border: 1px solid var(--b2);
+  border-radius: 4px; padding: 10px; font-size: .46rem; line-height: 1.9;
+  font-family: var(--ff); color: var(--text); white-space: pre-wrap;
+  display: none;
+}
+.script-out.show { display: block; }
+.copy-btn {
+  margin-top: 6px; padding: 5px 14px; border-radius: 4px;
+  border: 1px solid var(--b2); background: var(--s3);
+  color: var(--t2); font-size: .4rem; font-family: var(--ff);
+  cursor: pointer; transition: all .12s; display: none;
+}
+.copy-btn.show { display: inline-block; }
+.copy-btn:hover { border-color: var(--green); color: var(--green); }
+
+/* Data links panel */
+.links-panel {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 6px; padding: 14px;
+}
+.lp-title {
+  font-size: .42rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; font-family: var(--ff); margin-bottom: 10px;
+}
+.data-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 0; border-bottom: 1px solid var(--b2); gap: 8px;
+}
+.data-link:last-child { border-bottom: none; }
+.dl-name { font-size: .44rem; font-family: var(--ff); color: var(--t2); }
+.dl-sub  { font-size: .36rem; color: var(--muted); font-family: var(--ff); margin-top: 1px; }
+.dl-btn {
+  padding: 3px 10px; border-radius: 3px; border: 1px solid var(--b2);
+  background: var(--s3); color: var(--muted); font-size: .38rem;
+  font-family: var(--ff); cursor: pointer; text-decoration: none;
+  white-space: nowrap; transition: all .12s; display: inline-block;
+}
+.dl-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+/* Weekly video tracker */
+.video-tracker {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 6px; padding: 14px;
+}
+.vt-title {
+  font-size: .42rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; font-family: var(--ff); margin-bottom: 10px;
+}
+.vt-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--b2);
+}
+.vt-row:last-child { border-bottom: none; }
+.vt-check {
+  width: 16px; height: 16px; border-radius: 3px;
+  border: 1px solid var(--b2); background: var(--s3);
+  cursor: pointer; flex-shrink: 0; display: flex;
+  align-items: center; justify-content: center; font-size: .5rem;
+  transition: all .12s;
+}
+.vt-check.done { background: rgba(0,212,122,.15); border-color: var(--green); color: var(--green); }
+.vt-info { flex: 1; }
+.vt-name { font-size: .44rem; font-family: var(--ff); color: var(--t2); }
+.vt-day  { font-size: .36rem; color: var(--muted); font-family: var(--ff); margin-top: 1px; }
+.vt-status { font-size: .36rem; font-family: var(--ff); color: var(--muted); }
+.vt-status.done { color: var(--green); }
+
+/* Add event modal */
+.modal-ov {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.75); z-index: 2000;
+  align-items: center; justify-content: center;
+}
+.modal-ov.show { display: flex; }
+.modal-box {
+  background: var(--s2); border: 1px solid var(--b2); border-radius: 8px;
+  padding: 20px; width: 90vw; max-width: 560px; max-height: 88vh; overflow-y: auto;
+}
+.modal-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.modal-hdr h3 { font-family: var(--fd); font-size: .75rem; font-weight: 700; }
+.modal-close {
+  background: none; border: none; color: var(--muted);
+  font-size: 1rem; cursor: pointer; padding: 4px 8px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-field { margin-bottom: 12px; }
+.modal-label { font-size: .38rem; color: var(--muted); font-family: var(--ff); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.modal-input, .modal-select, .modal-textarea {
+  width: 100%; background: var(--s3); border: 1px solid var(--b2);
+  border-radius: 4px; color: var(--text); padding: 8px 10px;
+  font-size: .46rem; font-family: var(--ff);
+}
+.modal-textarea { resize: vertical; min-height: 70px; line-height: 1.7; }
+.modal-input:focus, .modal-select:focus, .modal-textarea:focus { outline: none; border-color: var(--b3); }
+.modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-submit {
+  width: 100%; padding: 9px; border-radius: 4px; border: none;
+  background: var(--blue); color: #fff; font-size: .46rem;
+  font-weight: 700; font-family: var(--ff); cursor: pointer;
+  margin-top: 4px; transition: opacity .15s;
+}
+.modal-submit:hover { opacity: .85; }
+
+/* Empty state */
+.empty-state {
+  padding: 40px 20px; text-align: center;
+  font-size: .5rem; color: var(--muted); font-family: var(--ff); line-height: 2;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-brand">TRADE<span>OS</span></div>
+  <div class="nav-links" id="nav-links"></div>
+  <div class="nav-right">
+    <div class="nav-px" id="np-eur">EUR —</div>
+    <div class="nav-px" id="np-nas">NAS —</div>
+    <div class="nav-px" id="np-spx">SPX —</div>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀</button>
+    <div class="nav-dot" id="nav-dot"></div>
+  </div>
+</nav>
+
+<!-- Page header -->
+<div class="page-hdr">
+  <div>
+    <h1>GEOPOLITICAL DASHBOARD</h1>
+    <div class="page-hdr-sub">Events · Market Relationships · Your 4-Point Filter · Script Builder</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="chip active" onclick="openAddModal()" style="color:var(--blue);border-color:var(--blue);">+ ADD EVENT</button>
+    <button class="chip" onclick="clearAll()" style="font-size:.38rem;">CLEAR ALL</button>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-row">
+  <span class="filter-label">Impact:</span>
+  <button class="chip c-red active"   onclick="toggleFilter('critical',this)">● CRITICAL</button>
+  <button class="chip c-amber active" onclick="toggleFilter('high',this)">● HIGH</button>
+  <button class="chip active"         onclick="toggleFilter('medium',this)">● MEDIUM</button>
+  <button class="chip active"         onclick="toggleFilter('low',this)">● LOW</button>
+  <div class="sep"></div>
+  <span class="filter-label">Category:</span>
+  <button class="chip active" onclick="toggleCat('all',this)">ALL</button>
+  <button class="chip" onclick="toggleCat('war',this)">WAR</button>
+  <button class="chip" onclick="toggleCat('energy',this)">ENERGY</button>
+  <button class="chip" onclick="toggleCat('trade',this)">TRADE</button>
+  <button class="chip" onclick="toggleCat('policy',this)">POLICY</button>
+  <button class="chip" onclick="toggleCat('currency',this)">CURRENCY</button>
+  <div class="sep"></div>
+  <span class="filter-label">Filter:</span>
+  <button class="chip active" id="filterPassBtn" onclick="togglePassFilter(this)">MATTERS FOR GOLD ✓</button>
+</div>
+
+<!-- Main grid -->
+<div class="geo-grid">
+
+  <!-- Left: events -->
+  <div>
+    <div class="section-label">ACTIVE GEOPOLITICAL EVENTS</div>
+    <div id="eventsContainer">
+      <!-- Default events load here -->
+    </div>
+  </div>
+
+  <!-- Right: sidebar -->
+  <div class="sidebar">
+
+    <!-- Your 4-point filter -->
+    <div class="filter-panel">
+      <div class="fp-title">◈ YOUR 4-POINT FILTER</div>
+      <div class="filter-check">
+        <div class="fc-dot active" id="dot-dollar"></div>
+        <div>
+          <div class="fc-text">Dollar Reserve Status Threat</div>
+          <div class="fc-sub">De-dollarisation, BRICS alternatives, petrodollar breakdown</div>
+        </div>
+      </div>
+      <div class="filter-check">
+        <div class="fc-dot active" id="dot-energy"></div>
+        <div>
+          <div class="fc-text">Global Energy Supply Disruption</div>
+          <div class="fc-sub">Oil chokepoints, OPEC decisions, pipeline threats</div>
+        </div>
+      </div>
+      <div class="filter-check">
+        <div class="fc-dot inactive" id="dot-risk"></div>
+        <div>
+          <div class="fc-text">Systemic Risk Appetite Shock</div>
+          <div class="fc-sub">2008-style contagion, war escalation, financial system stress</div>
+        </div>
+      </div>
+      <div class="filter-check">
+        <div class="fc-dot active" id="dot-cb"></div>
+        <div>
+          <div class="fc-text">Central Bank Gold Buying Shift</div>
+          <div class="fc-sub">China, Russia, India, Turkey reserve accumulation</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--b2);">
+        <div style="font-size:.38rem;color:var(--muted);font-family:var(--ff);line-height:1.8;">
+          <span style="color:var(--green);">● YES</span> to any → Gold reacts meaningfully &amp; sustains.<br>
+          <span style="color:var(--red);">● NO</span> to all → Spike only. Explain why it's noise.
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly video tracker -->
+    <div class="video-tracker">
+      <div class="vt-title">◈ WEEKLY VIDEO TRACKER</div>
+      <div class="vt-row">
+        <div class="vt-check" id="vt1" onclick="toggleVT('vt1')"></div>
+        <div class="vt-info">
+          <div class="vt-name">Video 1 — Anticipation & Data</div>
+          <div class="vt-day">Sunday / Monday · Before open</div>
+        </div>
+        <div class="vt-status" id="vts1">PENDING</div>
+      </div>
+      <div class="vt-row">
+        <div class="vt-check" id="vt2" onclick="toggleVT('vt2')"></div>
+        <div class="vt-info">
+          <div class="vt-name">Video 2 — Geopolitical Impact</div>
+          <div class="vt-day">Wednesday · Apply filter</div>
+        </div>
+        <div class="vt-status" id="vts2">PENDING</div>
+      </div>
+      <div class="vt-row">
+        <div class="vt-check" id="vt3" onclick="toggleVT('vt3')"></div>
+        <div class="vt-info">
+          <div class="vt-name">Video 3 — Market Relationships</div>
+          <div class="vt-day">Friday · Anticipation vs Reality</div>
+        </div>
+        <div class="vt-status" id="vts3">PENDING</div>
+      </div>
+    </div>
+
+    <!-- Script builder -->
+    <div class="script-builder">
+      <div class="sb-title">◈ VIDEO 2 SCRIPT BUILDER</div>
+      <div class="sb-field">
+        <div class="sb-label">Geopolitical Event This Week</div>
+        <input class="sb-input" id="sbEvent" type="text" placeholder="e.g. US-China tariff escalation on semiconductors" style="min-height:unset;resize:none;">
+      </div>
+      <div class="sb-field">
+        <div class="sb-label">Filter Result</div>
+        <select class="sb-select" id="sbFilter">
+          <option value="pass">✓ Matters — Gold will react</option>
+          <option value="fail">✗ Noise — Gold won't sustain</option>
+        </select>
+      </div>
+      <div class="sb-field">
+        <div class="sb-label">Primary Market Effect</div>
+        <select class="sb-select" id="sbEffect">
+          <option value="gold-bull">Gold Bullish</option>
+          <option value="gold-bear">Gold Bearish</option>
+          <option value="dxy-bull">DXY Bullish → Gold Bearish</option>
+          <option value="dxy-bear">DXY Bearish → Gold Bullish</option>
+          <option value="risk-off">Risk-Off → Gold + DXY Both Rise</option>
+          <option value="noise">Temporary Spike → Reversal</option>
+        </select>
+      </div>
+      <div class="sb-field">
+        <div class="sb-label">Your 1-Line Insight</div>
+        <textarea class="sb-input" id="sbInsight" rows="2" placeholder="e.g. Jab trade war escalate karta hai — dollar weak hota hai lekin Gold ka sustained move tab hota hai jab Dollar dominance itself threatened ho"></textarea>
+      </div>
+      <button class="gen-btn" onclick="generateScript()">⚡ GENERATE VIDEO 2 SCRIPT</button>
+      <div class="script-out" id="scriptOut"></div>
+      <button class="copy-btn" id="copyBtn" onclick="copyScript()">COPY SCRIPT</button>
+    </div>
+
+    <!-- Data sources -->
+    <div class="links-panel">
+      <div class="lp-title">◈ WEEKLY DATA SOURCES</div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">COT Gold Positioning</div>
+          <div class="dl-sub">Non-commercial net position — Barchart</div>
+        </div>
+        <a class="dl-btn" href="https://www.barchart.com/futures/commitment-of-traders/GC" target="_blank">OPEN →</a>
+      </div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">Real Yields — FRED</div>
+          <div class="dl-sub">10Y TIPS — Gold's inverse driver</div>
+        </div>
+        <a class="dl-btn" href="https://fred.stlouisfed.org/series/DFII10" target="_blank">OPEN →</a>
+      </div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">CME FedWatch</div>
+          <div class="dl-sub">Rate expectations — what's priced in</div>
+        </div>
+        <a class="dl-btn" href="https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html" target="_blank">OPEN →</a>
+      </div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">EIA Petroleum Report</div>
+          <div class="dl-sub">Wednesday — Oil inventory → inflation</div>
+        </div>
+        <a class="dl-btn" href="https://www.eia.gov/petroleum/supply/weekly/" target="_blank">OPEN →</a>
+      </div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">Central Bank Gold Buying</div>
+          <div class="dl-sub">World Gold Council — monthly data</div>
+        </div>
+        <a class="dl-btn" href="https://www.gold.org/goldhub/data/central-bank-statistics" target="_blank">OPEN →</a>
+      </div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">Reuters Markets</div>
+          <div class="dl-sub">Weekly geopolitical scan</div>
+        </div>
+        <a class="dl-btn" href="https://www.reuters.com/markets/commodities/" target="_blank">OPEN →</a>
+      </div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">Luke Gromen — Twitter/X</div>
+          <div class="dl-sub">Petrodollar + Gold macro commentary</div>
+        </div>
+        <a class="dl-btn" href="https://twitter.com/LukeGromen" target="_blank">OPEN →</a>
+      </div>
+      <div class="data-link">
+        <div>
+          <div class="dl-name">Economic Calendar</div>
+          <div class="dl-sub">High-impact events — Investing.com</div>
+        </div>
+        <a class="dl-btn" href="https://www.investing.com/economic-calendar/" target="_blank">OPEN →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add Event Modal -->
+<div class="modal-ov" id="addModal" onclick="closeModalClick(event)">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h3>ADD GEOPOLITICAL EVENT</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <div class="modal-label">Event Title</div>
+        <input class="modal-input" id="mTitle" placeholder="e.g. Iran-Israel escalation" type="text">
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Date</div>
+        <input class="modal-input" id="mDate" type="date">
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <div class="modal-label">Impact Level</div>
+        <select class="modal-select" id="mImpact">
+          <option value="critical">● CRITICAL</option>
+          <option value="high">● HIGH</option>
+          <option value="medium">● MEDIUM</option>
+          <option value="low">● LOW</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Category</div>
+        <select class="modal-select" id="mCat">
+          <option value="war">WAR / CONFLICT</option>
+          <option value="energy">ENERGY</option>
+          <option value="trade">TRADE</option>
+          <option value="policy">POLICY</option>
+          <option value="currency">CURRENCY</option>
+          <option value="sanction">SANCTION</option>
+          <option value="supply">SUPPLY CHAIN</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">What Happened</div>
+      <textarea class="modal-textarea" id="mDesc" placeholder="Brief factual description of the event..."></textarea>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Does it pass your 4-point filter?</div>
+      <select class="modal-select" id="mFilter">
+        <option value="pass">✓ YES — Matters for Gold (sustained move)</option>
+        <option value="fail">✗ NO — Noise (spike + reversal only)</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Filter Reason / Your Angle</div>
+      <textarea class="modal-textarea" id="mReason" placeholder="Why does/doesn't this pass your filter? What's your ICT/macro angle?"></textarea>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <div class="modal-label">Gold Effect</div>
+        <select class="modal-select" id="mGold">
+          <option value="bull">↑ BULLISH</option>
+          <option value="bear">↓ BEARISH</option>
+          <option value="neut">→ NEUTRAL</option>
+          <option value="watch">⚡ WATCH</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">DXY Effect</div>
+        <select class="modal-select" id="mDxy">
+          <option value="bear">↓ BEARISH (Gold +)</option>
+          <option value="bull">↑ BULLISH (Gold -)</option>
+          <option value="neut">→ NEUTRAL</option>
+          <option value="watch">⚡ WATCH</option>
+        </select>
+      </div>
+    </div>
+    <button class="modal-submit" onclick="submitEvent()">ADD TO DASHBOARD</button>
+  </div>
+</div>
+
+<div id="price-strip">
+  <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-nas"><span class="ps-sym">NAS100</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="ps-pair" id="ps-spx"><span class="ps-sym">SPX500</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
+  <div class="strip-right">
+    <span class="strip-ts" id="strip-ts"></span>
+    <span class="strip-src" id="strip-src">○ Loading</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="core/security.js"></script>
+<script src="core/config.js"></script>
+<script src="core/state.js"></script>
+<script src="core/api.js"></script>
+<script src="core/engines.js"></script>
+<script>
+const PAGE_ID = 'geo';
+
+// ── Default events (April 2026 context) ─────────────────
+const DEFAULT_EVENTS = [
+  {
+    id: 'e1', title: 'US-China Tariff War — Semiconductor Restrictions',
+    date: '2026-04-10', impact: 'critical', cat: 'trade',
+    desc: 'US expanded export controls on advanced semiconductors to China. China responded with rare earth export restrictions. Escalation threatens global supply chains and tech sector.',
+    filter: 'pass',
+    reason: 'Dollar dominance under pressure. China accelerating yuan trade settlement deals. Gold demand from China central bank increasing. This passes the filter — dollar reserve status directly threatened.',
+    gold: 'bull', dxy: 'bear', oil: 'watch', bonds: 'bull',
+    script: ''
+  },
+  {
+    id: 'e2', title: 'Middle East — Iran Nuclear Program Talks Collapse',
+    date: '2026-04-08', impact: 'high', cat: 'war',
+    desc: 'JCPOA negotiations collapsed after Iran announced uranium enrichment at 84%. US considering additional sanctions. Israel on high alert.',
+    filter: 'pass',
+    reason: 'Strait of Hormuz risk — 20% of global oil flows through it. Oil supply shock = inflation = Gold bullish. Also triggers risk-off flow into Gold as safe haven. Passes the filter on two points.',
+    gold: 'bull', dxy: 'bull', oil: 'bull', bonds: 'bull',
+    script: ''
+  },
+  {
+    id: 'e3', title: 'Russia-Ukraine — NATO Supply Line Announcement',
+    date: '2026-04-06', impact: 'high', cat: 'war',
+    desc: 'NATO announced expanded military aid package. Russia threatened response to escalation. No direct conflict with NATO members.',
+    filter: 'fail',
+    reason: 'Despite headlines — this is not a new development. Markets have priced in Ukraine conflict since 2022. No new threat to energy supply or dollar dominance this week. Gold spiked 15 points on the news and reversed. This is noise.',
+    gold: 'neut', dxy: 'neut', oil: 'watch', bonds: 'bull',
+    script: ''
+  },
+  {
+    id: 'e4', title: 'BRICS+ — New Payment System Pilot Launch',
+    date: '2026-04-03', impact: 'critical', cat: 'currency',
+    desc: 'BRICS nations launched pilot of commodity settlement system bypassing SWIFT. Saudi Arabia, UAE participating. First oil trades settled in non-dollar currencies reported.',
+    filter: 'pass',
+    reason: 'This is the most important long-term Gold driver right now. Petrodollar system being actively circumvented. Every non-dollar oil settlement = reduced dollar demand = dollar weakness long term = structural Gold bull. Central bank Gold buying will accelerate.',
+    gold: 'bull', dxy: 'bear', oil: 'neut', bonds: 'neut',
+    script: ''
+  },
+  {
+    id: 'e5', title: 'India-Pakistan — Border Tensions Flare',
+    date: '2026-04-12', impact: 'medium', cat: 'war',
+    desc: 'Skirmish at Line of Control. Both governments issued statements. No major military mobilization reported.',
+    filter: 'fail',
+    reason: 'Regional conflict, not global systemic. No energy supply threat. No dollar reserve implications. India is a major Gold buyer — domestic demand may spike but not a global Gold move. This is noise for international markets.',
+    gold: 'neut', dxy: 'neut', oil: 'neut', bonds: 'neut',
+    script: ''
+  },
+];
+
+let events = [];
+let activeFilters = { impact: ['critical','high','medium','low'], cat: 'all', passOnly: true };
+
+// ── Boot ─────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  NavEngine.init(PAGE_ID);
+  PriceEngine.start();
+  loadEvents();
+  setTodayDate();
+  loadVTState();
+});
+
+function setTodayDate() {
+  const d = new Date().toISOString().split('T')[0];
+  document.getElementById('mDate').value = d;
+}
+
+// ── Storage ──────────────────────────────────────────────
+function loadEvents() {
+  const saved = localStorage.getItem('geo-events');
+  events = saved ? JSON.parse(saved) : [...DEFAULT_EVENTS];
+  renderEvents();
+}
+
+function saveEvents() {
+  localStorage.setItem('geo-events', JSON.stringify(events));
+}
+
+function clearAll() {
+  if (!confirm('Reset to default events?')) return;
+  localStorage.removeItem('geo-events');
+  loadEvents();
+}
+
+// ── Render ────────────────────────────────────────────────
+function renderEvents() {
+  const container = document.getElementById('eventsContainer');
+  let filtered = events;
+
+  if (!activeFilters.impact.includes('critical')) filtered = filtered.filter(e => e.impact !== 'critical');
+  if (!activeFilters.impact.includes('high'))     filtered = filtered.filter(e => e.impact !== 'high');
+  if (!activeFilters.impact.includes('medium'))   filtered = filtered.filter(e => e.impact !== 'medium');
+  if (!activeFilters.impact.includes('low'))      filtered = filtered.filter(e => e.impact !== 'low');
+  if (activeFilters.cat !== 'all')                filtered = filtered.filter(e => e.cat === activeFilters.cat);
+  if (activeFilters.passOnly)                     filtered = filtered.filter(e => e.filter === 'pass');
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state">No events match your filter.<br>Add an event or adjust filters above.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(e => buildEventHTML(e)).join('');
+}
+
+function buildEventHTML(e) {
+  const impClass = { critical:'imp-critical', high:'imp-high', medium:'imp-medium', low:'imp-low' }[e.impact] || 'imp-low';
+  const catTag = { war:'tag-war', sanction:'tag-sanction', energy:'tag-energy', trade:'tag-trade', policy:'tag-policy', currency:'tag-currency', supply:'tag-supply' }[e.cat] || 'tag-policy';
+  const catLabel = { war:'WAR', sanction:'SANCTION', energy:'ENERGY', trade:'TRADE', policy:'POLICY', currency:'CURRENCY', supply:'SUPPLY' }[e.cat] || e.cat.toUpperCase();
+  const impLabel = e.impact.toUpperCase();
+
+  const goldIcon = { bull:'↑', bear:'↓', neut:'→', watch:'⚡' }[e.gold] || '→';
+  const goldClass = { bull:'eff-bull', bear:'eff-bear', neut:'eff-neut', watch:'eff-watch' }[e.gold] || 'eff-neut';
+  const dxyIcon  = { bull:'↑', bear:'↓', neut:'→', watch:'⚡' }[e.dxy]  || '→';
+  const dxyClass  = { bull:'eff-bull', bear:'eff-bear', neut:'eff-neut', watch:'eff-watch' }[e.dxy]  || 'eff-neut';
+  const bondIcon = { bull:'↑', bear:'↓', neut:'→', watch:'⚡' }[e.bonds] || '→';
+  const oilIcon  = { bull:'↑', bear:'↓', neut:'→', watch:'⚡' }[e.oil]   || '→';
+
+  const filterBox = e.filter === 'pass'
+    ? `<div class="geo-filter-box gfb-pass"><div class="gfb-label">✓ PASSES YOUR FILTER — MATTERS FOR GOLD</div><div class="gfb-text">${e.reason}</div></div>`
+    : `<div class="geo-filter-box gfb-fail"><div class="gfb-label">✗ NOISE — GOLD WON'T SUSTAIN A MOVE</div><div class="gfb-text">${e.reason}</div></div>`;
+
+  const savedScript = e.script || '';
+
+  return `
+<div class="event-card" id="card-${e.id}">
+  <div class="event-hdr" onclick="toggleCard('${e.id}')">
+    <div class="ev-impact ${impClass}"></div>
+    <div class="ev-main">
+      <div class="ev-title">${e.title}</div>
+      <div class="ev-meta">
+        <span class="ev-tag ${catTag}">${catLabel}</span>
+        <span class="ev-tag tag-policy">${impLabel}</span>
+        ${e.filter === 'pass' ? '<span class="ev-tag" style="color:var(--green);border-color:rgba(0,212,122,.3);background:rgba(0,212,122,.06);">MATTERS</span>' : '<span class="ev-tag" style="color:var(--muted);border-color:var(--b2);">NOISE</span>'}
+      </div>
+    </div>
+    <div class="ev-date">${e.date}</div>
+    <div class="ev-chevron">▾</div>
+  </div>
+  <div class="event-body">
+    <div class="ev-section">
+      <div class="ev-section-title">WHAT HAPPENED</div>
+      <div class="ev-desc">${e.desc}</div>
+    </div>
+    <div class="ev-section">
+      <div class="ev-section-title">MARKET RELATIONSHIPS</div>
+      <div class="impact-grid">
+        <div class="impact-box">
+          <div class="ib-asset">GOLD (XAU)</div>
+          <div class="ib-effect ${goldClass}">${goldIcon} ${e.gold.toUpperCase()}</div>
+          <div class="ib-reason">Primary safe haven & dollar hedge</div>
+        </div>
+        <div class="impact-box">
+          <div class="ib-asset">DXY (Dollar)</div>
+          <div class="ib-effect ${dxyClass}">${dxyIcon} ${e.dxy.toUpperCase()}</div>
+          <div class="ib-reason">Inverse Gold driver — watch correlation</div>
+        </div>
+        <div class="impact-box">
+          <div class="ib-asset">OIL (WTI)</div>
+          <div class="ib-effect eff-watch">${oilIcon} ${(e.oil||'neut').toUpperCase()}</div>
+          <div class="ib-reason">Energy → inflation → Gold linkage</div>
+        </div>
+        <div class="impact-box">
+          <div class="ib-asset">BONDS (10Y)</div>
+          <div class="ib-effect eff-watch">${bondIcon} ${(e.bonds||'neut').toUpperCase()}</div>
+          <div class="ib-reason">Risk-off flows → yields fall → Gold up</div>
+        </div>
+      </div>
+    </div>
+    <div class="ev-section">
+      <div class="ev-section-title">YOUR 4-POINT FILTER VERDICT</div>
+      ${filterBox}
+    </div>
+    <div class="ev-section">
+      <div class="ev-section-title">YOUR SCRIPT NOTES — VIDEO 2</div>
+      <textarea class="script-pad" id="sp-${e.id}" placeholder="Write your script angle here — what will you say about this event in your video? Your ICT take, your macro read, your unique angle...">${savedScript}</textarea>
+      <div style="display:flex;align-items:center;">
+        <button class="script-save-btn" onclick="saveNote('${e.id}')">SAVE NOTES</button>
+        <span class="saved-flash" id="sf-${e.id}">✓ Saved</span>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+function toggleCard(id) {
+  const card = document.getElementById(`card-${id}`);
+  card.classList.toggle('open');
+}
+
+function saveNote(id) {
+  const val = document.getElementById(`sp-${id}`).value;
+  const ev = events.find(e => e.id === id);
+  if (ev) { ev.script = val; saveEvents(); }
+  const flash = document.getElementById(`sf-${id}`);
+  flash.style.opacity = '1';
+  setTimeout(() => { flash.style.opacity = '0'; }, 1800);
+}
+
+// ── Add event modal ───────────────────────────────────────
+function openAddModal() { document.getElementById('addModal').classList.add('show'); }
+function closeModal() { document.getElementById('addModal').classList.remove('show'); }
+function closeModalClick(e) { if (e.target.id === 'addModal') closeModal(); }
+
+function submitEvent() {
+  const title  = document.getElementById('mTitle').value.trim();
+  const date   = document.getElementById('mDate').value;
+  const impact = document.getElementById('mImpact').value;
+  const cat    = document.getElementById('mCat').value;
+  const desc   = document.getElementById('mDesc').value.trim();
+  const filter = document.getElementById('mFilter').value;
+  const reason = document.getElementById('mReason').value.trim();
+  const gold   = document.getElementById('mGold').value;
+  const dxy    = document.getElementById('mDxy').value;
+
+  if (!title || !desc) { alert('Title and description required.'); return; }
+
+  const newEv = {
+    id: 'e' + Date.now(), title, date, impact, cat, desc, filter, reason,
+    gold, dxy, oil: 'watch', bonds: 'watch', script: ''
+  };
+
+  events.unshift(newEv);
+  saveEvents();
+  renderEvents();
+  closeModal();
+
+  // Reset form
+  ['mTitle','mDesc','mReason'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── Filters ───────────────────────────────────────────────
+function toggleFilter(level, btn) {
+  const idx = activeFilters.impact.indexOf(level);
+  if (idx > -1) activeFilters.impact.splice(idx, 1);
+  else activeFilters.impact.push(level);
+  btn.classList.toggle('active');
+  renderEvents();
+}
+
+function toggleCat(cat, btn) {
+  activeFilters.cat = cat;
+  document.querySelectorAll('.filter-row .chip').forEach(b => {
+    if (['ALL','WAR','ENERGY','TRADE','POLICY','CURRENCY'].includes(b.textContent.trim())) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  renderEvents();
+}
+
+function togglePassFilter(btn) {
+  activeFilters.passOnly = !activeFilters.passOnly;
+  btn.classList.toggle('active');
+  btn.textContent = activeFilters.passOnly ? 'MATTERS FOR GOLD ✓' : 'SHOW ALL EVENTS';
+  renderEvents();
+}
+
+// ── Video tracker ─────────────────────────────────────────
+function toggleVT(id) {
+  const el  = document.getElementById(id);
+  const num = id.replace('vt','');
+  const st  = document.getElementById('vts' + num);
+  const done = !el.classList.contains('done');
+  el.classList.toggle('done');
+  el.textContent = done ? '✓' : '';
+  st.textContent  = done ? 'DONE' : 'PENDING';
+  st.className    = 'vt-status' + (done ? ' done' : '');
+  saveVTState();
+}
+
+function saveVTState() {
+  const state = {};
+  [1,2,3].forEach(n => { state[n] = document.getElementById('vt'+n).classList.contains('done'); });
+  localStorage.setItem('geo-vt', JSON.stringify(state));
+}
+
+function loadVTState() {
+  const saved = localStorage.getItem('geo-vt');
+  if (!saved) return;
+  const state = JSON.parse(saved);
+  Object.entries(state).forEach(([n, done]) => {
+    if (done) {
+      const el = document.getElementById('vt'+n);
+      const st = document.getElementById('vts'+n);
+      if (el) { el.classList.add('done'); el.textContent = '✓'; }
+      if (st) { st.textContent = 'DONE'; st.className = 'vt-status done'; }
+    }
+  });
+}
+
+// ── Script builder ────────────────────────────────────────
+function generateScript() {
+  const event   = document.getElementById('sbEvent').value.trim();
+  const filter  = document.getElementById('sbFilter').value;
+  const effect  = document.getElementById('sbEffect').value;
+  const insight = document.getElementById('sbInsight').value.trim();
+
+  if (!event) { alert('Enter the geopolitical event first.'); return; }
+
+  const effectMap = {
+    'gold-bull': 'Gold ke liye bullish signal hai',
+    'gold-bear': 'Gold ke liye bearish pressure create karta hai',
+    'dxy-bull':  'Dollar strong hoga — Gold pe selling pressure aayega',
+    'dxy-bear':  'Dollar weak hoga — Gold ke liye tailwind hai',
+    'risk-off':  'Risk-off environment — Dollar aur Gold dono rise kar sakte hain',
+    'noise':     'Temporary spike aayega — lekin Gold sustain nahi karega is move ko'
+  };
+
+  const filterScript = filter === 'pass'
+    ? `Main apna 4-point filter apply karta hoon —\n\nKya yeh event dollar dominance ko threaten karta hai? Kya energy supply disrupted hai? Kya systemic risk appetite shocked hai? Kya central bank buying shift hogi?\n\nAur is case mein — answer hai haan.\n\nIsliye yeh event Gold ke liye matter karta hai.`
+    : `Main apna 4-point filter apply karta hoon —\n\nKya yeh event dollar dominance threaten karta hai? Energy supply? Systemic risk? Central bank Gold buying?\n\nIs case mein — answer hai nahi.\n\nIsliye Gold ne spike kiya — lekin sustain nahi karega. Yeh noise hai. Aur yeh samajhna utna hi important hai jitna actual move ko samajhna.`;
+
+  const script = `HOOK —
+"${event} — aur Gold ne react kiya. Lekin sawaal yeh hai — kya yeh real move hai, ya sirf noise?"
+
+BODY —
+Yeh hafte ${event} ne headlines capture kiye.
+
+${filterScript}
+
+Market relationship —
+${effectMap[effect] || 'Relationship complex hai — dono sides ke arguments hain'}.
+
+${insight ? `Mera take —\n${insight}` : ''}
+
+CTA —
+"Agar tumhe is tarah ka analysis chahiye — jo headlines se nahi, logic se chalta ho — follow karo. Agle video mein main tumhe dikhaunga ki yeh actually chart pe kahan reflect ho raha hai."`;
+
+  const out = document.getElementById('scriptOut');
+  const copyBtn = document.getElementById('copyBtn');
+  out.textContent = script;
+  out.classList.add('show');
+  copyBtn.classList.add('show');
+}
+
+function copyScript() {
+  const text = document.getElementById('scriptOut').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ COPIED';
+    setTimeout(() => { btn.textContent = 'COPY SCRIPT'; }, 2000);
+  });
+}
+
+// ── Theme ─────────────────────────────────────────────────
+(function() {
+  if (localStorage.getItem('tradeos-theme') === 'light') {
+    document.body.classList.add('light');
+  }
+})();
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('tradeos-theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = isLight ? '☾' : '☀';
+}
+</script>
+</body>
+</html>
