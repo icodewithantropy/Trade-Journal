@@ -23,6 +23,7 @@ const Config = {
     { id: 'playbook',  label: 'Playbook',  file: 'playbook.html'  },
     { id: 'news',      label: 'News',      file: 'news.html'      },
     { id: 'simulator', label: 'Simulator', file: 'simulator.html' },
+    { id: 'geo',       label: 'Geopolitical', file: 'geo.html'   },
   ],
 
   // ── Refresh intervals (ms) ────────────────────────────────
