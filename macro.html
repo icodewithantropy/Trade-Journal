@@ -8,66 +8,71 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="core/style.css">
 <style>
-.macro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; padding: 16px 20px; }
-.macro-card { background: var(--s2); border: 1px solid var(--b2); border-radius: 8px; padding: 16px; cursor: pointer; transition: border-color .15s, transform .1s; position: relative; }
-.macro-card:hover { border-color: var(--b3); transform: translateY(-1px); }
-.mc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; gap: 6px; }
-.mc-label { font-size: .45rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; font-family: var(--ff); }
-.mc-release-badge { font-size: .36rem; padding: 2px 7px; border-radius: 3px; font-family: var(--ff); letter-spacing: .4px; border: 1px solid; white-space: nowrap; flex-shrink: 0; }
-.badge-recent { color: var(--green); border-color: rgba(0,212,122,.3); background: rgba(0,212,122,.06); }
-.badge-lag    { color: var(--amber); border-color: rgba(245,166,35,.3); background: rgba(245,166,35,.06); }
-.badge-stale  { color: var(--muted); border-color: var(--b2); background: transparent; }
-.mc-val { font-family: var(--fd); font-size: 1.8rem; font-weight: 800; line-height: 1; }
-.mc-val.loading { font-size: .65rem; color: var(--muted); animation: pulse 1.5s infinite; font-family: var(--ff); }
-.mc-val.err { font-size: .65rem; color: var(--red); font-family: var(--ff); }
-.mc-sub { font-size: .44rem; color: var(--m2); margin-top: 4px; font-family: var(--ff); }
-.mc-release-info { font-size: .38rem; color: var(--muted); font-family: var(--ff); margin-top: 3px; line-height: 1.5; }
-.bias-tag { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: .42rem; font-weight: 700; margin-top: 5px; font-family: var(--ff); letter-spacing: .5px; }
-.bias-hawkish { background: rgba(0,212,122,.12); color: var(--green); border: 1px solid rgba(0,212,122,.2); }
-.bias-dovish  { background: rgba(255,45,85,.12);  color: var(--red);   border: 1px solid rgba(255,45,85,.2); }
-.bias-neutral { background: rgba(245,166,35,.12); color: var(--amber); border: 1px solid rgba(245,166,35,.2); }
-.spark-wrap { margin-top: 10px; height: 48px; position: relative; }
-.spark-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
-.chg-up { color: var(--green); } .chg-dn { color: var(--red); }
-.ai-panel { margin: 0 20px 20px; background: var(--s2); border: 1px solid var(--b2); border-radius: 8px; padding: 18px; }
-.ai-panel .shdr { font-size: .48rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-.ai-panel textarea { width: 100%; background: var(--s3); border: 1px solid var(--b2); border-radius: 6px; color: var(--text); padding: 10px; font-size: .52rem; resize: vertical; min-height: 52px; font-family: var(--ff); }
-.ai-panel textarea:focus { outline: none; border-color: var(--b3); }
-.ai-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.btn-ai { padding: 7px 16px; border-radius: 5px; border: none; cursor: pointer; font-size: .48rem; font-weight: 700; font-family: var(--ff); letter-spacing: .5px; transition: opacity .15s; }
-.btn-ai:hover { opacity: .8; }
-.btn-ai-primary { background: var(--blue); color: #fff; }
-.btn-ai-ghost { background: var(--s3); color: var(--t2); border: 1px solid var(--b2); }
-.ai-out { margin-top: 12px; background: var(--s3); border: 1px solid var(--b2); border-radius: 6px; padding: 12px; font-size: .5rem; line-height: 1.8; white-space: pre-wrap; display: none; font-family: var(--ff); color: var(--text); }
-.ai-out.show { display: block; }
-.ai-pulse { color: var(--muted); animation: pulse 1.5s infinite; }
-.modal-ov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 2000; align-items: center; justify-content: center; }
-.modal-ov.show { display: flex; }
-.modal-box { background: var(--s2); border: 1px solid var(--b2); border-radius: 10px; padding: 22px; width: 92vw; max-width: 780px; max-height: 90vh; overflow-y: auto; }
-.modal-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; gap: 12px; }
-.modal-hdr-left h3 { font-family: var(--fd); font-size: .85rem; font-weight: 700; }
-.modal-meta { font-size: .4rem; color: var(--muted); font-family: var(--ff); margin-top: 4px; line-height: 1.7; }
-.modal-close { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 4px 8px; flex-shrink: 0; }
-.modal-close:hover { color: var(--text); }
-.chart-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
-.ct-btn { padding: 4px 14px; border-radius: 4px; border: 1px solid var(--b2); background: var(--s3); color: var(--muted); font-size: .4rem; font-family: var(--ff); cursor: pointer; transition: all .12s; }
-.ct-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-.lag-notice { padding: 8px 12px; border-radius: 4px; font-size: .4rem; font-family: var(--ff); line-height: 1.7; margin-bottom: 10px; background: rgba(245,166,35,.06); border: 1px solid rgba(245,166,35,.2); color: var(--amber); }
-.modal-chart-wrap { position: relative; height: 280px; margin-bottom: 14px; }
-.modal-chart-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
-.hist-tbl { width: 100%; border-collapse: collapse; }
-.hist-tbl th { font-size: .38rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 7px 10px; border-bottom: 1px solid var(--b2); text-align: left; font-family: var(--ff); }
-.hist-tbl td { padding: 7px 10px; font-size: .46rem; border-bottom: 1px solid var(--b2); font-family: var(--ff); color: var(--t2); }
-.hist-tbl tr:hover td { background: var(--s3); }
-.tbl-val { font-weight: 600; font-size: .54rem !important; color: var(--text) !important; font-family: var(--fd) !important; }
-.tbl-date { color: var(--muted) !important; font-size: .42rem !important; }
-.ccy-tabs { display: flex; gap: 6px; }
-.ccy-tab { padding: 4px 12px; border-radius: 4px; border: 1px solid var(--b2); background: var(--s3); color: var(--muted); font-size: .44rem; cursor: pointer; font-family: var(--ff); letter-spacing: .5px; transition: all .15s; }
-.ccy-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-.macro-status { padding: 4px 20px 12px; font-size: .42rem; color: var(--muted); font-family: var(--ff); }
-.page-hdr { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 16px 20px 8px; }
-.page-hdr h1 { font-family: var(--fd); font-size: 1rem; font-weight: 800; }
-.page-hdr-right { display: flex; gap: 10px; align-items: center; }
+.macro-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; padding:16px 20px; }
+.macro-card { background:var(--s2); border:1px solid var(--b2); border-radius:8px; padding:16px; cursor:pointer; transition:border-color .15s,transform .1s; position:relative; }
+.macro-card:hover { border-color:var(--b3); transform:translateY(-1px); }
+.mc-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px; gap:6px; }
+.mc-label { font-size:.45rem; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; font-family:var(--ff); }
+.mc-badge { font-size:.36rem; padding:2px 7px; border-radius:3px; font-family:var(--ff); border:1px solid; white-space:nowrap; flex-shrink:0; }
+.badge-fresh  { color:var(--green); border-color:rgba(0,212,122,.3); background:rgba(0,212,122,.06); }
+.badge-normal { color:var(--amber); border-color:rgba(245,166,35,.3); background:rgba(245,166,35,.06); }
+.badge-old    { color:var(--muted); border-color:var(--b2); background:transparent; }
+.mc-val { font-family:var(--fd); font-size:1.8rem; font-weight:800; line-height:1; }
+.mc-val.loading { font-size:.65rem; color:var(--muted); animation:pulse 1.5s infinite; font-family:var(--ff); }
+.mc-val.err { font-size:.65rem; color:var(--red); font-family:var(--ff); }
+.mc-sub { font-size:.44rem; color:var(--m2); margin-top:4px; font-family:var(--ff); }
+.mc-dates { font-size:.38rem; color:var(--muted); font-family:var(--ff); margin-top:4px; line-height:1.6; background:var(--s3); border-radius:4px; padding:5px 8px; border-left:2px solid var(--b3); }
+.mc-dates strong { color:var(--t2); }
+.bias-tag { display:inline-block; padding:1px 8px; border-radius:3px; font-size:.42rem; font-weight:700; margin-top:5px; font-family:var(--ff); letter-spacing:.5px; }
+.bias-hawkish { background:rgba(0,212,122,.12); color:var(--green); border:1px solid rgba(0,212,122,.2); }
+.bias-dovish  { background:rgba(255,45,85,.12);  color:var(--red);   border:1px solid rgba(255,45,85,.2); }
+.bias-neutral { background:rgba(245,166,35,.12); color:var(--amber); border:1px solid rgba(245,166,35,.2); }
+.spark-wrap { margin-top:10px; height:48px; position:relative; }
+.spark-wrap canvas { position:absolute; inset:0; width:100%!important; height:100%!important; }
+.chg-up { color:var(--green); } .chg-dn { color:var(--red); }
+.ai-panel { margin:0 20px 20px; background:var(--s2); border:1px solid var(--b2); border-radius:8px; padding:18px; }
+.ai-panel .shdr { font-size:.48rem; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.ai-panel textarea { width:100%; background:var(--s3); border:1px solid var(--b2); border-radius:6px; color:var(--text); padding:10px; font-size:.52rem; resize:vertical; min-height:52px; font-family:var(--ff); }
+.ai-panel textarea:focus { outline:none; border-color:var(--b3); }
+.ai-btns { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.btn-ai { padding:7px 16px; border-radius:5px; border:none; cursor:pointer; font-size:.48rem; font-weight:700; font-family:var(--ff); letter-spacing:.5px; transition:opacity .15s; }
+.btn-ai:hover { opacity:.8; }
+.btn-ai-primary { background:var(--blue); color:#fff; }
+.btn-ai-ghost { background:var(--s3); color:var(--t2); border:1px solid var(--b2); }
+.ai-out { margin-top:12px; background:var(--s3); border:1px solid var(--b2); border-radius:6px; padding:12px; font-size:.5rem; line-height:1.8; white-space:pre-wrap; display:none; font-family:var(--ff); color:var(--text); }
+.ai-out.show { display:block; }
+.ai-pulse { color:var(--muted); animation:pulse 1.5s infinite; }
+.modal-ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:2000; align-items:center; justify-content:center; }
+.modal-ov.show { display:flex; }
+.modal-box { background:var(--s2); border:1px solid var(--b2); border-radius:10px; padding:22px; width:92vw; max-width:800px; max-height:92vh; overflow-y:auto; }
+.modal-hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px; gap:12px; }
+.modal-hdr-left h3 { font-family:var(--fd); font-size:.9rem; font-weight:700; }
+.modal-meta { font-size:.4rem; color:var(--muted); font-family:var(--ff); margin-top:5px; line-height:1.8; }
+.modal-meta strong { color:var(--text); }
+.modal-close { background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; padding:4px 8px; flex-shrink:0; }
+.modal-close:hover { color:var(--text); }
+.release-box { padding:10px 12px; border-radius:5px; background:rgba(61,142,255,.06); border:1px solid rgba(61,142,255,.2); font-size:.4rem; font-family:var(--ff); line-height:1.8; color:var(--t2); margin-bottom:12px; }
+.release-box strong { color:var(--blue); }
+.chart-toggle { display:flex; gap:6px; margin-bottom:10px; }
+.ct-btn { padding:5px 16px; border-radius:4px; border:1px solid var(--b2); background:var(--s3); color:var(--muted); font-size:.42rem; font-family:var(--ff); cursor:pointer; transition:all .12s; }
+.ct-btn.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+.modal-chart-wrap { position:relative; height:280px; margin-bottom:16px; }
+.modal-chart-wrap canvas { position:absolute; inset:0; width:100%!important; height:100%!important; }
+.hist-tbl { width:100%; border-collapse:collapse; }
+.hist-tbl th { font-size:.38rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; padding:8px 10px; border-bottom:1px solid var(--b2); text-align:left; font-family:var(--ff); }
+.hist-tbl td { padding:8px 10px; font-size:.46rem; border-bottom:1px solid var(--b2); font-family:var(--ff); color:var(--t2); }
+.hist-tbl tr:hover td { background:var(--s3); }
+.col-val  { font-weight:700; font-size:.56rem!important; font-family:var(--fd)!important; }
+.col-date { color:var(--muted)!important; font-size:.42rem!important; }
+.col-ref  { color:var(--t2)!important; font-size:.44rem!important; }
+.col-rel  { color:var(--blue)!important; font-size:.4rem!important; font-style:italic; }
+.ccy-tabs { display:flex; gap:6px; }
+.ccy-tab { padding:4px 12px; border-radius:4px; border:1px solid var(--b2); background:var(--s3); color:var(--muted); font-size:.44rem; cursor:pointer; font-family:var(--ff); transition:all .15s; }
+.ccy-tab.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+.macro-status { padding:4px 20px 12px; font-size:.42rem; color:var(--muted); font-family:var(--ff); }
+.page-hdr { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:16px 20px 8px; }
+.page-hdr h1 { font-family:var(--fd); font-size:1rem; font-weight:800; }
+.page-hdr-right { display:flex; gap:10px; align-items:center; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 </style>
 </head>
@@ -79,7 +84,7 @@
     <div class="nav-px" id="np-eur">EUR —</div>
     <div class="nav-px" id="np-nas">NAS —</div>
     <div class="nav-px" id="np-spx">SPX —</div>
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀</button>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">☀</button>
     <div class="nav-dot" id="nav-dot"></div>
   </div>
 </nav>
@@ -96,52 +101,52 @@
 </div>
 <div class="macro-grid" id="macroGrid">
   <div class="macro-card" id="card-FEDFUNDS">
-    <div class="mc-top"><div class="mc-label">Fed Funds Rate</div><span class="mc-release-badge badge-lag" id="badge-FEDFUNDS">—</span></div>
+    <div class="mc-top"><div class="mc-label">Fed Funds Rate</div><span class="mc-badge badge-normal" id="badge-FEDFUNDS">—</span></div>
     <div class="mc-val loading" id="val-FEDFUNDS">Loading…</div>
     <div class="mc-sub" id="sub-FEDFUNDS"></div>
-    <div class="mc-release-info" id="rel-FEDFUNDS"></div>
+    <div class="mc-dates" id="dates-FEDFUNDS"></div>
     <div class="spark-wrap"><canvas id="spark-FEDFUNDS"></canvas></div>
   </div>
   <div class="macro-card" id="card-CPIAUCSL">
-    <div class="mc-top"><div class="mc-label">CPI YoY %</div><span class="mc-release-badge badge-lag" id="badge-CPIAUCSL">—</span></div>
+    <div class="mc-top"><div class="mc-label">CPI YoY %</div><span class="mc-badge badge-normal" id="badge-CPIAUCSL">—</span></div>
     <div class="mc-val loading" id="val-CPIAUCSL">Loading…</div>
     <div class="mc-sub" id="sub-CPIAUCSL"></div>
-    <div class="mc-release-info" id="rel-CPIAUCSL"></div>
+    <div class="mc-dates" id="dates-CPIAUCSL"></div>
     <div class="spark-wrap"><canvas id="spark-CPIAUCSL"></canvas></div>
   </div>
   <div class="macro-card" id="card-CPILFESL">
-    <div class="mc-top"><div class="mc-label">Core CPI YoY %</div><span class="mc-release-badge badge-lag" id="badge-CPILFESL">—</span></div>
+    <div class="mc-top"><div class="mc-label">Core CPI YoY %</div><span class="mc-badge badge-normal" id="badge-CPILFESL">—</span></div>
     <div class="mc-val loading" id="val-CPILFESL">Loading…</div>
     <div class="mc-sub" id="sub-CPILFESL"></div>
-    <div class="mc-release-info" id="rel-CPILFESL"></div>
+    <div class="mc-dates" id="dates-CPILFESL"></div>
     <div class="spark-wrap"><canvas id="spark-CPILFESL"></canvas></div>
   </div>
   <div class="macro-card" id="card-PAYEMS">
-    <div class="mc-top"><div class="mc-label">NFP MoM (000s)</div><span class="mc-release-badge badge-lag" id="badge-PAYEMS">—</span></div>
+    <div class="mc-top"><div class="mc-label">NFP MoM (000s)</div><span class="mc-badge badge-normal" id="badge-PAYEMS">—</span></div>
     <div class="mc-val loading" id="val-PAYEMS">Loading…</div>
     <div class="mc-sub" id="sub-PAYEMS"></div>
-    <div class="mc-release-info" id="rel-PAYEMS"></div>
+    <div class="mc-dates" id="dates-PAYEMS"></div>
     <div class="spark-wrap"><canvas id="spark-PAYEMS"></canvas></div>
   </div>
   <div class="macro-card" id="card-UNRATE">
-    <div class="mc-top"><div class="mc-label">Unemployment %</div><span class="mc-release-badge badge-lag" id="badge-UNRATE">—</span></div>
+    <div class="mc-top"><div class="mc-label">Unemployment %</div><span class="mc-badge badge-normal" id="badge-UNRATE">—</span></div>
     <div class="mc-val loading" id="val-UNRATE">Loading…</div>
     <div class="mc-sub" id="sub-UNRATE"></div>
-    <div class="mc-release-info" id="rel-UNRATE"></div>
+    <div class="mc-dates" id="dates-UNRATE"></div>
     <div class="spark-wrap"><canvas id="spark-UNRATE"></canvas></div>
   </div>
   <div class="macro-card" id="card-A191RL1Q225SBEA">
-    <div class="mc-top"><div class="mc-label">GDP QoQ %</div><span class="mc-release-badge badge-lag" id="badge-A191RL1Q225SBEA">—</span></div>
+    <div class="mc-top"><div class="mc-label">GDP QoQ %</div><span class="mc-badge badge-normal" id="badge-A191RL1Q225SBEA">—</span></div>
     <div class="mc-val loading" id="val-A191RL1Q225SBEA">Loading…</div>
     <div class="mc-sub" id="sub-A191RL1Q225SBEA"></div>
-    <div class="mc-release-info" id="rel-A191RL1Q225SBEA"></div>
+    <div class="mc-dates" id="dates-A191RL1Q225SBEA"></div>
     <div class="spark-wrap"><canvas id="spark-A191RL1Q225SBEA"></canvas></div>
   </div>
 </div>
 <div class="macro-status" id="macroStatus">Connecting to FRED…</div>
 <div class="ai-panel">
   <div class="shdr">◈ AI MACRO ANALYSIS <span style="color:var(--muted);font-size:.4rem;font-weight:400;">· Reads live FRED data</span></div>
-  <textarea id="aiQ" placeholder="Ask anything… e.g. 'What is the USD bias this week?' or leave empty for full weekly analysis"></textarea>
+  <textarea id="aiQ" placeholder="Ask anything… e.g. 'What is the Gold bias this week given current macro?'"></textarea>
   <div class="ai-btns">
     <button class="btn-ai btn-ai-primary" onclick="runAI()">⚡ GENERATE ANALYSIS</button>
     <button class="btn-ai btn-ai-ghost" onclick="clearAI()">CLEAR</button>
@@ -157,7 +162,7 @@
       </div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
-    <div class="lag-notice" id="lagNotice"></div>
+    <div class="release-box" id="releaseBox"></div>
     <div class="chart-toggle">
       <button class="ct-btn active" id="ctLine" onclick="switchChart('line')">LINE CHART</button>
       <button class="ct-btn" id="ctBar" onclick="switchChart('bar')">BAR CHART</button>
@@ -166,9 +171,9 @@
     <table class="hist-tbl">
       <thead>
         <tr>
-          <th>FRED Release Date</th>
-          <th>Reference Period</th>
-          <th>Actual Value</th>
+          <th>Data Period</th>
+          <th>Actual BLS/Fed Release</th>
+          <th>Value</th>
           <th>Change vs Prior</th>
         </tr>
       </thead>
@@ -181,10 +186,7 @@
   <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
   <div class="ps-pair" id="ps-nas"><span class="ps-sym">NAS100</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
   <div class="ps-pair" id="ps-spx"><span class="ps-sym">SPX500</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
-  <div class="strip-right">
-    <span class="strip-ts" id="strip-ts"></span>
-    <span class="strip-src" id="strip-src">○ Loading</span>
-  </div>
+  <div class="strip-right"><span class="strip-ts" id="strip-ts"></span><span class="strip-src" id="strip-src">○ Loading</span></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="core/security.js"></script>
@@ -195,38 +197,92 @@
 <script>
 const PAGE_ID = 'macro';
 
+// ─────────────────────────────────────────────────────────
+// SERIES CONFIG
+// releaseCalc: function(periodDate) → actual government release date
+// FRED stores the PERIOD START DATE (e.g. 2026-03-01 = March 2026 data)
+// We compute the real BLS/BEA/Fed release date from the period date
+// ─────────────────────────────────────────────────────────
 const SERIES = {
   FEDFUNDS: {
     label:'Fed Funds Rate', unit:'%', color:'#3d8eff', yoy:false, mom:false,
-    releaseNote:'Federal Reserve. Updated after each FOMC meeting (8x/year). FRED updates same day as decision.',
-    source:'Federal Reserve'
+    source:'Federal Reserve',
+    scheduleNote:'Released on the day of each FOMC meeting decision (8 meetings/year).',
+    // Fed Funds: FRED date IS the meeting/effective date — no offset needed
+    releaseCalc: d => {
+      // FOMC decisions — FRED updates same day. Return the FRED date as-is.
+      return d;
+    }
   },
   CPIAUCSL: {
     label:'CPI YoY', unit:'%', color:'#f5a623', yoy:true, mom:false,
-    releaseNote:'BLS releases CPI approximately 2–3 weeks after month end. e.g. March 2026 CPI published ~April 10, 2026.',
-    source:'BLS'
+    source:'BLS (Bureau of Labor Statistics)',
+    scheduleNote:'BLS releases CPI ~12-15 days after month end, typically around the 10th-15th of the following month.',
+    // CPI: period 2026-03-01 → BLS released ~April 10, 2026
+    // Add ~40 days to period start date to get approximate release
+    releaseCalc: d => {
+      const r = new Date(d);
+      r.setDate(r.getDate() + 40); // ~month + 10 days
+      // Round to nearest weekday
+      if (r.getDay() === 0) r.setDate(r.getDate() + 1);
+      if (r.getDay() === 6) r.setDate(r.getDate() + 2);
+      return r;
+    }
   },
   CPILFESL: {
     label:'Core CPI YoY', unit:'%', color:'#9b6bff', yoy:true, mom:false,
-    releaseNote:'BLS. Same release day as headline CPI. Excludes food & energy. ~2–3 weeks after month end.',
-    source:'BLS'
+    source:'BLS',
+    scheduleNote:'Released same day as headline CPI (excludes food & energy).',
+    releaseCalc: d => { const r=new Date(d); r.setDate(r.getDate()+40); if(r.getDay()===0)r.setDate(r.getDate()+1); if(r.getDay()===6)r.setDate(r.getDate()+2); return r; }
   },
   PAYEMS: {
     label:'NFP MoM', unit:'K', color:'#00d47a', yoy:false, mom:true,
-    releaseNote:'BLS Employment Situation. Released first Friday of following month. e.g. March 2026 jobs → April 4, 2026.',
-    source:'BLS'
+    source:'BLS',
+    scheduleNote:'Released first Friday of the following month (Employment Situation report).',
+    // NFP: period 2026-03-01 → released first Friday of April 2026 = April 3, 2026
+    releaseCalc: d => {
+      // Move to start of NEXT month, then find first Friday
+      const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      // Find first Friday
+      const dayOfWeek = next.getDay(); // 0=Sun,1=Mon,...,5=Fri
+      const daysToFri = dayOfWeek <= 5 ? 5 - dayOfWeek : 6;
+      next.setDate(next.getDate() + daysToFri);
+      // But BLS sometimes releases second Friday if first is too early
+      if (next.getDate() < 4) next.setDate(next.getDate() + 7);
+      return next;
+    }
   },
   UNRATE: {
     label:'Unemployment', unit:'%', color:'#ff2d55', yoy:false, mom:false,
-    releaseNote:'BLS. Released same day as NFP — first Friday of following month.',
-    source:'BLS'
+    source:'BLS',
+    scheduleNote:'Released same day as NFP — first Friday of the following month.',
+    releaseCalc: d => {
+      const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const dayOfWeek = next.getDay();
+      const daysToFri = dayOfWeek <= 5 ? 5 - dayOfWeek : 6;
+      next.setDate(next.getDate() + daysToFri);
+      if (next.getDate() < 4) next.setDate(next.getDate() + 7);
+      return next;
+    }
   },
   A191RL1Q225SBEA: {
     label:'GDP QoQ', unit:'%', color:'#00c4f5', yoy:false, mom:false,
-    releaseNote:'BEA advance estimate released ~4 weeks after quarter end. Q1 2026 advance → late April 2026.',
-    source:'BEA'
+    source:'BEA (Bureau of Economic Analysis)',
+    scheduleNote:'BEA advance estimate released ~4 weeks after quarter end. Revised estimates follow in subsequent months.',
+    // GDP: period 2026-01-01 (Q1) → advance release ~April 30, 2026
+    releaseCalc: d => {
+      // GDP quarter start → advance release ~30 days after quarter end
+      const quarterEnd = new Date(d.getFullYear(), d.getMonth() + 3, 0); // last day of quarter
+      quarterEnd.setDate(quarterEnd.getDate() + 30);
+      if (quarterEnd.getDay() === 0) quarterEnd.setDate(quarterEnd.getDate() + 1);
+      if (quarterEnd.getDay() === 6) quarterEnd.setDate(quarterEnd.getDate() + 2);
+      return quarterEnd;
+    }
   },
 };
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 let macroData = {};
 let bigInst = null;
@@ -236,6 +292,9 @@ let modalMetaObj = null;
 let modalProc = null;
 let chartType = 'line';
 
+// ─────────────────────────────────────────────────────────
+// LOAD ALL
+// ─────────────────────────────────────────────────────────
 async function loadAll() {
   document.getElementById('macroStatus').textContent = 'Fetching from FRED…';
   for (const [sid, meta] of Object.entries(SERIES)) {
@@ -245,14 +304,15 @@ async function loadAll() {
       const proc = processObs(sid, meta, obs);
       macroData[sid] = proc;
       renderCard(sid, meta, proc);
-    } catch(e) {
-      setCardErr(sid);
-    }
+    } catch(e) { setCardErr(sid); }
   }
   const t = new Date().toLocaleTimeString('en-IN', { timeZone:'Asia/Kolkata' });
-  document.getElementById('macroStatus').textContent = `Last updated: ${t} IST · Click any card for full chart & history`;
+  document.getElementById('macroStatus').textContent = `Last updated: ${t} IST · Click any card for charts & full history`;
 }
 
+// ─────────────────────────────────────────────────────────
+// PROCESS OBSERVATIONS
+// ─────────────────────────────────────────────────────────
 function processObs(sid, meta, obs) {
   const sorted = [...obs].sort((a,b) => a.date.localeCompare(b.date));
   if (meta.yoy) {
@@ -260,7 +320,9 @@ function processObs(sid, meta, obs) {
       const val = parseFloat(o.value);
       const p12 = sorted[i - 12];
       const yoy = p12 ? +((val - parseFloat(p12.value)) / parseFloat(p12.value) * 100).toFixed(2) : null;
-      return { date: o.date, raw: val, display: yoy };
+      const periodDate = new Date(o.date + 'T00:00:00');
+      const releaseDate = meta.releaseCalc(periodDate);
+      return { date: o.date, periodDate, releaseDate, raw: val, display: yoy };
     });
   }
   if (meta.mom) {
@@ -268,18 +330,43 @@ function processObs(sid, meta, obs) {
       const val = parseFloat(o.value);
       const prev = sorted[i - 1];
       const mom = prev ? +(val - parseFloat(prev.value)).toFixed(1) : null;
-      return { date: o.date, raw: val, display: mom };
+      const periodDate = new Date(o.date + 'T00:00:00');
+      const releaseDate = meta.releaseCalc(periodDate);
+      return { date: o.date, periodDate, releaseDate, raw: val, display: mom };
     });
   }
-  return sorted.map(o => ({ date: o.date, raw: parseFloat(o.value), display: parseFloat(o.value) }));
+  return sorted.map(o => {
+    const periodDate = new Date(o.date + 'T00:00:00');
+    const releaseDate = meta.releaseCalc(periodDate);
+    return { date: o.date, periodDate, releaseDate, raw: parseFloat(o.value), display: parseFloat(o.value) };
+  });
 }
 
+// ─────────────────────────────────────────────────────────
+// FORMAT HELPERS
+// ─────────────────────────────────────────────────────────
 function fmtVal(val, meta) {
   if (val == null) return '—';
   if (meta.unit === 'K') return (val >= 0 ? '+' : '') + val.toFixed(0) + 'K';
   return val.toFixed(2) + meta.unit;
 }
 
+function fmtDate(d) {
+  if (!d) return '—';
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+function fmtPeriod(o, sid) {
+  const d = o.periodDate;
+  if (sid === 'A191RL1Q225SBEA') {
+    return `Q${Math.floor(d.getMonth()/3)+1} ${d.getFullYear()}`;
+  }
+  return `${MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// ─────────────────────────────────────────────────────────
+// RENDER CARD
+// ─────────────────────────────────────────────────────────
 function renderCard(sid, meta, proc) {
   if (!proc.length) { setCardErr(sid); return; }
   const latest = proc[proc.length - 1];
@@ -288,40 +375,49 @@ function renderCard(sid, meta, proc) {
   const prevV  = prev ? (prev.display ?? prev.raw) : null;
   const chg    = prevV !== null ? val - prevV : null;
 
+  // Main value
   const valEl = document.getElementById(`val-${sid}`);
   valEl.className = 'mc-val';
   valEl.textContent = fmtVal(val, meta);
 
+  // Change line
   const chgStr = chg !== null
-    ? `<span class="${chg >= 0 ? 'chg-up':'chg-dn'}">${chg >= 0?'+':''}${chg.toFixed(2)}${meta.unit}</span>`
+    ? `<span class="${chg>=0?'chg-up':'chg-dn'}">${chg>=0?'+':''}${chg.toFixed(2)}${meta.unit} vs prior</span>`
     : '';
-  document.getElementById(`sub-${sid}`).innerHTML =
-    `Released: <strong>${latest.date}</strong> &nbsp;${chgStr}`;
-  document.getElementById(`rel-${sid}`).textContent = `${meta.source} · ${meta.releaseNote}`;
+  document.getElementById(`sub-${sid}`).innerHTML = chgStr;
 
-  const daysSince = Math.round((Date.now() - new Date(latest.date + 'T00:00:00')) / 86400000);
+  // Dates box — show PERIOD and RELEASE clearly
+  const period = fmtPeriod(latest, sid);
+  const released = fmtDate(latest.releaseDate);
+  const daysAgo = Math.round((Date.now() - latest.releaseDate) / 86400000);
+
+  document.getElementById(`dates-${sid}`).innerHTML =
+    `<strong>Period:</strong> ${period} &nbsp;·&nbsp; ` +
+    `<strong>Released:</strong> ${released}` +
+    (daysAgo >= 0 ? ` (${daysAgo}d ago)` : ' <em style="color:var(--amber)">(upcoming)</em>`);
+
+  // Badge freshness based on release date, not period date
   const badge = document.getElementById(`badge-${sid}`);
-  if (daysSince <= 14) { badge.className='mc-release-badge badge-recent'; }
-  else if (daysSince <= 45) { badge.className='mc-release-badge badge-lag'; }
-  else { badge.className='mc-release-badge badge-stale'; }
-  badge.textContent = daysSince + 'd ago';
+  if (daysAgo <= 14) { badge.className='mc-badge badge-fresh'; badge.textContent=`${daysAgo}d ago`; }
+  else if (daysAgo <= 45) { badge.className='mc-badge badge-normal'; badge.textContent=`${daysAgo}d ago`; }
+  else { badge.className='mc-badge badge-old'; badge.textContent=`${daysAgo}d ago`; }
 
+  // Fed bias
   if (sid === 'FEDFUNDS') {
     const card = document.getElementById(`card-${sid}`);
     let tag = card.querySelector('.bias-tag');
-    if (!tag) { tag = document.createElement('div'); document.getElementById(`rel-${sid}`).insertAdjacentElement('afterend', tag); }
-    if (val >= 5)      { tag.className='bias-tag bias-hawkish'; tag.textContent='HAWKISH'; }
-    else if (val <= 2) { tag.className='bias-tag bias-dovish';  tag.textContent='DOVISH'; }
+    if (!tag) { tag=document.createElement('div'); document.getElementById(`dates-${sid}`).insertAdjacentElement('afterend',tag); }
+    if (val>=5.25)     { tag.className='bias-tag bias-hawkish'; tag.textContent='HAWKISH'; }
+    else if (val<=2)   { tag.className='bias-tag bias-dovish';  tag.textContent='DOVISH'; }
     else               { tag.className='bias-tag bias-neutral'; tag.textContent='NEUTRAL'; }
   }
 
-  const sparkVals = proc.slice(-24).map(o => o.display ?? o.raw).filter(v => v != null);
+  // Sparkline
+  const sparkVals = proc.slice(-24).map(o=>o.display??o.raw).filter(v=>v!=null);
   drawSpark(`spark-${sid}`, sparkVals, meta.color);
 
+  // Click handler
   const card = document.getElementById(`card-${sid}`);
-  if (!card.querySelector('.mc-expand')) {
-    const h = document.createElement('div'); h.className='mc-expand'; h.textContent='⤢ EXPAND'; card.appendChild(h);
-  }
   card.onclick = () => openModal(sid, meta, proc);
 }
 
@@ -332,149 +428,133 @@ function setCardErr(sid) {
 
 function drawSpark(canvasId, vals, color) {
   const canvas = document.getElementById(canvasId);
-  if (!canvas || !vals.length) return;
-  const ex = Chart.getChart(canvas);
-  if (ex) ex.destroy();
+  if (!canvas||!vals.length) return;
+  const ex = Chart.getChart(canvas); if (ex) ex.destroy();
   new Chart(canvas.getContext('2d'), {
     type:'line',
-    data:{ labels:vals.map((_,i)=>i), datasets:[{ data:vals, borderColor:color, borderWidth:1.5, fill:true, backgroundColor:color+'18', pointRadius:0, tension:0.4 }] },
+    data:{ labels:vals.map((_,i)=>i), datasets:[{data:vals,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:color+'18',pointRadius:0,tension:0.4}] },
     options:{ plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}}, animation:false, responsive:true, maintainAspectRatio:false }
   });
 }
 
+// ─────────────────────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────────────────────
 function openModal(sid, meta, proc) {
-  modalSid = sid; modalMetaObj = meta; modalProc = proc;
-  chartType = 'line';
+  modalSid=sid; modalMetaObj=meta; modalProc=proc; chartType='line';
   document.getElementById('ctLine').classList.add('active');
   document.getElementById('ctBar').classList.remove('active');
-  document.getElementById('modalTitle').textContent = meta.label + ' — Historical Data';
-  const latest = proc[proc.length - 1];
-  const val = latest ? fmtVal(latest.display ?? latest.raw, meta) : '—';
+
+  const latest = proc[proc.length-1];
+  const val = latest ? fmtVal(latest.display??latest.raw, meta) : '—';
+
+  document.getElementById('modalTitle').textContent = meta.label + ' — Full History';
   document.getElementById('modalMeta').innerHTML =
     `Latest value: <strong style="color:${meta.color}">${val}</strong> &nbsp;·&nbsp; ` +
-    `FRED release date: <strong>${latest ? latest.date : '—'}</strong> &nbsp;·&nbsp; ` +
+    `Data period: <strong>${latest?fmtPeriod(latest,sid):'—'}</strong> &nbsp;·&nbsp; ` +
+    `BLS/Fed released: <strong>${latest?fmtDate(latest.releaseDate):'—'}</strong> &nbsp;·&nbsp; ` +
     `${proc.length} observations &nbsp;·&nbsp; Source: ${meta.source}`;
-  document.getElementById('lagNotice').innerHTML =
-    `<strong>Release schedule:</strong> ${meta.releaseNote}`;
+
+  document.getElementById('releaseBox').innerHTML =
+    `<strong>📅 Release Schedule:</strong> ${meta.scheduleNote}<br>` +
+    `<strong>ℹ️ Note:</strong> FRED stores the DATA PERIOD start date (e.g. 2026-03-01 = March 2026 data). ` +
+    `The "Actual BLS/Fed Release" column shows the computed government release date when this data was published.`;
+
   document.getElementById('expandModal').classList.add('show');
   renderChart();
   renderTable();
 }
 
 function switchChart(type) {
-  chartType = type;
-  document.getElementById('ctLine').classList.toggle('active', type==='line');
-  document.getElementById('ctBar').classList.toggle('active', type==='bar');
+  chartType=type;
+  document.getElementById('ctLine').classList.toggle('active',type==='line');
+  document.getElementById('ctBar').classList.toggle('active',type==='bar');
   renderChart();
 }
 
 function renderChart() {
   if (!modalProc) return;
-  if (bigInst) { bigInst.destroy(); bigInst = null; }
+  if (bigInst) { bigInst.destroy(); bigInst=null; }
   const display = modalProc.slice(-24);
-  const vals  = display.map(o => o.display ?? o.raw);
-  const dates = display.map(o => o.date);
+  const vals  = display.map(o=>o.display??o.raw);
+  // Use period labels for chart X axis (cleaner)
+  const labels = display.map(o => {
+    const d = o.periodDate;
+    return modalSid==='A191RL1Q225SBEA'
+      ? `Q${Math.floor(d.getMonth()/3)+1}'${String(d.getFullYear()).slice(2)}`
+      : `${MONTHS[d.getMonth()]}'${String(d.getFullYear()).slice(2)}`;
+  });
   const color = modalMetaObj.color;
   const unit  = modalMetaObj.unit;
 
   const scales = {
-    x: { ticks:{ color:'#374a60', maxTicksLimit:10, font:{size:9}, maxRotation:45 }, grid:{ color:'#182030' } },
-    y: { ticks:{ color:'#374a60', font:{size:9}, callback: v => v.toFixed(2)+unit }, grid:{ color:'#182030' } }
+    x: { ticks:{color:'#374a60',maxTicksLimit:12,font:{size:9},maxRotation:45}, grid:{color:'#182030'} },
+    y: { ticks:{color:'#374a60',font:{size:9}, callback:v=>v.toFixed(2)+unit}, grid:{color:'#182030'} }
   };
-  const tooltip = {
+  const tooltipCfg = {
     backgroundColor:'#0a0e17', titleColor:'#9aaabb', bodyColor:color,
-    callbacks: {
+    callbacks:{
       label: ctx => `${ctx.parsed.y.toFixed(2)}${unit}`,
-      title: items => `Release: ${dates[items[0].dataIndex]}`
+      title: items => {
+        const o = display[items[0].dataIndex];
+        return `${fmtPeriod(o,modalSid)} · Released ${fmtDate(o.releaseDate)}`;
+      }
     }
   };
 
-  const type = chartType;
-  const dataset = type === 'line'
-    ? { label:modalMetaObj.label, data:vals, borderColor:color, borderWidth:2, fill:true, backgroundColor:color+'18', pointRadius:3, pointHoverRadius:5, pointBackgroundColor:color, tension:0.3 }
-    : { label:modalMetaObj.label, data:vals, backgroundColor:vals.map(v=>v>=0?color+'cc':'#ff2d55cc'), borderColor:vals.map(v=>v>=0?color:'#ff2d55'), borderWidth:1, borderRadius:2 };
+  const dataset = chartType==='line'
+    ? {label:modalMetaObj.label,data:vals,borderColor:color,borderWidth:2,fill:true,backgroundColor:color+'18',pointRadius:3,pointHoverRadius:5,pointBackgroundColor:color,tension:0.3}
+    : {label:modalMetaObj.label,data:vals,backgroundColor:vals.map(v=>v>=0?color+'cc':'#ff2d55cc'),borderColor:vals.map(v=>v>=0?color:'#ff2d55'),borderWidth:1,borderRadius:3};
 
   bigInst = new Chart(document.getElementById('bigChart').getContext('2d'), {
-    type,
-    data: { labels:dates, datasets:[dataset] },
-    options: {
-      plugins:{ legend:{display:false}, tooltip:{ enabled:true, ...tooltip } },
-      scales,
-      responsive:true, maintainAspectRatio:false,
-      interaction:{ intersect:false, mode:'index' }
-    }
+    type: chartType,
+    data: {labels, datasets:[dataset]},
+    options: { plugins:{legend:{display:false},tooltip:{enabled:true,...tooltipCfg}}, scales, responsive:true, maintainAspectRatio:false, interaction:{intersect:false,mode:'index'} }
   });
 }
 
 function renderTable() {
   if (!modalProc) return;
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const tbody = document.getElementById('histBody');
   tbody.innerHTML = '';
-  const rev = [...modalProc].reverse().slice(0, 48);
+  const rev = [...modalProc].reverse().slice(0, 60);
   rev.forEach((o, i) => {
     const val  = o.display ?? o.raw;
-    const next = rev[i + 1];
-    const pval = next ? (next.display ?? next.raw) : null;
-    const chg  = (val != null && pval != null) ? val - pval : null;
-    const cls  = chg > 0 ? 'chg-up' : chg < 0 ? 'chg-dn' : '';
-    const d    = new Date(o.date + 'T00:00:00');
-    const refPeriod = modalSid === 'A191RL1Q225SBEA'
-      ? `Q${Math.floor(d.getMonth()/3)+1} ${d.getFullYear()}`
-      : `${months[d.getMonth()]} ${d.getFullYear()}`;
+    const next = rev[i+1];
+    const pval = next ? (next.display??next.raw) : null;
+    const chg  = (val!=null&&pval!=null) ? val-pval : null;
+    const cls  = chg>0?'chg-up':chg<0?'chg-dn':'';
     tbody.innerHTML += `<tr>
-      <td class="tbl-date">${o.date}</td>
-      <td style="color:var(--muted);font-size:.42rem;">${refPeriod}</td>
-      <td class="tbl-val" style="color:${modalMetaObj.color}">${val != null ? val.toFixed(2)+modalMetaObj.unit : '—'}</td>
-      <td class="${cls}" style="font-size:.46rem;">${chg !== null ? (chg>=0?'+':'')+chg.toFixed(2)+modalMetaObj.unit : '—'}</td>
+      <td class="col-ref">${fmtPeriod(o, modalSid)}</td>
+      <td class="col-rel">${fmtDate(o.releaseDate)}</td>
+      <td class="col-val" style="color:${modalMetaObj.color}">${val!=null?val.toFixed(2)+modalMetaObj.unit:'—'}</td>
+      <td class="${cls}" style="font-size:.46rem;">${chg!==null?(chg>=0?'+':'')+chg.toFixed(2)+modalMetaObj.unit:'—'}</td>
     </tr>`;
   });
 }
 
-function closeModal() {
-  document.getElementById('expandModal').classList.remove('show');
-  if (bigInst) { bigInst.destroy(); bigInst = null; }
-}
-function closeModalClick(e) { if (e.target.id==='expandModal') closeModal(); }
-
-function setCcy(ccy, el) {
-  currentCcy = ccy;
-  document.querySelectorAll('.ccy-tab').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('aiQ').placeholder = `Ask about ${ccy} bias…`;
-}
+function closeModal() { document.getElementById('expandModal').classList.remove('show'); if(bigInst){bigInst.destroy();bigInst=null;} }
+function closeModalClick(e) { if(e.target.id==='expandModal') closeModal(); }
+function setCcy(ccy,el) { currentCcy=ccy; document.querySelectorAll('.ccy-tab').forEach(b=>b.classList.remove('active')); el.classList.add('active'); document.getElementById('aiQ').placeholder=`Ask about ${ccy} macro bias…`; }
 
 async function runAI() {
-  const q   = document.getElementById('aiQ').value.trim();
-  const out = document.getElementById('aiOut');
-  out.className = 'ai-out show';
-  out.innerHTML = '<span class="ai-pulse">⚡ Reading live FRED data and generating analysis…</span>';
+  const q=document.getElementById('aiQ').value.trim();
+  const out=document.getElementById('aiOut');
+  out.className='ai-out show';
+  out.innerHTML='<span class="ai-pulse">⚡ Analysing live FRED data…</span>';
   try {
-    let question = q || '';
-    if (currentCcy !== 'USD') question += ` Focus on ${currentCcy} implications.`;
-    const res = await API.aiMacro(question);
-    if (res.error) throw new Error(res.error);
-    out.textContent = res.analysis;
-  } catch(e) {
-    out.innerHTML = `<span style="color:var(--red)">⚠ ${e.message}</span>`;
-  }
+    let question=q||'';
+    if(currentCcy!=='USD') question+=` Focus on ${currentCcy} implications.`;
+    const res=await API.aiMacro(question);
+    if(res.error) throw new Error(res.error);
+    out.textContent=res.analysis;
+  } catch(e) { out.innerHTML=`<span style="color:var(--red)">⚠ ${e.message}</span>`; }
 }
 function clearAI() { document.getElementById('aiOut').className='ai-out'; document.getElementById('aiQ').value=''; }
 
-window.addEventListener('DOMContentLoaded', () => {
-  NavEngine.init(PAGE_ID);
-  PriceEngine.start();
-  loadAll();
-});
-(function(){
-  if(localStorage.getItem('tradeos-theme')==='light'){ document.body.classList.add('light'); }
-})();
-function toggleTheme(){
-  const isLight=document.body.classList.toggle('light');
-  localStorage.setItem('tradeos-theme',isLight?'light':'dark');
-  const btn=document.getElementById('theme-toggle');
-  if(btn) btn.textContent=isLight?'☾':'☀';
-}
+window.addEventListener('DOMContentLoaded',()=>{ NavEngine.init(PAGE_ID); PriceEngine.start(); loadAll(); });
+(function(){ if(localStorage.getItem('tradeos-theme')==='light') document.body.classList.add('light'); })();
+function toggleTheme() { const l=document.body.classList.toggle('light'); localStorage.setItem('tradeos-theme',l?'light':'dark'); const b=document.getElementById('theme-toggle'); if(b) b.textContent=l?'☾':'☀'; }
 </script>
 </body>
 </html>
