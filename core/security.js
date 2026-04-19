@@ -50,11 +50,13 @@ const TokenStore = {
 // ── API key store — session only, sent via header not URL ──────
 const ApiKeyStore = {
   _s: 'to_ak',
-  get()     { try { return JSON.parse(sessionStorage.getItem(this._s) || '{}'); } catch { return {}; } },
-  set(k)    { sessionStorage.setItem(this._s, JSON.stringify(k)); },
-  td()      { return this.get().td   || ''; },
-  fred()    { return this.get().fred || ''; },
-  clear()   { sessionStorage.removeItem(this._s); },
+  get()          { try { return JSON.parse(localStorage.getItem(this._s) || '{}'); } catch { return {}; } },
+  set(k)         { localStorage.setItem(this._s, JSON.stringify({ ...this.get(), ...k })); },
+  td()           { return this.get().td       || ''; },
+  fred()         { return this.get().fred     || ''; },
+  guardian()     { return this.get().guardian || ''; },
+  setGuardian(k) { this.set({ guardian: k }); },
+  clear()        { localStorage.removeItem(this._s); },
 };
 window.TokenStore = TokenStore;
 window.esc = esc;
