@@ -224,7 +224,7 @@ const MIN_SHOW = 4, MIN_HIGH = 8, MIN_MED = 5;
 // GUARDIAN API — completely free, no API key limit, CORS-open
 // Use test key for low volume. For production get free key at open-platform.theguardian.com
 // ─────────────────────────────────────────────────────────
-let GUARDIAN_KEY = localStorage.getItem('guardian-key') || 'test';
+let GUARDIAN_KEY = (typeof ApiKeyStore !== 'undefined' ? ApiKeyStore.guardian() : '') || localStorage.getItem('guardian-key') || 'test';
 const GUARDIAN_QUERIES = [
   'gold price federal reserve',
   'oil price opec inflation',
@@ -339,7 +339,11 @@ async function loadNews() {
 
 function saveGuardianKey() {
   const k = document.getElementById('guardianKeyInput')?.value?.trim();
-  if (k) { localStorage.setItem('guardian-key', k); location.reload(); }
+  if (!k) return;
+  localStorage.setItem('guardian-key', k);
+  if (typeof ApiKeyStore !== 'undefined') ApiKeyStore.setGuardian(k);
+  GUARDIAN_KEY = k;
+  location.reload();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -689,6 +693,7 @@ function timeAgo(d){const s=(Date.now()-d)/1000;if(s<60)return'just now';if(s<36
 // BOOT
 // ─────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
+  document.body.style.opacity='1';
   NavEngine.init(PAGE_ID);
   PriceEngine.start();
   renderCalendar();

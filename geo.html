@@ -703,6 +703,7 @@ let activeFilters = { impact: ['critical','high','medium','low'], cat: 'all', pa
 
 // ── Boot ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  document.body.style.opacity = '1';
   NavEngine.init(PAGE_ID);
   PriceEngine.start();
   loadEvents();

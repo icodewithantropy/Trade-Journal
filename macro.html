@@ -552,7 +552,13 @@ async function runAI() {
 }
 function clearAI() { document.getElementById('aiOut').className='ai-out'; document.getElementById('aiQ').value=''; }
 
-window.addEventListener('DOMContentLoaded',()=>{ NavEngine.init(PAGE_ID); PriceEngine.start(); loadAll(); });
+window.addEventListener('DOMContentLoaded',()=>{
+  // Safety: always show body even if a dependency fails
+  document.body.style.opacity = '1';
+  try { NavEngine.init(PAGE_ID); } catch(e) { console.warn('NavEngine failed:', e); }
+  try { PriceEngine.start(); } catch(e) { console.warn('PriceEngine failed:', e); }
+  loadAll();
+});
 (function(){ if(localStorage.getItem('tradeos-theme')==='light') document.body.classList.add('light'); })();
 function toggleTheme() { const l=document.body.classList.toggle('light'); localStorage.setItem('tradeos-theme',l?'light':'dark'); const b=document.getElementById('theme-toggle'); if(b) b.textContent=l?'☾':'☀'; }
 </script>

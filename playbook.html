@@ -447,6 +447,7 @@ function setTab(id,btn){
 function toggleCheck(el){const cb=el.querySelector('input');cb.checked=!cb.checked;el.classList.toggle('checked',cb.checked);}
 
 window.addEventListener('DOMContentLoaded', () => {
+  document.body.style.opacity = '1';
   NavEngine.init(PAGE_ID);
   PriceEngine.start();
   if(!TokenStore.ok(TokenStore.get())){ document.getElementById('token-screen').classList.add('show'); }
