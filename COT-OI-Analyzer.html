@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COT + OI Institutional Analyzer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+:root {
+  --bg:#04060a; --s2:#0a0e17; --s3:#0e141f; --b2:#1d2838; --b3:#243344;
+  --text:#d2d8e6; --t2:#9aaabb; --muted:#374a60;
+  --green:#00d47a; --red:#ff2d55; --amber:#f5a623; --blue:#3d8eff;
+  --purple:#9b6bff; --cyan:#00c4f5;
+  --ff:'JetBrains Mono',monospace; --fd:'Syne',sans-serif;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:var(--ff); min-height:100vh; }
+
+.header { padding:20px 24px 16px; border-bottom:1px solid var(--b2); display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-family:var(--fd); font-size:1.1rem; font-weight:800; }
+.header h1 span { color:var(--amber); }
+.header-sub { font-size:.4rem; color:var(--muted); margin-top:3px; }
+
+.main { display:grid; grid-template-columns:340px 1fr; gap:0; height:calc(100vh - 70px); }
+@media(max-width:800px){ .main{grid-template-columns:1fr;height:auto;} }
+
+/* LEFT PANEL */
+.left { border-right:1px solid var(--b2); display:flex; flex-direction:column; overflow-y:auto; }
+
+.section { border-bottom:1px solid var(--b2); }
+.section-hdr { padding:10px 16px; font-size:.38rem; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; display:flex; align-items:center; justify-content:space-between; }
+.section-hdr span { color:var(--amber); font-size:.55rem; }
+
+/* Upload zones */
+.upload-zone {
+  margin:10px 16px 14px; border:1px dashed var(--b3); border-radius:6px;
+  padding:16px; text-align:center; cursor:pointer; transition:all .15s;
+  background:var(--s3);
+}
+.upload-zone:hover, .upload-zone.drag { border-color:var(--amber); background:rgba(245,166,35,.04); }
+.uz-icon { font-size:1.2rem; margin-bottom:6px; }
+.uz-title { font-size:.46rem; color:var(--text); margin-bottom:3px; }
+.uz-sub { font-size:.38rem; color:var(--muted); line-height:1.6; }
+.uz-status { margin-top:8px; font-size:.4rem; padding:3px 10px; border-radius:3px; display:inline-block; }
+.uz-ok   { background:rgba(0,212,122,.1); color:var(--green); border:1px solid rgba(0,212,122,.2); }
+.uz-err  { background:rgba(255,45,85,.1); color:var(--red);   border:1px solid rgba(255,45,85,.2); }
+
+/* Manual paste */
+.paste-area {
+  margin:0 16px 14px; background:var(--s3); border:1px solid var(--b2); border-radius:6px;
+  padding:8px 10px; font-size:.42rem; color:var(--text); font-family:var(--ff);
+  resize:vertical; min-height:80px; width:calc(100% - 32px); line-height:1.7;
+}
+.paste-area:focus { outline:none; border-color:var(--amber); }
+.paste-label { padding:0 16px 4px; font-size:.38rem; color:var(--muted); }
+
+/* Saved snapshots */
+.snapshot-list { padding:0 16px 12px; display:flex; flex-direction:column; gap:4px; }
+.snap-item { background:var(--s3); border:1px solid var(--b2); border-radius:4px; padding:8px 10px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:border-color .12s; }
+.snap-item:hover { border-color:var(--b3); }
+.snap-item.active { border-color:var(--amber); }
+.snap-name { font-size:.44rem; color:var(--text); }
+.snap-date { font-size:.36rem; color:var(--muted); }
+.snap-del { font-size:.5rem; color:var(--muted); cursor:pointer; padding:2px 6px; background:none; border:none; }
+.snap-del:hover { color:var(--red); }
+
+/* Analyze button */
+.analyze-btn {
+  margin:0 16px 16px; width:calc(100% - 32px); padding:11px; border-radius:6px;
+  border:none; background:var(--amber); color:#1a1000; font-size:.52rem;
+  font-weight:700; font-family:var(--ff); letter-spacing:.5px; cursor:pointer;
+  transition:opacity .15s;
+}
+.analyze-btn:hover { opacity:.88; }
+.analyze-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+.save-btn {
+  margin:0 16px 10px; width:calc(100% - 32px); padding:8px; border-radius:6px;
+  border:1px solid var(--b2); background:var(--s3); color:var(--t2);
+  font-size:.44rem; font-family:var(--ff); cursor:pointer; transition:all .12s;
+}
+.save-btn:hover { border-color:var(--blue); color:var(--blue); }
+
+/* RIGHT PANEL — Analysis */
+.right { overflow-y:auto; padding:20px 24px; }
+
+.placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:12px; }
+.placeholder-icon { font-size:2rem; }
+.placeholder-title { font-family:var(--fd); font-size:.8rem; color:var(--muted); }
+.placeholder-sub { font-size:.42rem; color:var(--muted); text-align:center; line-height:1.8; max-width:360px; }
+
+/* Analysis output */
+.analysis-hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+.analysis-title { font-family:var(--fd); font-size:.9rem; font-weight:800; }
+.analysis-ts { font-size:.38rem; color:var(--muted); margin-top:4px; }
+
+/* Verdict card */
+.verdict { border-radius:8px; padding:16px; margin-bottom:14px; border:1px solid; }
+.verdict-bull { background:rgba(0,212,122,.06); border-color:rgba(0,212,122,.25); }
+.verdict-bear { background:rgba(255,45,85,.06);  border-color:rgba(255,45,85,.25); }
+.verdict-neut { background:rgba(245,166,35,.06); border-color:rgba(245,166,35,.25); }
+.verdict-hdr { font-size:.38rem; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px; font-weight:700; }
+.verdict-bull .verdict-hdr { color:var(--green); }
+.verdict-bear .verdict-hdr { color:var(--red); }
+.verdict-neut .verdict-hdr { color:var(--amber); }
+.verdict-text { font-size:.52rem; font-weight:700; font-family:var(--fd); line-height:1.4; }
+.verdict-sub  { font-size:.44rem; color:var(--t2); margin-top:6px; line-height:1.7; }
+
+/* Metric grid */
+.metrics-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:14px; }
+.metric { background:var(--s2); border:1px solid var(--b2); border-radius:6px; padding:12px; }
+.metric-label { font-size:.38rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+.metric-val { font-family:var(--fd); font-size:1.1rem; font-weight:800; }
+.metric-sub { font-size:.38rem; margin-top:3px; }
+.m-bull { color:var(--green); } .m-bear { color:var(--red); } .m-neut { color:var(--amber); }
+
+/* Analysis sections */
+.analysis-section { background:var(--s2); border:1px solid var(--b2); border-radius:8px; padding:14px; margin-bottom:10px; }
+.as-title { font-size:.4rem; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.as-title::after { content:''; flex:1; height:1px; background:var(--b2); }
+.as-line { font-size:.46rem; color:var(--t2); line-height:1.8; margin-bottom:5px; padding-left:10px; border-left:2px solid var(--b3); }
+.as-line.bull { border-color:var(--green); color:var(--text); }
+.as-line.bear { border-color:var(--red); color:var(--text); }
+.as-line.warn { border-color:var(--amber); }
+.as-line strong { color:var(--text); }
+
+/* Signal tags */
+.signal-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.sig { font-size:.38rem; padding:3px 10px; border-radius:3px; font-weight:700; border:1px solid; letter-spacing:.4px; }
+.sig-bull  { color:var(--green);  border-color:rgba(0,212,122,.3);  background:rgba(0,212,122,.06); }
+.sig-bear  { color:var(--red);    border-color:rgba(255,45,85,.3);  background:rgba(255,45,85,.06); }
+.sig-warn  { color:var(--amber);  border-color:rgba(245,166,35,.3); background:rgba(245,166,35,.06); }
+.sig-neut  { color:var(--muted);  border-color:var(--b2);           background:transparent; }
+.sig-watch { color:var(--purple); border-color:rgba(155,107,255,.3);background:rgba(155,107,255,.06); }
+
+.ai-loading { display:flex; align-items:center; gap:10px; padding:20px; font-size:.48rem; color:var(--muted); }
+.ai-spinner { width:16px; height:16px; border:2px solid var(--b3); border-top-color:var(--amber); border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.err-box { background:rgba(255,45,85,.06); border:1px solid rgba(255,45,85,.25); border-radius:6px; padding:14px; font-size:.46rem; color:var(--red); line-height:1.8; }
+
+input[type=file] { display:none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>COT + OI <span>Institutional Analyzer</span></h1>
+    <div class="header-sub">Upload or paste COT/OI data → Get institutional-grade analysis</div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- LEFT: Input Panel -->
+  <div class="left">
+
+    <!-- COT Upload -->
+    <div class="section">
+      <div class="section-hdr">COT Data <span>①</span></div>
+      <div class="upload-zone" id="cotZone" onclick="document.getElementById('cotFile').click()" ondragover="onDrag(event,'cotZone')" ondragleave="offDrag('cotZone')" ondrop="onDrop(event,'cot')">
+        <div class="uz-icon">📋</div>
+        <div class="uz-title">Drop COT CSV / Click to Upload</div>
+        <div class="uz-sub">From CFTC, Barchart, Quandl, TradingView<br>Or paste data below ↓</div>
+        <div class="uz-status uz-ok" id="cotStatus" style="display:none;"></div>
+      </div>
+      <input type="file" id="cotFile" accept=".csv,.txt,.json" onchange="onFile(event,'cot')">
+      <div class="paste-label">Or paste COT data:</div>
+      <textarea class="paste-area" id="cotPaste" placeholder="Paste COT data here...&#10;e.g.:&#10;Date, NonComm_Long, NonComm_Short, Comm_Long, Comm_Short&#10;2026-04-15, 285420, 94830, 145200, 312400" oninput="onPasteChange('cot')"></textarea>
+    </div>
+
+    <!-- OI Upload -->
+    <div class="section">
+      <div class="section-hdr">Open Interest Data <span>②</span></div>
+      <div class="upload-zone" id="oiZone" onclick="document.getElementById('oiFile').click()" ondragover="onDrag(event,'oiZone')" ondragleave="offDrag('oiZone')" ondrop="onDrop(event,'oi')">
+        <div class="uz-icon">📈</div>
+        <div class="uz-title">Drop OI CSV / Click to Upload</div>
+        <div class="uz-sub">From CME, Investing.com, TradingView<br>Or paste data below ↓</div>
+        <div class="uz-status uz-ok" id="oiStatus" style="display:none;"></div>
+      </div>
+      <input type="file" id="oiFile" accept=".csv,.txt,.json" onchange="onFile(event,'oi')">
+      <div class="paste-label">Or paste OI data:</div>
+      <textarea class="paste-area" id="oiPaste" placeholder="Paste OI data here...&#10;e.g.:&#10;Date, OI, Price&#10;2026-04-15, 542830, 3320.5&#10;2026-04-14, 538120, 3305.2" oninput="onPasteChange('oi')"></textarea>
+    </div>
+
+    <!-- Context -->
+    <div class="section">
+      <div class="section-hdr">Context (optional) <span>③</span></div>
+      <div class="paste-label">Current price, bias, notes:</div>
+      <textarea class="paste-area" id="ctxPaste" placeholder="e.g.: Gold at 3320, DXY 99.8, real yields -0.4%, bearish weekly structure but bullish daily OB at 3280. What does COT confirm?"></textarea>
+    </div>
+
+    <!-- Saved Snapshots -->
+    <div class="section">
+      <div class="section-hdr">Saved Snapshots</div>
+      <div class="snapshot-list" id="snapList"></div>
+    </div>
+
+    <button class="save-btn" onclick="saveSnapshot()">💾 SAVE THIS DATA AS SNAPSHOT</button>
+    <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">⚡ ANALYZE — INSTITUTIONAL VIEW</button>
+  </div>
+
+  <!-- RIGHT: Analysis Output -->
+  <div class="right" id="rightPanel">
+    <div class="placeholder">
+      <div class="placeholder-icon">📊</div>
+      <div class="placeholder-title">Upload COT + OI Data</div>
+      <div class="placeholder-sub">
+        Paste or upload your COT and Open Interest data.<br>
+        Get institutional-grade analysis including:<br><br>
+        · Non-commercial positioning extremes<br>
+        · Commercial hedger signals<br>
+        · OI divergence from price<br>
+        · Smart money accumulation/distribution<br>
+        · ICT-style confluence signals
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+let cotRaw = '';
+let oiRaw  = '';
+let snapshots = JSON.parse(localStorage.getItem('cot-snaps') || '[]');
+
+// ── File handling ──────────────────────────────────────────
+function onFile(e, type) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => setData(type, ev.target.result, file.name);
+  r.readAsText(file);
+}
+function onDrop(e, type) {
+  e.preventDefault(); offDrag(type==='cot'?'cotZone':'oiZone');
+  const file = e.dataTransfer.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => setData(type, ev.target.result, file.name);
+  r.readAsText(file);
+}
+function onDrag(e, id) { e.preventDefault(); document.getElementById(id).classList.add('drag'); }
+function offDrag(id) { document.getElementById(id).classList.remove('drag'); }
+function onPasteChange(type) {
+  const val = document.getElementById(type==='cot'?'cotPaste':'oiPaste').value.trim();
+  if (val.length > 10) setData(type, val, 'pasted');
+}
+function setData(type, raw, name) {
+  if (type === 'cot') { cotRaw = raw; showStatus('cotStatus', name); }
+  else               { oiRaw  = raw; showStatus('oiStatus',  name); }
+}
+function showStatus(id, name) {
+  const el = document.getElementById(id);
+  el.style.display = 'inline-block';
+  el.className = 'uz-status uz-ok';
+  el.textContent = '✓ ' + name.slice(0, 30);
+}
+
+// ── Snapshots ──────────────────────────────────────────────
+function saveSnapshot() {
+  const name = prompt('Name this snapshot (e.g. "Gold COT Apr 19 2026"):');
+  if (!name) return;
+  snapshots.unshift({ id: Date.now(), name, cot: cotRaw, oi: oiRaw, ctx: document.getElementById('ctxPaste').value, date: new Date().toLocaleDateString() });
+  if (snapshots.length > 20) snapshots.pop();
+  localStorage.setItem('cot-snaps', JSON.stringify(snapshots));
+  renderSnaps();
+}
+function loadSnapshot(id) {
+  const s = snapshots.find(x => x.id === id); if (!s) return;
+  cotRaw = s.cot; oiRaw = s.oi;
+  document.getElementById('cotPaste').value = s.cot;
+  document.getElementById('oiPaste').value  = s.oi;
+  document.getElementById('ctxPaste').value = s.ctx || '';
+  if (s.cot) showStatus('cotStatus', s.name);
+  if (s.oi)  showStatus('oiStatus',  s.name);
+  document.querySelectorAll('.snap-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('snap-'+id)?.classList.add('active');
+}
+function deleteSnapshot(id) {
+  snapshots = snapshots.filter(x => x.id !== id);
+  localStorage.setItem('cot-snaps', JSON.stringify(snapshots));
+  renderSnaps();
+}
+function renderSnaps() {
+  const el = document.getElementById('snapList');
+  if (!snapshots.length) { el.innerHTML = '<div style="font-size:.4rem;color:var(--muted);padding:0 0 8px;">No saved snapshots yet.</div>'; return; }
+  el.innerHTML = snapshots.map(s => `
+    <div class="snap-item" id="snap-${s.id}" onclick="loadSnapshot(${s.id})">
+      <div>
+        <div class="snap-name">${s.name}</div>
+        <div class="snap-date">${s.date}</div>
+      </div>
+      <button class="snap-del" onclick="event.stopPropagation();deleteSnapshot(${s.id})">✕</button>
+    </div>`).join('');
+}
+
+// ── Analysis ───────────────────────────────────────────────
+async function runAnalysis() {
+  cotRaw = cotRaw || document.getElementById('cotPaste').value.trim();
+  oiRaw  = oiRaw  || document.getElementById('oiPaste').value.trim();
+
+  if (!cotRaw && !oiRaw) {
+    alert('Please upload or paste at least COT or OI data.');
+    return;
+  }
+
+  const ctx = document.getElementById('ctxPaste').value.trim();
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing…';
+
+  document.getElementById('rightPanel').innerHTML = `
+    <div class="ai-loading">
+      <div class="ai-spinner"></div>
+      Running institutional analysis…
+    </div>`;
+
+  const systemPrompt = `You are a senior institutional trader and market analyst specializing in Gold (XAUUSD) futures. 
+You understand ICT (Inner Circle Trader) concepts, Smart Money Concepts, COT positioning extremes, and OI divergence analysis.
+Analyze the provided COT and/or Open Interest data with an institutional lens.
+Return ONLY valid JSON matching this exact structure:
+{
+  "verdict": "BULLISH" | "BEARISH" | "NEUTRAL",
+  "conviction": "HIGH" | "MEDIUM" | "LOW",
+  "verdictText": "One sentence institutional verdict",
+  "verdictSub": "2-3 sentence explanation of the primary signal",
+  "metrics": [
+    { "label": "string", "value": "string", "dir": "bull"|"bear"|"neut", "sub": "string" }
+  ],
+  "cotAnalysis": ["string array of 3-5 COT observations, each starting with bull/bear/warn signal"],
+  "oiAnalysis":  ["string array of 3-5 OI observations"],
+  "confluence":  ["string array of 2-4 confluence signals with ICT context"],
+  "keyLevels":   ["string array of 2-3 key price levels or zones derived from data"],
+  "signals":     [{ "label": "string", "type": "bull"|"bear"|"warn"|"neut"|"watch" }],
+  "videoAngle":  "One paragraph script angle for a market analysis video about this data"
+}
+Be precise with numbers from the data. Use ICT terminology where relevant (liquidity, OB zones, accumulation/distribution, smart money divergence).`;
+
+  const userPrompt = `Analyze this market data with institutional precision:
+
+${cotRaw ? `=== COT DATA ===\n${cotRaw.slice(0, 3000)}\n` : ''}
+${oiRaw  ? `=== OPEN INTEREST DATA ===\n${oiRaw.slice(0, 2000)}\n` : ''}
+${ctx    ? `=== TRADER CONTEXT ===\n${ctx}\n` : ''}
+
+Provide full institutional analysis. Reference specific numbers from the data.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: userPrompt }],
+        system: systemPrompt
+      })
+    });
+    const data = await res.json();
+    const raw  = data?.content?.[0]?.text || '';
+    const json = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    renderAnalysis(json);
+  } catch(e) {
+    document.getElementById('rightPanel').innerHTML =
+      `<div class="err-box">⚠ Analysis failed: ${e.message}<br><br>
+      If this is a CORS error, the API call needs to go through your Cloudflare Worker.<br>
+      Add the analysis result manually or check your API setup.</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '⚡ ANALYZE — INSTITUTIONAL VIEW';
+}
+
+function renderAnalysis(d) {
+  const vCls = d.verdict==='BULLISH'?'verdict-bull':d.verdict==='BEARISH'?'verdict-bear':'verdict-neut';
+  const vDir = d.verdict==='BULLISH'?'↑ BULLISH':d.verdict==='BEARISH'?'↓ BEARISH':'→ NEUTRAL';
+
+  const metricsHtml = (d.metrics||[]).map(m => `
+    <div class="metric">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-val m-${m.dir}">${m.value}</div>
+      <div class="metric-sub m-${m.dir}">${m.sub}</div>
+    </div>`).join('');
+
+  const cotHtml = (d.cotAnalysis||[]).map(l => {
+    const cls = l.toLowerCase().startsWith('bull')?'bull':l.toLowerCase().startsWith('bear')?'bear':'warn';
+    return `<div class="as-line ${cls}">${l}</div>`;
+  }).join('');
+
+  const oiHtml = (d.oiAnalysis||[]).map(l => {
+    const cls = l.toLowerCase().startsWith('bull')?'bull':l.toLowerCase().startsWith('bear')?'bear':'warn';
+    return `<div class="as-line ${cls}">${l}</div>`;
+  }).join('');
+
+  const confHtml = (d.confluence||[]).map(l => `<div class="as-line warn">${l}</div>`).join('');
+  const levelsHtml = (d.keyLevels||[]).map(l => `<div class="as-line">${l}</div>`).join('');
+
+  const sigsHtml = (d.signals||[]).map(s =>
+    `<span class="sig sig-${s.type}">${s.label}</span>`).join('');
+
+  document.getElementById('rightPanel').innerHTML = `
+    <div class="analysis-hdr">
+      <div>
+        <div class="analysis-title">Institutional Analysis — Gold (XAUUSD)</div>
+        <div class="analysis-ts">${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST · Conviction: ${d.conviction}</div>
+      </div>
+    </div>
+
+    <div class="verdict ${vCls}">
+      <div class="verdict-hdr">${vDir} · ${d.conviction} CONVICTION</div>
+      <div class="verdict-text">${d.verdictText}</div>
+      <div class="verdict-sub">${d.verdictSub}</div>
+      <div class="signal-row">${sigsHtml}</div>
+    </div>
+
+    <div class="metrics-grid">${metricsHtml}</div>
+
+    ${cotHtml ? `<div class="analysis-section">
+      <div class="as-title">COT POSITIONING ANALYSIS</div>
+      ${cotHtml}
+    </div>` : ''}
+
+    ${oiHtml ? `<div class="analysis-section">
+      <div class="as-title">OPEN INTEREST ANALYSIS</div>
+      ${oiHtml}
+    </div>` : ''}
+
+    ${confHtml ? `<div class="analysis-section">
+      <div class="as-title">CONFLUENCE — ICT CONTEXT</div>
+      ${confHtml}
+    </div>` : ''}
+
+    ${levelsHtml ? `<div class="analysis-section">
+      <div class="as-title">KEY LEVELS FROM DATA</div>
+      ${levelsHtml}
+    </div>` : ''}
+
+    ${d.videoAngle ? `<div class="analysis-section">
+      <div class="as-title">VIDEO SCRIPT ANGLE</div>
+      <div class="as-line" style="font-style:italic;">${d.videoAngle}</div>
+    </div>` : ''}
+  `;
+}
+
+// ── Init ───────────────────────────────────────────────────
+renderSnaps();
+</script>
+</body>
+</html>
