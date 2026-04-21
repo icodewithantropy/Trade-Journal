@@ -129,6 +129,7 @@
 </style>
 </head>
 <body>
+<script>document.body.style.opacity="1"</script>
 <nav id="nav">
   <div class="nav-brand">TRADE<span>OS</span></div>
   <div class="nav-links" id="nav-links"></div>
@@ -151,6 +152,7 @@
   <button class="tab-btn" onclick="switchTab('future',this)">UPCOMING</button>
   <button class="tab-btn" onclick="switchTab('news',this)">📰 MARKET NEWS</button>
   <button class="tab-btn" onclick="switchTab('data',this)">📊 DATA LINKS</button>
+  <button class="tab-btn" onclick="switchTab('telegram',this)">⚡ GEOPOLITICAL</button>
 </div>
 <!-- Calendar filters -->
 <div class="filter-bar" id="calFilters">
@@ -184,6 +186,7 @@
 <div id="calContent"></div>
 <div id="newsContent" style="display:none;"></div>
 <div id="dataContent" style="display:none;"></div>
+<div id="telegramContent" style="display:none;"><div class="news-loading">Loading geopolitical feed…</div></div>
 <div id="price-strip">
   <div class="ps-pair" id="ps-eur"><span class="ps-sym">EUR/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
   <div class="ps-pair" id="ps-gbp"><span class="ps-sym">GBP/USD</span><span class="ps-price">—</span><span class="ps-chg"></span></div>
@@ -260,11 +263,15 @@ function switchTab(tab, el) {
   const nF   = document.getElementById('newsFilters');
   cal.style.display='none'; nc.style.display='none'; dc.style.display='none';
   calF.style.display='none'; nF.style.display='none';
+  const tc = document.getElementById('telegramContent');
+  if (tc) tc.style.display='none';
   if (tab==='news') {
     nc.style.display='block'; nF.style.display='flex';
     if (!newsLoaded) loadNews();
   } else if (tab==='data') {
     dc.style.display='block'; renderDataLinks();
+  } else if (tab==='telegram') {
+    if (tc) { tc.style.display='block'; loadTelegram(); }
   } else {
     cal.style.display='block'; calF.style.display='flex'; renderCalendar();
   }
@@ -689,6 +696,61 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function escUrl(u){try{const p=new URL(u);return(p.protocol==='http:'||p.protocol==='https:')?u:'#';}catch{return'#';}}
 function timeAgo(d){const s=(Date.now()-d)/1000;if(s<60)return'just now';if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;}
 
+
+// ─────────────────────────────────────────────────────────
+// TELEGRAM / GEOPOLITICAL FEED
+// ─────────────────────────────────────────────────────────
+let telegramLoaded = false;
+const KEYWORDS = ['USD','EUR','Fed','ECB','Oil','Gold','China','War','Rate','CPI','FOMC','Dollar'];
+
+async function loadTelegram() {
+  const tc = document.getElementById('telegramContent');
+  if (!tc) return;
+  if (telegramLoaded) return;
+  tc.innerHTML = '<div class="news-loading">Fetching Telegram channels…</div>';
+  try {
+    const data = await API.get('telegram');
+    const msgs = data.messages || [];
+    telegramLoaded = true;
+    renderTelegram(msgs);
+    State.set('telegram', msgs);
+  } catch(e) {
+    tc.innerHTML = `<div class="api-notice"><strong>Telegram feed unavailable</strong><br>Error: ${esc(e.message)}<br><br>
+    While this loads, use the <strong>DATA LINKS</strong> tab for manual geopolitical sources.</div>`;
+  }
+}
+
+function renderTelegram(msgs, filter='') {
+  const tc = document.getElementById('telegramContent');
+  if (!tc) return;
+  const filtered = filter
+    ? msgs.filter(m => m.text.toLowerCase().includes(filter.toLowerCase()))
+    : msgs;
+  const chips = KEYWORDS.map(kw =>
+    `<button class="chip" onclick="renderTelegram(State.get('telegram')||[],'')">${kw}</button>`
+  ).join('');
+  if (!filtered.length) {
+    tc.innerHTML = `<div class="filter-bar" style="margin-bottom:12px">${chips}<button class="chip active" onclick="renderTelegram(State.get('telegram')||[])">ALL</button></div><div class="empty">No messages match.</div>`;
+    return;
+  }
+  const rows = filtered.map(m => {
+    const ago = timeAgo(new Date(m.date).getTime());
+    const chBadge = { wbloomberg_news:'Walter Bloomberg', tier1alpha:'Tier1Alpha', forexlive_news:'ForexLive', zerohedge_news:'ZeroHedge' }[m.channel] || m.channel;
+    return `<div class="ev-row" style="cursor:default">
+      <div class="ev-hdr" style="align-items:flex-start;gap:8px">
+        <div class="impact-dot dot-high" style="margin-top:5px;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="ev-ccy" style="font-size:.42rem">${esc(chBadge)}</span>
+            <span class="ev-time">${esc(ago)}</span>
+          </div>
+          <div style="font-size:.54rem;color:var(--text);line-height:1.7">${esc(m.text)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  tc.innerHTML = `<div class="filter-bar" style="margin-bottom:12px">${chips}<button class="chip" onclick="renderTelegram(State.get('telegram')||[])">ALL</button></div>${rows}`;
+}
 // ─────────────────────────────────────────────────────────
 // BOOT
 // ─────────────────────────────────────────────────────────
@@ -699,6 +761,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   renderCalendar();
   updateCountdown();
   setInterval(updateCountdown,1000);
+  if (typeof TelegramEngine !== 'undefined') TelegramEngine.start();
 });
 (function(){if(localStorage.getItem('tradeos-theme')==='light')document.body.classList.add('light');})();
 function toggleTheme(){const l=document.body.classList.toggle('light');localStorage.setItem('tradeos-theme',l?'light':'dark');const b=document.getElementById('theme-toggle');if(b)b.textContent=l?'☾':'☀';}
