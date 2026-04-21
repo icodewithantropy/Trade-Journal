@@ -78,27 +78,6 @@ body.light .ps-price { color: var(--text); }
 body.light .strip-ts { color: var(--muted); }
 
 /* Light mode body — plain white background, no grid lines */
-body.light {
-  background-image: none;
-}
-
-/* Light mode cards — clear visual separation with shadow */
-body.light .card,
-body.light .kpi,
-body.light .ai-panel {
-  box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.05);
-}
-
-/* Light mode section header line */
-body.light .shdr-line { background: var(--border); }
-
-/* Light mode table */
-body.light .tbl td { border-bottom-color: rgba(0,0,0,.05); }
-body.light .tbl tr:hover td { background: rgba(0,0,0,.02); }
-
-/* Light mode token screen */
-body.light #token-screen { background: #f7f8fc; }
-}
 
 /* ── Theme toggle button ─────────────────────────────────── */
 .theme-toggle {
@@ -131,8 +110,6 @@ body {
   overflow-x:   hidden;
   padding-top:  var(--nav-h);
   padding-bottom: var(--strip-h);
-  opacity: 0;
-  transition: opacity 220ms ease;
   background-image: repeating-linear-gradient(
     0deg, transparent, transparent 2px,
     rgba(0,0,0,.05) 2px, rgba(0,0,0,.05) 4px

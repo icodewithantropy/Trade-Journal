@@ -33,6 +33,11 @@ async function _fetch(action, options = {}) {
 
 const API = {
 
+
+  async get(action, params = {}) {
+    return _fetch(action, { params });
+  },
+
   async prices() {
     return _fetch('prices');
   },

@@ -949,6 +949,29 @@ window.NewsEngine       = NewsEngine;
 window.TradeEngine      = TradeEngine;
 window.MonteCarloEngine = MonteCarloEngine;
 window.AIEngine         = AIEngine;
+
+/* ═══════════════════════════════════════
+   TELEGRAM ENGINE
+   Fetches public channel messages via Worker /telegram route.
+   Polls every 5 minutes. Stores in State as 'telegram'.
+═══════════════════════════════════════ */
+const TelegramEngine = {
+  _timer: null,
+  start() {
+    this.fetch();
+    this._timer = setInterval(() => this.fetch(), 300_000);
+  },
+  stop() { clearInterval(this._timer); this._timer = null; },
+  async fetch() {
+    try {
+      const data = await API.get ? API.get('telegram') : fetch(Config.WORKER + '?action=telegram').then(r=>r.json());
+      State.set('telegram', data.messages || []);
+      console.log(`[TelegramEngine] ${(data.messages||[]).length} messages`);
+    } catch(e) { console.warn('[TelegramEngine]', e.message); }
+  }
+};
+window.TelegramEngine = TelegramEngine;
+
 window.NavEngine        = NavEngine;
 window.Charts           = Charts;
 window.updatePriceUI    = updatePriceUI;
